@@ -1,6 +1,6 @@
 @php
     $branding = \App\Services\Config\Config::getBrandingWeb();
-    $initialSection = $section ?? 'resumen';
+    $initialSection = $section ?? 'dashboard';
     $user = auth('customer')->user();
     $displayName = $user?->name ?? $user?->email ?? 'Cliente';
 @endphp

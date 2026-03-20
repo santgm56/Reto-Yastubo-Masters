@@ -11,7 +11,7 @@ Route::post('/login', [LoginController::class, 'login'])->name('login.do');
 
 // Ruta temporal para QA visual de FE-001F sin depender de BD/autenticacion.
 if (app()->environment('local')) {
-	Route::get('/preview-shell', fn() => view('customer.home', ['section' => 'resumen']))->name('preview.shell');
+	Route::get('/preview-shell', fn() => view('customer.home', ['section' => 'dashboard']))->name('preview.shell');
 }
 
 Route::get('/forgot-password', [PasswordController::class, 'requestForm'])->name('password.request');
