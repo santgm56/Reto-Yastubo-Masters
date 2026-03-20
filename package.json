@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "localhost": "concurrently -k -n LARAVEL,VITE -c green,blue \"php artisan serve --host=127.0.0.1 --port=8000\" \"vite --host 127.0.0.1 --port 5173\""
     },
     "devDependencies": {
         "@vitejs/plugin-vue": "^6.0.0",

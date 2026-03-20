@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Support\Realm;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Throwable;
 
 
 class LoginController extends Controller
@@ -34,18 +37,40 @@ class LoginController extends Controller
 			return back()->withErrors(['email' => 'Demasiados intentos. Prueba más tarde.']);
 		}
 
-		$ok = Auth::guard($realm)->attempt([
-			'email'	   => $request->email,
-			'password' => $request->password,
-			'realm'	   => $realm,
-		]);
+		try
+		{
+			$ok = Auth::guard($realm)->attempt([
+				'email'	   => $request->email,
+				'password' => $request->password,
+				'realm'	   => $realm,
+			]);
+		}
+		catch (Throwable $e)
+		{
+			if (app()->environment('local'))
+			{
+				return redirect()
+						->route('customer.preview.shell')
+						->with('status', 'Modo local activo: acceso temporal sin base de datos.');
+			}
+
+			return back()->withErrors([
+				'email' => 'No fue posible validar credenciales en este entorno local (BD no disponible).',
+			]);
+		}
 
 		if ($ok)
 		{
 			$request->session()->regenerate();
 			RateLimiter::clear($key);
 
+			/** @var User|null $user */
 			$user = Auth::guard($realm)->user();
+			if (!$user)
+			{
+				return redirect()->intended(route("{$realm}.home"));
+			}
+
 			$user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->save();
 
             // Si debe cambiar contraseña => forzar flujo
@@ -70,13 +95,20 @@ class LoginController extends Controller
 
 		if ($realm)
 		{
-			auth($realm)->logout();
+			/** @var StatefulGuard $guard */
+			$guard = Auth::guard($realm);
+			$guard->logout();
 		}
 		else
 		{
 			// fallback: desloguear ambos
-			auth(Realm::ADMIN)->logout();
-			auth(Realm::CUSTOMER)->logout();
+			/** @var StatefulGuard $adminGuard */
+			$adminGuard = Auth::guard(Realm::ADMIN);
+			$adminGuard->logout();
+
+			/** @var StatefulGuard $customerGuard */
+			$customerGuard = Auth::guard(Realm::CUSTOMER);
+			$customerGuard->logout();
 		}
 
 		$request->session()->invalidate();

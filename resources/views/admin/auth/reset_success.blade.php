@@ -17,6 +17,6 @@
 </div>
 
 <script>
-	setTimeout(function(){ window.location.href = @json($loginUrl); }, 4000);
+	setTimeout(function(){ window.location.href = '{{ $loginUrl }}'; }, 4000);
 </script>
 @endsection
