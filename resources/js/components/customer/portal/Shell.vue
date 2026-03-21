@@ -138,13 +138,41 @@
 
             <div
               class="alert py-2 px-3 mb-3"
-              :class="dashboardSummaryStatus.state === 'bloqueado' ? 'alert-light-danger' : dashboardSummaryStatus.state === 'alerta' ? 'alert-light-warning' : 'alert-light-success'"
+              :class="dashboardSummaryState === 'error'
+                ? 'alert-light-danger'
+                : dashboardSummaryState === 'empty'
+                  ? 'alert-light-warning'
+                  : dashboardSummaryState === 'loading'
+                    ? 'alert-light-info'
+                    : dashboardSummaryStatus.state === 'bloqueado'
+                      ? 'alert-light-danger'
+                      : dashboardSummaryStatus.state === 'alerta'
+                        ? 'alert-light-warning'
+                        : 'alert-light-success'"
               role="status"
             >
-              {{ dashboardSummaryStatus.message }}
+              {{ dashboardSummaryBannerMessage }}
             </div>
 
-            <div class="row g-3">
+            <div v-if="dashboardSummaryState === 'loading'" class="row g-3">
+              <div class="col-12 col-sm-6 col-xl-4" v-for="index in 3" :key="`summary-loading-${index}`">
+                <div class="border rounded p-3 h-100 placeholder-glow">
+                  <div class="placeholder col-7 mb-2" style="height: 12px;"></div>
+                  <div class="placeholder col-6 mb-2" style="height: 26px;"></div>
+                  <div class="placeholder col-8" style="height: 10px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="dashboardSummaryState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
+              No fue posible cargar el resumen operativo. Intenta recargar la vista o valida la configuracion de datos base.
+            </div>
+
+            <div v-else-if="dashboardSummaryState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
+              No hay datos suficientes para mostrar tarjetas de resumen en este momento.
+            </div>
+
+            <div v-else class="row g-3">
               <div class="col-12 col-sm-6 col-xl-4" v-for="card in dashboardSummaryCards" :key="card.key">
                 <div class="border rounded p-3 h-100">
                   <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -156,6 +184,173 @@
                   <div class="fs-4 fw-bold text-gray-900 mb-1 text-break lh-sm">{{ card.value }}</div>
                   <div class="text-muted fs-8">{{ card.hint }}</div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="activeKey === 'dashboard'" class="card shadow-sm border-0 mt-4">
+          <div class="card-body p-4 p-lg-5">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+              <div>
+                <h2 class="fs-4 fw-bold text-gray-900 mb-0">Beneficiarios</h2>
+                <div class="text-muted fs-8">FE-005 Fase 3 · Widget MVP</div>
+              </div>
+              <button
+                type="button"
+                class="btn btn-sm btn-light-primary"
+                :disabled="['loading', 'error'].includes(beneficiariesWidgetState) || showBeneficiaryForm"
+                @click="openBeneficiaryForm"
+              >
+                Agregar beneficiario (simulado)
+              </button>
+            </div>
+
+            <div
+              class="alert py-2 px-3 mb-3"
+              :class="beneficiariesWidgetState === 'error'
+                ? 'alert-light-danger'
+                : beneficiariesWidgetState === 'loading'
+                  ? 'alert-light-info'
+                  : beneficiariesOperationalState === 'bloqueado'
+                    ? 'alert-light-danger'
+                    : beneficiariesOperationalState === 'alerta'
+                      ? 'alert-light-warning'
+                      : 'alert-light-success'"
+              role="status"
+            >
+              {{ beneficiariesWidgetMessage }}
+            </div>
+
+            <div v-if="beneficiariesWidgetNotice" class="alert alert-light-primary py-2 px-3 mb-3" role="alert">
+              {{ beneficiariesWidgetNotice }}
+            </div>
+
+            <div v-if="showBeneficiaryForm && !['loading', 'error'].includes(beneficiariesWidgetState)" class="border rounded p-3 mb-3 bg-light">
+              <div class="fw-semibold text-gray-900 mb-3">Nuevo beneficiario (simulado)</div>
+
+              <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-semibold">Nombre completo</label>
+                  <input
+                    v-model="beneficiaryForm.nombre"
+                    type="text"
+                    class="form-control"
+                    placeholder="Ej. Ana Perez"
+                  >
+                  <div v-if="beneficiaryFormErrors.nombre" class="text-danger fs-8 mt-1">
+                    {{ beneficiaryFormErrors.nombre }}
+                  </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-semibold">Documento</label>
+                  <input
+                    v-model="beneficiaryForm.documento"
+                    type="text"
+                    class="form-control"
+                    placeholder="Ej. CC 123456789"
+                  >
+                  <div v-if="beneficiaryFormErrors.documento" class="text-danger fs-8 mt-1">
+                    {{ beneficiaryFormErrors.documento }}
+                  </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-semibold">Parentesco</label>
+                  <input
+                    v-model="beneficiaryForm.parentesco"
+                    type="text"
+                    class="form-control"
+                    placeholder="Ej. Conyuge"
+                  >
+                  <div v-if="beneficiaryFormErrors.parentesco" class="text-danger fs-8 mt-1">
+                    {{ beneficiaryFormErrors.parentesco }}
+                  </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-semibold">Estado inicial</label>
+                  <select v-model="beneficiaryForm.estado" class="form-select">
+                    <option value="activo">Activo</option>
+                    <option value="incompleto">Incompleto</option>
+                    <option value="bloqueado">Bloqueado</option>
+                  </select>
+                  <div v-if="beneficiaryFormErrors.estado" class="text-danger fs-8 mt-1">
+                    {{ beneficiaryFormErrors.estado }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary"
+                  :disabled="isBeneficiarySubmitting"
+                  @click="submitBeneficiaryForm"
+                >
+                  <span v-if="isBeneficiarySubmitting">Guardando...</span>
+                  <span v-else>Guardar beneficiario</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-light" @click="cancelBeneficiaryForm">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+
+            <div v-if="beneficiariesWidgetState === 'loading'" class="row g-3">
+              <div class="col-12" v-for="index in 3" :key="`benef-loading-${index}`">
+                <div class="border rounded p-3 placeholder-glow">
+                  <div class="placeholder col-5 mb-2" style="height: 12px;"></div>
+                  <div class="placeholder col-3 mb-2" style="height: 12px;"></div>
+                  <div class="placeholder col-6" style="height: 10px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="beneficiariesWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
+              <div class="fw-semibold mb-1">No fue posible cargar los beneficiarios.</div>
+              <button type="button" class="btn btn-sm btn-light-danger" @click="retryBeneficiariesWidget">
+                Reintentar
+              </button>
+            </div>
+
+            <div v-else-if="beneficiariesWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
+              <div class="fw-semibold mb-1">Aun no hay beneficiarios registrados.</div>
+              <div class="fs-8 mb-2">Usa "Agregar beneficiario" para iniciar la configuracion.</div>
+              <button v-if="!showBeneficiaryForm" type="button" class="btn btn-sm btn-light-warning" @click="openBeneficiaryForm">
+                Agregar beneficiario
+              </button>
+            </div>
+
+            <div v-else>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-light-primary">Total: {{ beneficiariesSummary.total }}</span>
+                <span class="badge badge-light-success">Activos: {{ beneficiariesSummary.activos }}</span>
+                <span class="badge badge-light-warning">Con alerta: {{ beneficiariesSummary.incompletos }}</span>
+                <span class="badge badge-light-danger">Bloqueados: {{ beneficiariesSummary.bloqueados }}</span>
+              </div>
+
+              <div class="d-flex flex-column gap-2">
+                <div
+                  v-for="item in beneficiariesVisibleItems"
+                  :key="item.id"
+                  class="border rounded p-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2"
+                >
+                  <div class="min-w-0">
+                    <div class="fw-semibold text-gray-900 text-break">{{ item.nombre }}</div>
+                    <div class="text-muted fs-8 text-break">
+                      {{ item.parentesco }} · {{ maskBeneficiaryDocument(item.documento) }}
+                    </div>
+                  </div>
+                  <span class="badge fs-9 flex-shrink-0" :class="beneficiaryStatusBadgeClass(item.estado)">
+                    {{ beneficiaryStatusLabel(item.estado) }}
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="hiddenBeneficiariesCount > 0" class="text-muted fs-9 mt-2">
+                + {{ hiddenBeneficiariesCount }} beneficiario(s) no mostrado(s) en este resumen.
               </div>
             </div>
           </div>
@@ -374,6 +569,49 @@ export default {
         confirm: '',
       },
       paymentMethodFormNotice: '',
+      beneficiariesWidgetMode: 'loading',
+      beneficiariesWidgetNotice: '',
+      beneficiariesLoadTimeoutId: null,
+      beneficiariesLoadMockFail: false,
+      isBeneficiarySubmitting: false,
+      beneficiarySubmitTimeoutId: null,
+      beneficiaryNextId: 4,
+      showBeneficiaryForm: false,
+      beneficiaryForm: {
+        nombre: '',
+        documento: '',
+        parentesco: '',
+        estado: 'activo',
+      },
+      beneficiaryFormErrors: {
+        nombre: '',
+        documento: '',
+        parentesco: '',
+        estado: '',
+      },
+      beneficiariesItems: [
+        {
+          id: 1,
+          nombre: 'Laura Mendez',
+          documento: 'CC10424123',
+          parentesco: 'Conyuge',
+          estado: 'activo',
+        },
+        {
+          id: 2,
+          nombre: 'Mateo Mendez',
+          documento: 'TI20988721',
+          parentesco: 'Hijo',
+          estado: 'incompleto',
+        },
+        {
+          id: 3,
+          nombre: 'Gloria Rivera',
+          documento: 'CC30012190',
+          parentesco: 'Madre',
+          estado: 'bloqueado',
+        },
+      ],
       moduleCatalog: {
         dashboard: {
           description: 'Vision rapida de productos, pagos y alertas de operacion.',
@@ -538,11 +776,22 @@ export default {
     this.ensureTimelineSeedTimestamps();
     this.restoreRecoveryStage();
     this.syncRecoveryStage();
+    this.initializeBeneficiariesWidget();
   },
   beforeUnmount() {
     if (this.recoveryTimeoutId) {
       window.clearTimeout(this.recoveryTimeoutId);
       this.recoveryTimeoutId = null;
+    }
+
+    if (this.beneficiariesLoadTimeoutId) {
+      window.clearTimeout(this.beneficiariesLoadTimeoutId);
+      this.beneficiariesLoadTimeoutId = null;
+    }
+
+    if (this.beneficiarySubmitTimeoutId) {
+      window.clearTimeout(this.beneficiarySubmitTimeoutId);
+      this.beneficiarySubmitTimeoutId = null;
     }
   },
   computed: {
@@ -680,6 +929,10 @@ export default {
       return this.activeActions.filter((action) => action.isUpcoming);
     },
     dashboardSummaryCards() {
+      if (!this.hasSummaryDataSource) {
+        return [];
+      }
+
       const findBlockValue = (module, title, fallback) => {
         const block = (module?.blocks || []).find((item) => item.title === title);
         return block ? `${block.value}` : fallback;
@@ -754,6 +1007,45 @@ export default {
         },
       ];
     },
+    hasSummaryDataSource() {
+      const modules = ['dashboard', 'pagos-pendientes', 'metodo-pago', 'transacciones'];
+
+      return modules.every((moduleKey) => {
+        const module = this.moduleCatalog[moduleKey];
+        return module && Array.isArray(module.blocks);
+      });
+    },
+    dashboardSummaryState() {
+      if (this.isUserLoading) {
+        return 'loading';
+      }
+
+      if (!this.hasSummaryDataSource) {
+        return 'error';
+      }
+
+      const hasVisibleData = this.dashboardSummaryCards.some((card) => {
+        const value = `${card.value || ''}`.trim();
+        return value && value !== 'Sin dato';
+      });
+
+      return hasVisibleData ? 'ready' : 'empty';
+    },
+    dashboardSummaryBannerMessage() {
+      if (this.dashboardSummaryState === 'loading') {
+        return 'Cargando resumen operativo...';
+      }
+
+      if (this.dashboardSummaryState === 'error') {
+        return 'Error de carga en el resumen operativo. Se requiere validacion tecnica.';
+      }
+
+      if (this.dashboardSummaryState === 'empty') {
+        return 'Resumen sin datos disponibles por ahora.';
+      }
+
+      return this.dashboardSummaryStatus.message;
+    },
     dashboardSummaryStatus() {
       const hasBlocked = this.dashboardSummaryCards.some((card) => card.state === 'bloqueado');
 
@@ -777,6 +1069,82 @@ export default {
         state: 'normal',
         message: 'Sin alertas criticas en este momento.',
       };
+    },
+    beneficiariesWidgetState() {
+      if (this.beneficiariesWidgetMode === 'loading') {
+        return 'loading';
+      }
+
+      if (!Array.isArray(this.beneficiariesItems)) {
+        return 'error';
+      }
+
+      if (this.beneficiariesWidgetMode === 'error') {
+        return 'error';
+      }
+
+      return this.beneficiariesItems.length ? 'ready' : 'empty';
+    },
+    beneficiariesVisibleItems() {
+      const items = Array.isArray(this.beneficiariesItems) ? this.beneficiariesItems : [];
+      return items.slice(0, 5);
+    },
+    hiddenBeneficiariesCount() {
+      const items = Array.isArray(this.beneficiariesItems) ? this.beneficiariesItems : [];
+      return Math.max(items.length - this.beneficiariesVisibleItems.length, 0);
+    },
+    beneficiariesSummary() {
+      const items = Array.isArray(this.beneficiariesItems) ? this.beneficiariesItems : [];
+      const normalizeStatus = (value) => `${value || ''}`.toLowerCase().trim();
+      const total = items.length;
+      const activos = items.filter((item) => normalizeStatus(item.estado) === 'activo').length;
+      const incompletos = items.filter((item) => normalizeStatus(item.estado) === 'incompleto').length;
+      const bloqueados = items.filter((item) => normalizeStatus(item.estado) === 'bloqueado').length;
+
+      return {
+        total,
+        activos,
+        incompletos,
+        bloqueados,
+      };
+    },
+    beneficiariesOperationalState() {
+      if (this.beneficiariesWidgetState === 'error') {
+        return 'bloqueado';
+      }
+
+      if (this.beneficiariesSummary.bloqueados > 0) {
+        return 'bloqueado';
+      }
+
+      if (this.beneficiariesSummary.incompletos > 0 || this.beneficiariesWidgetState === 'empty') {
+        return 'alerta';
+      }
+
+      return 'normal';
+    },
+    beneficiariesWidgetMessage() {
+      if (this.beneficiariesWidgetState === 'loading') {
+        return 'Cargando beneficiarios...';
+      }
+
+      if (this.beneficiariesWidgetState === 'error') {
+        return 'Error en carga de beneficiarios. Reintenta para continuar.';
+      }
+
+      if (this.beneficiariesWidgetState === 'empty') {
+        return 'No hay beneficiarios registrados para esta cuenta.';
+      }
+
+      if (this.beneficiariesOperationalState === 'bloqueado') {
+        return 'Hay beneficiarios bloqueados. Se requiere regularizacion.';
+      }
+
+      if (this.beneficiariesOperationalState === 'alerta') {
+        return 'Hay beneficiarios con datos incompletos.';
+      }
+
+      return 'Beneficiarios al dia y sin bloqueos operativos.';
     },
   },
   methods: {
@@ -818,6 +1186,163 @@ export default {
       };
 
       return summaryLabelMap[state] || 'Normal';
+    },
+    beneficiaryStatusBadgeClass(status) {
+      const normalizedStatus = `${status || ''}`.toLowerCase().trim();
+      const statusClassMap = {
+        activo: 'badge-light-success text-success',
+        incompleto: 'badge-light-warning text-warning',
+        bloqueado: 'badge-light-danger text-danger',
+      };
+
+      return statusClassMap[normalizedStatus] || 'badge-light text-gray-700';
+    },
+    beneficiaryStatusLabel(status) {
+      const normalizedStatus = `${status || ''}`.toLowerCase().trim();
+      const statusLabelMap = {
+        activo: 'Activo',
+        incompleto: 'Incompleto',
+        bloqueado: 'Bloqueado',
+      };
+
+      return statusLabelMap[normalizedStatus] || 'Activo';
+    },
+    openBeneficiaryForm() {
+      if (['loading', 'error'].includes(this.beneficiariesWidgetState)) {
+        return;
+      }
+
+      this.beneficiariesWidgetNotice = '';
+      this.showBeneficiaryForm = true;
+    },
+    initializeBeneficiariesWidget(forceError = false) {
+      this.beneficiariesWidgetNotice = '';
+      this.beneficiariesWidgetMode = 'loading';
+
+      if (this.beneficiariesLoadTimeoutId) {
+        window.clearTimeout(this.beneficiariesLoadTimeoutId);
+      }
+
+      this.beneficiariesLoadTimeoutId = window.setTimeout(() => {
+        if (forceError || this.beneficiariesLoadMockFail || !Array.isArray(this.beneficiariesItems)) {
+          this.beneficiariesWidgetMode = 'error';
+        } else {
+          this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+        }
+
+        this.beneficiariesLoadTimeoutId = null;
+      }, 350);
+    },
+    resetBeneficiaryForm() {
+      this.beneficiaryForm.nombre = '';
+      this.beneficiaryForm.documento = '';
+      this.beneficiaryForm.parentesco = '';
+      this.beneficiaryForm.estado = 'activo';
+      this.beneficiaryFormErrors.nombre = '';
+      this.beneficiaryFormErrors.documento = '';
+      this.beneficiaryFormErrors.parentesco = '';
+      this.beneficiaryFormErrors.estado = '';
+    },
+    cancelBeneficiaryForm() {
+      if (this.isBeneficiarySubmitting) {
+        return;
+      }
+
+      this.showBeneficiaryForm = false;
+      this.resetBeneficiaryForm();
+    },
+    validateBeneficiaryForm() {
+      this.beneficiaryFormErrors.nombre = '';
+      this.beneficiaryFormErrors.documento = '';
+      this.beneficiaryFormErrors.parentesco = '';
+      this.beneficiaryFormErrors.estado = '';
+
+      const nombre = (this.beneficiaryForm.nombre || '').trim();
+      const documento = (this.beneficiaryForm.documento || '').trim();
+      const parentesco = (this.beneficiaryForm.parentesco || '').trim();
+      const allowedStates = ['activo', 'incompleto', 'bloqueado'];
+      const normalizedEstado = `${this.beneficiaryForm.estado || ''}`.toLowerCase().trim();
+
+      if (nombre.length < 3) {
+        this.beneficiaryFormErrors.nombre = 'Ingresa un nombre valido (minimo 3 caracteres).';
+      }
+
+      if (documento.length < 5) {
+        this.beneficiaryFormErrors.documento = 'Ingresa un documento valido (minimo 5 caracteres).';
+      }
+
+      if (parentesco.length < 3) {
+        this.beneficiaryFormErrors.parentesco = 'Ingresa un parentesco valido (minimo 3 caracteres).';
+      }
+
+      if (!allowedStates.includes(normalizedEstado)) {
+        this.beneficiaryFormErrors.estado = 'Selecciona un estado valido para el beneficiario.';
+      } else {
+        this.beneficiaryForm.estado = normalizedEstado;
+      }
+
+      return !this.beneficiaryFormErrors.nombre
+        && !this.beneficiaryFormErrors.documento
+        && !this.beneficiaryFormErrors.parentesco
+        && !this.beneficiaryFormErrors.estado;
+    },
+    maskBeneficiaryDocument(documento) {
+      const raw = `${documento || ''}`.trim();
+
+      if (!raw) {
+        return 'Sin documento';
+      }
+
+      if (raw.length <= 6) {
+        return `***${raw.slice(-2)}`;
+      }
+
+      return `${raw.slice(0, 2)}***${raw.slice(-2)}`;
+    },
+    submitBeneficiaryForm() {
+      if (this.isBeneficiarySubmitting) {
+        return;
+      }
+
+      this.beneficiariesWidgetNotice = '';
+
+      if (['loading', 'error'].includes(this.beneficiariesWidgetState)) {
+        return;
+      }
+
+      if (!this.validateBeneficiaryForm()) {
+        return;
+      }
+
+      const rawDocumento = (this.beneficiaryForm.documento || '').trim();
+
+      const newItem = {
+        id: this.beneficiaryNextId,
+        nombre: (this.beneficiaryForm.nombre || '').trim(),
+        documento: rawDocumento,
+        parentesco: (this.beneficiaryForm.parentesco || '').trim(),
+        estado: this.beneficiaryForm.estado || 'activo',
+      };
+
+      this.isBeneficiarySubmitting = true;
+      this.beneficiarySubmitTimeoutId = window.setTimeout(() => {
+        this.beneficiariesItems = [newItem, ...this.beneficiariesItems];
+        this.beneficiaryNextId += 1;
+        this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+        this.showBeneficiaryForm = false;
+        this.resetBeneficiaryForm();
+        this.beneficiariesWidgetNotice = 'Beneficiario agregado en modo simulado (MVP FE-005 Fase 3).';
+        this.isBeneficiarySubmitting = false;
+        this.beneficiarySubmitTimeoutId = null;
+      }, 500);
+    },
+    retryBeneficiariesWidget() {
+      if (!Array.isArray(this.beneficiariesItems)) {
+        this.beneficiariesItems = [];
+      }
+
+      this.beneficiariesLoadMockFail = false;
+      this.initializeBeneficiariesWidget();
     },
     normalizePath(rawPath) {
       if (!rawPath || typeof rawPath !== 'string') {
