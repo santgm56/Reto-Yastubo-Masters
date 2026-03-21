@@ -136,16 +136,24 @@
               <span class="text-muted fs-8">FE-004A/B · Mock local</span>
             </div>
 
+            <div
+              class="alert py-2 px-3 mb-3"
+              :class="dashboardSummaryStatus.state === 'bloqueado' ? 'alert-light-danger' : dashboardSummaryStatus.state === 'alerta' ? 'alert-light-warning' : 'alert-light-success'"
+              role="status"
+            >
+              {{ dashboardSummaryStatus.message }}
+            </div>
+
             <div class="row g-3">
               <div class="col-12 col-sm-6 col-xl-4" v-for="card in dashboardSummaryCards" :key="card.key">
                 <div class="border rounded p-3 h-100">
                   <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <div class="fw-semibold text-gray-800 fs-8 text-truncate">{{ card.label }}</div>
-                    <span class="badge fs-9" :class="summaryStateBadgeClass(card.state)">
+                    <div class="fw-semibold text-gray-800 fs-8 text-truncate" :title="card.label">{{ card.label }}</div>
+                    <span class="badge fs-9 flex-shrink-0" :class="summaryStateBadgeClass(card.state)">
                       {{ summaryStateLabel(card.state) }}
                     </span>
                   </div>
-                  <div class="fs-4 fw-bold text-gray-900 mb-1">{{ card.value }}</div>
+                  <div class="fs-4 fw-bold text-gray-900 mb-1 text-break lh-sm">{{ card.value }}</div>
                   <div class="text-muted fs-8">{{ card.hint }}</div>
                 </div>
               </div>
@@ -672,35 +680,54 @@ export default {
       return this.activeActions.filter((action) => action.isUpcoming);
     },
     dashboardSummaryCards() {
+      const findBlockValue = (module, title, fallback) => {
+        const block = (module?.blocks || []).find((item) => item.title === title);
+        return block ? `${block.value}` : fallback;
+      };
+
       const paymentsModule = this.moduleCatalog['pagos-pendientes'] || {};
       const paymentMethodModule = this.moduleCatalog['metodo-pago'] || {};
       const transactionsModule = this.moduleCatalog.transacciones || {};
+      const dashboardModule = this.moduleCatalog.dashboard || {};
 
-      const pendingCount = paymentsModule.blocks?.[0]?.value || '0';
-      const pendingAmount = paymentsModule.blocks?.[1]?.value || 'USD 0.00';
-      const dueDate = paymentsModule.blocks?.[2]?.value || 'Sin vencimientos';
-      const paymentMethodState = paymentMethodModule.blocks?.[1]?.value || 'Sin dato';
-      const accountState = transactionsModule.blocks?.[2]?.value || 'Sin dato';
+      const productsActive = findBlockValue(dashboardModule, 'Productos activos', '0');
+      const pendingCount = findBlockValue(paymentsModule, 'Cuotas pendientes', '0');
+      const pendingAmount = findBlockValue(paymentsModule, 'Monto pendiente', 'USD 0.00');
+      const dueDate = findBlockValue(paymentsModule, 'Fecha limite', 'Sin vencimientos');
+      const paymentMethodState = findBlockValue(paymentMethodModule, 'Estado metodo', 'Sin dato');
+      const accountState = findBlockValue(transactionsModule, 'Ultimo estado', 'Sin dato');
 
-      const hasPending = pendingCount !== '0' && pendingCount !== 0;
+      const pendingCountNumber = Number.parseInt(`${pendingCount}`.replace(/[^0-9-]/g, ''), 10);
+      const hasPending = Number.isNaN(pendingCountNumber)
+        ? this.paymentRecoveryStage !== 'al_dia'
+        : pendingCountNumber > 0;
       const methodBlocked = this.paymentRecoveryStage === 'bloqueado_por_metodo';
 
       return [
         {
+          key: 'active-products',
+          label: 'Productos activos',
+          value: productsActive,
+          hint: 'Cantidad vigente de productos contratados en el ciclo actual.',
+          state: 'normal',
+        },
+        {
           key: 'account-state',
           label: 'Estado de cuenta',
           value: accountState,
-          hint: hasPending ? 'Hay acciones pendientes por regularizar.' : 'Cuenta operando sin bloqueos visibles.',
-          state: hasPending ? 'alerta' : 'normal',
-          priority: 1,
+          hint: methodBlocked
+            ? 'Bloqueada por metodo de pago. Requiere accion inmediata.'
+            : hasPending
+              ? 'Hay acciones pendientes por regularizar en este ciclo.'
+              : 'Cuenta operando sin bloqueos visibles.',
+          state: methodBlocked ? 'bloqueado' : hasPending ? 'alerta' : 'normal',
         },
         {
           key: 'pending-count',
           label: 'Pagos pendientes',
           value: `${pendingCount}`,
-          hint: hasPending ? 'Requiere gestion en esta sesion.' : 'No hay cuotas pendientes en este momento.',
+          hint: hasPending ? 'Prioriza regularizacion para evitar bloqueo operativo.' : 'No hay cuotas pendientes en este momento.',
           state: hasPending ? 'alerta' : 'normal',
-          priority: 2,
         },
         {
           key: 'pending-amount',
@@ -708,7 +735,6 @@ export default {
           value: pendingAmount,
           hint: hasPending ? 'Monto estimado a regularizar en flujo actual.' : 'Sin saldo pendiente para este ciclo.',
           state: hasPending ? 'alerta' : 'normal',
-          priority: 3,
         },
         {
           key: 'next-due',
@@ -716,7 +742,6 @@ export default {
           value: dueDate,
           hint: hasPending ? 'Prioriza esta fecha para evitar bloqueo operativo.' : 'No se detectan vencimientos inmediatos.',
           state: hasPending ? 'alerta' : 'normal',
-          priority: 4,
         },
         {
           key: 'payment-method-state',
@@ -726,9 +751,32 @@ export default {
             ? 'Metodo con alerta: actualiza antes de reintentar cobro.'
             : 'Metodo disponible para operaciones del ciclo actual.',
           state: methodBlocked ? 'bloqueado' : 'normal',
-          priority: 5,
         },
       ];
+    },
+    dashboardSummaryStatus() {
+      const hasBlocked = this.dashboardSummaryCards.some((card) => card.state === 'bloqueado');
+
+      if (hasBlocked) {
+        return {
+          state: 'bloqueado',
+          message: 'Cuenta en bloqueo operativo. Actualiza metodo de pago y continua con reintento.',
+        };
+      }
+
+      const hasAlert = this.dashboardSummaryCards.some((card) => card.state === 'alerta');
+
+      if (hasAlert) {
+        return {
+          state: 'alerta',
+          message: 'Hay pendientes activos. Regulariza pagos para volver a estado al dia.',
+        };
+      }
+
+      return {
+        state: 'normal',
+        message: 'Sin alertas criticas en este momento.',
+      };
     },
   },
   methods: {
