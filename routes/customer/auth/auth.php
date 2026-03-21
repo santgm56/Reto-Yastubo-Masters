@@ -8,6 +8,7 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 
 Route::get('/', fn() => redirect()->route('customer.dashboard'))->name('root');
 Route::get('/panel', fn() => redirect()->route('customer.dashboard'))->name('panel');
+Route::get('/home', fn() => redirect()->route('customer.dashboard'))->name('home');
 
 Route::get('/dashboard', fn() => view('customer.home', ['section' => 'dashboard']))->name('dashboard');
 Route::get('/productos', fn() => view('customer.home', ['section' => 'productos']))->name('products');

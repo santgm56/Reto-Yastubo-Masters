@@ -3,6 +3,12 @@
     $initialSection = $section ?? 'dashboard';
     $user = auth('customer')->user();
     $displayName = $user?->name ?? $user?->email ?? 'Cliente';
+    $displayEmail = $user?->email ?? '';
+    $displayRole = 'CUSTOMER';
+    $displayStatus = 'Autenticado';
+    $supportAddress = config('mail.support_address');
+    $supportUrl = $supportAddress ? ('mailto:' . $supportAddress) : '';
+    $userErrorMessage = session('customer_profile_error', '');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
@@ -27,7 +33,12 @@
         <customer-portal-shell
             initial-section="{{ $initialSection }}"
             user-name="{{ e($displayName) }}"
+            user-email="{{ e($displayEmail) }}"
+            user-role="{{ e($displayRole) }}"
+            user-status="{{ e($displayStatus) }}"
+            user-error-message="{{ e($userErrorMessage) }}"
             support-label="Soporte"
+            support-url="{{ e($supportUrl) }}"
         ></customer-portal-shell>
     </div>
 

@@ -47,13 +47,6 @@ class LoginController extends Controller
 		}
 		catch (Throwable $e)
 		{
-			if (app()->environment('local'))
-			{
-				return redirect()
-						->route('customer.preview.shell')
-						->with('status', 'Modo local activo: acceso temporal sin base de datos.');
-			}
-
 			return back()->withErrors([
 				'email' => 'No fue posible validar credenciales en este entorno local (BD no disponible).',
 			]);
