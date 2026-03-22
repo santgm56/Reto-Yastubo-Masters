@@ -478,6 +478,109 @@
           </div>
         </div>
 
+        <div v-if="activeKey === 'transacciones'" class="card shadow-sm border-0 mt-4">
+          <div class="card-body p-4 p-lg-5">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+              <div>
+                <h2 class="fs-4 fw-bold text-gray-900 mb-0">Historial de pagos</h2>
+                <div class="text-muted fs-8">FE-006 Fase 3 · Tabla operativa (Mock)</div>
+              </div>
+              <div v-if="paymentHistoryWidgetState === 'ready'" class="d-flex align-items-center gap-2 flex-wrap justify-content-lg-end">
+                <span class="badge badge-light-primary">Orden por fecha: {{ paymentHistorySortDirection === 'desc' ? 'Descendente' : 'Ascendente' }}</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Orden historial pagos">
+                  <button
+                    type="button"
+                    class="btn"
+                    :class="paymentHistorySortDirection === 'desc' ? 'btn-primary' : 'btn-light-primary'"
+                    @click="setPaymentHistorySortDirection('desc')"
+                  >
+                    Recientes
+                  </button>
+                  <button
+                    type="button"
+                    class="btn"
+                    :class="paymentHistorySortDirection === 'asc' ? 'btn-primary' : 'btn-light-primary'"
+                    @click="setPaymentHistorySortDirection('asc')"
+                  >
+                    Antiguos
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="alert py-2 px-3 mb-3"
+              :class="paymentHistoryWidgetState === 'error'
+                ? 'alert-light-danger'
+                : paymentHistoryWidgetState === 'loading'
+                  ? 'alert-light-info'
+                  : paymentHistoryWidgetState === 'empty'
+                    ? 'alert-light-warning'
+                    : 'alert-light-success'"
+              role="status"
+            >
+              {{ paymentHistoryWidgetMessage }}
+            </div>
+
+            <div v-if="paymentHistoryWidgetNotice" class="alert alert-light-primary py-2 px-3 mb-3" role="alert">
+              {{ paymentHistoryWidgetNotice }}
+            </div>
+
+            <div v-if="paymentHistoryWidgetState === 'loading'" class="row g-3">
+              <div class="col-12" v-for="index in 3" :key="`payments-loading-${index}`">
+                <div class="border rounded p-3 placeholder-glow">
+                  <div class="placeholder col-4 mb-2" style="height: 12px;"></div>
+                  <div class="placeholder col-8 mb-2" style="height: 10px;"></div>
+                  <div class="placeholder col-6" style="height: 10px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="paymentHistoryWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
+              <div class="fw-semibold mb-1">No fue posible cargar el historial de pagos.</div>
+              <button type="button" class="btn btn-sm btn-light-danger" @click="retryPaymentHistoryWidget">
+                Reintentar
+              </button>
+            </div>
+
+            <div v-else-if="paymentHistoryWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
+              <div class="fw-semibold mb-1">No hay movimientos de pago para este cliente.</div>
+              <div class="fs-8">Cuando existan pagos, se listaran aqui ordenados por fecha.</div>
+            </div>
+
+            <div v-else>
+              <div class="table-responsive">
+                <table class="table align-middle table-row-dashed mb-0">
+                  <thead>
+                    <tr class="text-muted fw-semibold fs-8 text-uppercase gs-0">
+                      <th class="text-nowrap">Fecha</th>
+                      <th class="text-nowrap">Referencia</th>
+                      <th>Metodo</th>
+                      <th class="text-nowrap text-end">Monto</th>
+                      <th class="text-nowrap">Estado</th>
+                      <th>Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in paymentHistoryNormalizedRows" :key="item.referencia">
+                      <td class="text-gray-800 fw-semibold text-nowrap">{{ item.fecha }}</td>
+                      <td class="text-muted text-nowrap">{{ item.referencia }}</td>
+                      <td class="text-muted text-break" :title="item.metodo">{{ item.metodo }}</td>
+                      <td class="text-gray-900 fw-semibold text-end text-nowrap">{{ item.monto }}</td>
+                      <td>
+                        <span class="badge fs-9" :class="paymentHistoryStatusBadgeClass(item.estado)">
+                          {{ paymentHistoryStatusLabel(item.estado) }}
+                        </span>
+                      </td>
+                      <td class="text-muted fs-8 text-break" :title="item.detalle">{{ item.detalle }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card shadow-sm border-0 mt-4" v-if="activeModule.timeline && activeModule.timeline.length">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2 mb-3">
@@ -573,8 +676,44 @@ export default {
       beneficiariesWidgetNotice: '',
       beneficiariesLoadTimeoutId: null,
       beneficiariesLoadMockFail: false,
+      paymentHistoryWidgetMode: 'loading',
+      paymentHistoryWidgetNotice: '',
+      paymentHistoryLoadTimeoutId: null,
+      paymentHistoryLoadMockFail: false,
       isBeneficiarySubmitting: false,
       beneficiarySubmitTimeoutId: null,
+      paymentHistorySortDirection: 'desc',
+      paymentHistoryStatusEnum: ['PAGADO', 'PENDIENTE', 'FALLIDO', 'EN_REVISION'],
+      paymentHistoryDtoContract: {
+        requiredFields: ['fecha', 'referencia', 'metodo', 'monto', 'estado', 'detalle'],
+        defaultSort: 'fecha_desc',
+      },
+      paymentHistoryMockRows: [
+        {
+          fecha: '2026-03-21T09:30:00-05:00',
+          referencia: 'PAY-20260321-001',
+          metodo: 'Visa **** 4242',
+          monto: 'USD 25.00',
+          estado: 'PAGADO',
+          detalle: 'Cobro conciliado correctamente.',
+        },
+        {
+          fecha: '2026-03-19T18:15:00-05:00',
+          referencia: 'PAY-20260319-002',
+          metodo: 'Visa **** 4242',
+          monto: 'USD 25.00',
+          estado: 'FALLIDO',
+          detalle: 'Rechazado por fondos insuficientes.',
+        },
+        {
+          fecha: '2026-03-18T08:00:00-05:00',
+          referencia: 'PAY-20260318-003',
+          metodo: 'Mastercard **** 5412',
+          monto: 'USD 35.00',
+          estado: 'EN_REVISION',
+          detalle: 'En validacion por conciliacion bancaria.',
+        },
+      ],
       beneficiaryNextId: 4,
       showBeneficiaryForm: false,
       beneficiaryForm: {
@@ -777,6 +916,7 @@ export default {
     this.restoreRecoveryStage();
     this.syncRecoveryStage();
     this.initializeBeneficiariesWidget();
+    this.initializePaymentHistoryWidget();
   },
   beforeUnmount() {
     if (this.recoveryTimeoutId) {
@@ -792,6 +932,11 @@ export default {
     if (this.beneficiarySubmitTimeoutId) {
       window.clearTimeout(this.beneficiarySubmitTimeoutId);
       this.beneficiarySubmitTimeoutId = null;
+    }
+
+    if (this.paymentHistoryLoadTimeoutId) {
+      window.clearTimeout(this.paymentHistoryLoadTimeoutId);
+      this.paymentHistoryLoadTimeoutId = null;
     }
   },
   computed: {
@@ -1146,6 +1291,76 @@ export default {
 
       return 'Beneficiarios al dia y sin bloqueos operativos.';
     },
+    paymentHistoryContractSummary() {
+      return {
+        ...this.paymentHistoryDtoContract,
+        statusEnum: [...this.paymentHistoryStatusEnum],
+        operationalStates: {
+          normal: ['PAGADO'],
+          alerta: ['PENDIENTE', 'EN_REVISION'],
+          bloqueado: ['FALLIDO'],
+        },
+      };
+    },
+    paymentHistoryNormalizedRows() {
+      const sourceRows = Array.isArray(this.paymentHistoryMockRows)
+        ? this.paymentHistoryMockRows
+        : [];
+
+      const normalizedRows = sourceRows.map((row, index) => this.normalizePaymentHistoryRow(row, index));
+      return this.sortPaymentHistoryRows(normalizedRows, this.paymentHistorySortDirection);
+    },
+    paymentHistoryContractIsReady() {
+      if (!this.paymentHistoryContractSummary.requiredFields.length) {
+        return false;
+      }
+
+      const rawRows = Array.isArray(this.paymentHistoryMockRows)
+        ? this.paymentHistoryMockRows
+        : [];
+
+      if (!rawRows.length) {
+        return true;
+      }
+
+      return rawRows.every((row) => {
+        if (!row || typeof row !== 'object') {
+          return false;
+        }
+
+        return this.paymentHistoryContractSummary.requiredFields.every((field) => Object.prototype.hasOwnProperty.call(row, field));
+      });
+    },
+    paymentHistoryWidgetState() {
+      if (this.paymentHistoryWidgetMode === 'loading') {
+        return 'loading';
+      }
+
+      if (this.paymentHistoryWidgetMode === 'error') {
+        return 'error';
+      }
+
+      if (!this.paymentHistoryContractIsReady) {
+        return 'error';
+      }
+
+      return this.paymentHistoryNormalizedRows.length ? 'ready' : 'empty';
+    },
+    paymentHistoryWidgetMessage() {
+      if (this.paymentHistoryWidgetState === 'loading') {
+        return 'Cargando historial de pagos...';
+      }
+
+      if (this.paymentHistoryWidgetState === 'error') {
+        return 'Error en carga de historial. Reintenta para continuar.';
+      }
+
+      if (this.paymentHistoryWidgetState === 'empty') {
+        return 'No hay pagos registrados para este cliente.';
+      }
+
+      return `Historial cargado: ${this.paymentHistoryNormalizedRows.length} movimiento(s).`;
+    },
   },
   methods: {
     formatState(state) {
@@ -1206,6 +1421,277 @@ export default {
       };
 
       return statusLabelMap[normalizedStatus] || 'Activo';
+    },
+    paymentHistoryStatusBadgeClass(status) {
+      const statusClassMap = {
+        PAGADO: 'badge-light-success text-success',
+        PENDIENTE: 'badge-light-warning text-warning',
+        FALLIDO: 'badge-light-danger text-danger',
+        EN_REVISION: 'badge-light-info text-info',
+        NO_RECONOCIDO: 'badge-light-danger text-danger',
+      };
+
+      return statusClassMap[status] || 'badge-light text-gray-700';
+    },
+    paymentHistoryStatusLabel(status) {
+      const statusLabelMap = {
+        PAGADO: 'Pagado',
+        PENDIENTE: 'Pendiente',
+        FALLIDO: 'Fallido',
+        EN_REVISION: 'En revision',
+        NO_RECONOCIDO: 'No reconocido',
+      };
+
+      return statusLabelMap[status] || 'En revision';
+    },
+    initializePaymentHistoryWidget(forceError = false) {
+      this.paymentHistoryWidgetNotice = '';
+      this.paymentHistoryWidgetMode = 'loading';
+      this.syncTransactionsSummaryFromPaymentHistory();
+
+      if (this.paymentHistoryLoadTimeoutId) {
+        window.clearTimeout(this.paymentHistoryLoadTimeoutId);
+      }
+
+      this.paymentHistoryLoadTimeoutId = window.setTimeout(() => {
+        if (forceError || this.paymentHistoryLoadMockFail) {
+          this.paymentHistoryWidgetMode = 'error';
+          this.paymentHistoryWidgetNotice = 'Modo mock con fallo controlado para validar manejo de error.';
+        } else if (!this.paymentHistoryContractIsReady) {
+          this.paymentHistoryWidgetMode = 'error';
+          this.paymentHistoryWidgetNotice = 'Contrato de historial invalido. Revisar payload de origen.';
+        } else {
+          this.paymentHistoryWidgetMode = 'ready';
+        }
+
+        this.syncTransactionsSummaryFromPaymentHistory();
+
+        this.paymentHistoryLoadTimeoutId = null;
+      }, 350);
+    },
+    retryPaymentHistoryWidget() {
+      this.paymentHistoryLoadMockFail = false;
+      this.initializePaymentHistoryWidget();
+    },
+    setPaymentHistorySortDirection(direction) {
+      if (!['asc', 'desc'].includes(direction)) {
+        return;
+      }
+
+      this.paymentHistorySortDirection = direction;
+      this.syncTransactionsSummaryFromPaymentHistory();
+    },
+    resolveUiNumberLocale() {
+      if (typeof window === 'undefined') {
+        return 'es-CO';
+      }
+
+      const appLocale = window.appConfig && typeof window.appConfig.numberLocale === 'string'
+        ? window.appConfig.numberLocale.trim()
+        : '';
+
+      return appLocale || 'es-CO';
+    },
+    formatPaymentHistoryDateLabel(timestamp) {
+      if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+        return 'Sin fecha';
+      }
+
+      try {
+        return new Intl.DateTimeFormat(this.resolveUiNumberLocale(), {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(timestamp));
+      } catch (error) {
+        return 'Sin fecha';
+      }
+    },
+    formatPaymentHistoryAmount(value) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return this.formatAmountByCurrency(value, 'USD');
+      }
+
+      const raw = `${value || ''}`.trim();
+
+      if (!raw) {
+        return 'USD 0.00';
+      }
+
+      const currencyMatch = raw.match(/\b([A-Z]{3})\b/);
+      const currencyCode = currencyMatch ? currencyMatch[1] : 'USD';
+      const sanitized = raw.replace(/[^0-9.,-]/g, '');
+      const hasDot = sanitized.includes('.');
+      const hasComma = sanitized.includes(',');
+      let normalizedNumeric = sanitized;
+
+      if (hasDot && hasComma) {
+        const lastDot = sanitized.lastIndexOf('.');
+        const lastComma = sanitized.lastIndexOf(',');
+
+        if (lastComma > lastDot) {
+          // Example: 1.234,56 -> 1234.56
+          normalizedNumeric = sanitized.replace(/\./g, '').replace(',', '.');
+        } else {
+          // Example: 1,234.56 -> 1234.56
+          normalizedNumeric = sanitized.replace(/,/g, '');
+        }
+      } else if (hasComma && !hasDot) {
+        // Example: 100,5 -> 100.5
+        normalizedNumeric = sanitized.replace(',', '.');
+      }
+
+      const numberCandidate = Number.parseFloat(normalizedNumeric);
+
+      if (Number.isFinite(numberCandidate)) {
+        return this.formatAmountByCurrency(numberCandidate, currencyCode);
+      }
+
+      return raw;
+    },
+    formatAmountByCurrency(amount, currencyCode) {
+      try {
+        return new Intl.NumberFormat(this.resolveUiNumberLocale(), {
+          style: 'currency',
+          currency: currencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(amount);
+      } catch (error) {
+        return `${currencyCode} ${Number(amount).toFixed(2)}`;
+      }
+    },
+    normalizePaymentHistoryStatus(status) {
+      const normalized = `${status || ''}`
+        .toUpperCase()
+        .trim();
+
+      if (this.paymentHistoryStatusEnum.includes(normalized)) {
+        return normalized;
+      }
+
+      return 'NO_RECONOCIDO';
+    },
+    normalizePaymentHistoryDate(value) {
+      const raw = `${value || ''}`.trim();
+
+      if (!raw) {
+        return null;
+      }
+
+      const parsedIso = Date.parse(raw);
+
+      if (!Number.isNaN(parsedIso)) {
+        return parsedIso;
+      }
+
+      const localDateMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
+
+      if (!localDateMatch) {
+        return null;
+      }
+
+      const [, day, month, year, hour = '00', minute = '00'] = localDateMatch;
+      const normalizedIso = `${year}-${month}-${day}T${hour}:${minute}:00`;
+      const parsedLocal = Date.parse(normalizedIso);
+      return Number.isNaN(parsedLocal) ? null : parsedLocal;
+    },
+    normalizePaymentHistoryRow(row, index) {
+      const source = row && typeof row === 'object' ? row : {};
+      const status = this.normalizePaymentHistoryStatus(source.estado);
+      const parsedDate = this.normalizePaymentHistoryDate(source.fecha);
+      const normalizedAmount = this.formatPaymentHistoryAmount(source.monto);
+
+      return {
+        fecha: this.formatPaymentHistoryDateLabel(parsedDate),
+        // TODO(FE-006B/C): si referencia se usa como key de render, reemplazar fallback indexado por id estable de backend.
+        referencia: source.referencia || `PENDING-REF-${index + 1}`,
+        metodo: source.metodo || 'Sin metodo',
+        monto: normalizedAmount,
+        estado: status,
+        detalle: source.detalle || 'Sin detalle disponible.',
+        _sortValue: parsedDate,
+        _sortFallback: index,
+      };
+    },
+    sortPaymentHistoryRows(rows, direction = 'desc') {
+      const safeRows = Array.isArray(rows) ? [...rows] : [];
+      const multiplier = direction === 'asc' ? 1 : -1;
+
+      safeRows.sort((left, right) => {
+        const leftSort = left && typeof left._sortValue === 'number' ? left._sortValue : null;
+        const rightSort = right && typeof right._sortValue === 'number' ? right._sortValue : null;
+
+        if (leftSort !== null && rightSort !== null && leftSort !== rightSort) {
+          return (leftSort - rightSort) * multiplier;
+        }
+
+        if (leftSort !== null && rightSort === null) {
+          return -1;
+        }
+
+        if (leftSort === null && rightSort !== null) {
+          return 1;
+        }
+
+        const leftFallback = Number.isInteger(left?._sortFallback) ? left._sortFallback : 0;
+        const rightFallback = Number.isInteger(right?._sortFallback) ? right._sortFallback : 0;
+        return (leftFallback - rightFallback) * multiplier;
+      });
+
+      return safeRows.map(({ _sortValue, _sortFallback, ...row }) => row);
+    },
+    syncTransactionsSummaryFromPaymentHistory() {
+      const transactionsModule = this.moduleCatalog.transacciones;
+
+      if (!transactionsModule || !Array.isArray(transactionsModule.blocks)) {
+        return;
+      }
+
+      const findBlock = (title) => transactionsModule.blocks.find((item) => item.title === title);
+      const txCountBlock = findBlock('Transacciones mes');
+      const lastStatusBlock = findBlock('Ultimo estado');
+
+      if (!txCountBlock || !lastStatusBlock) {
+        return;
+      }
+
+      if (this.paymentHistoryWidgetState === 'loading') {
+        txCountBlock.value = 'Cargando';
+        txCountBlock.hint = 'Sincronizando historial de pagos del cliente.';
+        lastStatusBlock.value = 'Cargando';
+        lastStatusBlock.hint = 'Esperando datos para estado final.';
+        return;
+      }
+
+      if (this.paymentHistoryWidgetState === 'error') {
+        txCountBlock.value = 'No disponible';
+        txCountBlock.hint = 'No fue posible leer el historial de pagos.';
+        lastStatusBlock.value = 'Error carga';
+        lastStatusBlock.hint = 'Reintenta para recuperar estado operativo.';
+        return;
+      }
+
+      if (this.paymentHistoryWidgetState === 'empty') {
+        txCountBlock.value = '0';
+        txCountBlock.hint = 'No hay transacciones registradas en este periodo.';
+        lastStatusBlock.value = 'Sin movimientos';
+        lastStatusBlock.hint = 'Aun no existen pagos historicos para mostrar.';
+        return;
+      }
+
+      const items = this.paymentHistoryNormalizedRows;
+      const latest = items[0] || null;
+      const hasCritical = items.some((item) => ['FALLIDO', 'NO_RECONOCIDO'].includes(item.estado));
+
+      txCountBlock.value = `${items.length}`;
+      txCountBlock.hint = `Movimientos disponibles en historial: ${items.length}.`;
+      lastStatusBlock.value = latest ? this.paymentHistoryStatusLabel(latest.estado) : 'Sin movimientos';
+      lastStatusBlock.hint = hasCritical
+        ? 'Se detectan estados de pago con riesgo operativo.'
+        : 'Estado sincronizado con el historial cargado.';
     },
     openBeneficiaryForm() {
       if (['loading', 'error'].includes(this.beneficiariesWidgetState)) {
