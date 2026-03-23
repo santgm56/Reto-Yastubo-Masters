@@ -581,6 +581,216 @@
           </div>
         </div>
 
+        <div v-if="activeKey === 'productos'" class="card shadow-sm border-0 mt-4">
+          <div class="card-body p-4 p-lg-5">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+              <div>
+                <h2 class="fs-4 fw-bold text-gray-900 mb-0">Reporte de fallecimiento</h2>
+                <div class="text-muted fs-8">FE-007 Fase 2 · Estado de flujo (Mock)</div>
+              </div>
+              <span class="badge fs-9" :class="summaryStateBadgeClass(deathReportOperationalState)">
+                {{ summaryStateLabel(deathReportOperationalState) }}
+              </span>
+            </div>
+
+            <div
+              class="alert py-2 px-3 mb-3"
+              :class="deathReportWidgetState === 'error'
+                ? 'alert-light-danger'
+                : deathReportWidgetState === 'loading'
+                  ? 'alert-light-info'
+                  : deathReportWidgetState === 'empty'
+                    ? 'alert-light-warning'
+                    : deathReportOperationalState === 'bloqueado'
+                      ? 'alert-light-danger'
+                      : deathReportOperationalState === 'alerta'
+                        ? 'alert-light-warning'
+                        : 'alert-light-success'"
+              role="status"
+            >
+              {{ deathReportWidgetMessage }}
+            </div>
+
+            <div v-if="deathReportWidgetNotice" class="alert alert-light-primary py-2 px-3 mb-3" role="alert">
+              {{ deathReportWidgetNotice }}
+            </div>
+
+            <div v-if="deathReportWidgetState === 'loading'" class="row g-3">
+              <div class="col-12 col-lg-6" v-for="index in 2" :key="`death-report-loading-${index}`">
+                <div class="border rounded p-3 placeholder-glow">
+                  <div class="placeholder col-7 mb-2" style="height: 12px;"></div>
+                  <div class="placeholder col-9 mb-2" style="height: 10px;"></div>
+                  <div class="placeholder col-6" style="height: 10px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="deathReportWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
+              <div class="fw-semibold mb-1">No fue posible preparar el flujo de reporte.</div>
+              <div class="fs-8 mb-2">
+                {{ deathReportCanRetry
+                  ? 'Valida conectividad y reintenta para continuar.'
+                  : 'Se detecto un contrato invalido. Revisa el payload base antes de continuar.' }}
+              </div>
+              <button v-if="deathReportCanRetry" type="button" class="btn btn-sm btn-light-danger" @click="retryDeathReportWidget">
+                Reintentar
+              </button>
+            </div>
+
+            <div v-else-if="deathReportWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
+              <div class="fw-semibold mb-1">Aun no hay contexto para iniciar el reporte.</div>
+              <div class="fs-8">Completa datos base del cliente para habilitar el flujo.</div>
+            </div>
+
+            <div v-else class="row g-3">
+              <div class="col-12 col-xl-6">
+                <div class="card border h-100">
+                  <div class="card-header bg-light fw-semibold py-2">Contexto operativo</div>
+                  <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                      <span class="text-muted fs-8">Estado del flujo</span>
+                      <span class="badge fs-9" :class="summaryStateBadgeClass(deathReportOperationalState)">
+                        {{ summaryStateLabel(deathReportOperationalState) }}
+                      </span>
+                    </div>
+                    <div class="text-muted fs-8">
+                      Este flujo opera en modo mock para FE-007C y mantiene separacion con API real futura.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-xl-6">
+                <div class="card border h-100">
+                  <div class="card-header bg-light fw-semibold py-2">Formulario MVP</div>
+                  <div class="card-body">
+                    <form @submit.prevent="submitDeathReportForm" novalidate>
+                      <fieldset :disabled="isDeathReportSubmitting || deathReportHasSubmitted">
+                      <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                          <label class="form-label fs-8 text-muted mb-1">Nombre reportante</label>
+                          <input v-model="deathReportForm.nombreReportante" type="text" class="form-control" maxlength="80">
+                          <div v-if="deathReportFormErrors.nombreReportante" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.nombreReportante }}
+                          </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                          <label class="form-label fs-8 text-muted mb-1">Documento reportante</label>
+                          <input v-model="deathReportForm.documentoReportante" type="text" class="form-control" maxlength="20">
+                          <div v-if="deathReportFormErrors.documentoReportante" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.documentoReportante }}
+                          </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                          <label class="form-label fs-8 text-muted mb-1">Nombre fallecido</label>
+                          <input v-model="deathReportForm.nombreFallecido" type="text" class="form-control" maxlength="80">
+                          <div v-if="deathReportFormErrors.nombreFallecido" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.nombreFallecido }}
+                          </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                          <label class="form-label fs-8 text-muted mb-1">Documento fallecido</label>
+                          <input v-model="deathReportForm.documentoFallecido" type="text" class="form-control" maxlength="20">
+                          <div v-if="deathReportFormErrors.documentoFallecido" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.documentoFallecido }}
+                          </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                          <label class="form-label fs-8 text-muted mb-1">Fecha fallecimiento</label>
+                          <input v-model="deathReportForm.fechaFallecimiento" type="date" class="form-control" :max="deathReportTodayIso">
+                          <div v-if="deathReportFormErrors.fechaFallecimiento" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.fechaFallecimiento }}
+                          </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                          <label class="form-label fs-8 text-muted mb-1">Canal contacto</label>
+                          <select v-model="deathReportForm.canalContacto" class="form-select">
+                            <option value="">Selecciona...</option>
+                            <option value="email">Email</option>
+                            <option value="telefono">Telefono</option>
+                          </select>
+                          <div v-if="deathReportFormErrors.canalContacto" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.canalContacto }}
+                          </div>
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label fs-8 text-muted mb-1">Observacion inicial</label>
+                          <textarea
+                            v-model="deathReportForm.observacion"
+                            class="form-control"
+                            rows="3"
+                            maxlength="240"
+                          ></textarea>
+                          <div v-if="deathReportFormErrors.observacion" class="text-danger fs-8 mt-1">
+                            {{ deathReportFormErrors.observacion }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        <button
+                          type="submit"
+                          class="btn btn-sm btn-primary"
+                          :disabled="isDeathReportSubmitting || deathReportHasSubmitted || deathReportOperationalState === 'bloqueado'"
+                        >
+                          <span v-if="isDeathReportSubmitting">Enviando...</span>
+                          <span v-else-if="deathReportHasSubmitted">Reporte enviado</span>
+                          <span v-else>Enviar reporte (mock)</span>
+                        </button>
+                        <span v-if="deathReportOperationalState === 'bloqueado'" class="text-danger fs-8">
+                          Flujo bloqueado por estado de contrato.
+                        </span>
+                        <span v-else-if="deathReportHasSubmitted" class="text-muted fs-8">
+                          Ya se registro un envio en esta sesion.
+                        </span>
+                      </div>
+                      </fieldset>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-xl-6">
+                <div class="card border h-100">
+                  <div class="card-header bg-light fw-semibold py-2">Confirmacion de envio</div>
+                  <div class="card-body">
+                    <div v-if="!deathReportHasSubmitted" class="text-muted fs-8">
+                      Aun no se ha enviado un reporte en esta sesion.
+                    </div>
+                    <div v-else>
+                      <div class="fs-8 mb-2">
+                        Estado caso: <span class="fw-semibold">{{ deathReportCaseStatusLabel(deathReportMockConfirmation.estadoCaso) }}</span>
+                      </div>
+                      <div class="fs-8 mb-2">
+                        Referencia: <span class="fw-semibold">{{ deathReportMockConfirmation.referenciaCaso }}</span>
+                      </div>
+                      <div class="fs-8 mb-2">{{ deathReportMockConfirmation.siguientePaso }}</div>
+                      <div class="text-muted fs-9">Fecha reporte: {{ deathReportLastSubmissionAt }}</div>
+                    </div>
+                    <div v-if="deathReportSubmitNotice" class="alert alert-light-success py-2 px-3 fs-8 mt-3 mb-0">
+                      {{ deathReportSubmitNotice }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-xl-6">
+                <div class="card border h-100">
+                  <div class="card-header bg-light fw-semibold py-2">Integracion futura</div>
+                  <div class="card-body">
+                    <div class="text-muted fs-8 mb-2">
+                      Este envio es simulado para FE-007C. No persiste en backend productivo.
+                    </div>
+                    <div class="text-muted fs-8">
+                      Pendiente FE-008/FE-009: conectar endpoint real, codigos de error API y trazabilidad completa.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card shadow-sm border-0 mt-4" v-if="activeModule.timeline && activeModule.timeline.length">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2 mb-3">
@@ -688,6 +898,69 @@ export default {
         requiredFields: ['fecha', 'referencia', 'metodo', 'monto', 'estado', 'detalle'],
         defaultSort: 'fecha_desc',
       },
+      deathReportCaseStatusEnum: ['RECIBIDO', 'EN_VALIDACION', 'NO_RECONOCIDO'],
+      deathReportUiStateContract: ['loading', 'empty', 'error', 'ready'],
+      deathReportDtoContract: {
+        requiredFields: [
+          'nombreReportante',
+          'documentoReportante',
+          'nombreFallecido',
+          'documentoFallecido',
+          'fechaFallecimiento',
+          'observacion',
+          'canalContacto',
+        ],
+        confirmationFields: ['estadoCaso', 'referenciaCaso', 'siguientePaso'],
+      },
+      deathReportMockPayload: {
+        nombreReportante: 'Cliente Demo',
+        documentoReportante: 'CC12345678',
+        nombreFallecido: 'Familiar Demo',
+        documentoFallecido: 'CC87654321',
+        fechaFallecimiento: '2026-03-23',
+        observacion: 'Reporte inicial en modo MVP para validacion de flujo.',
+        canalContacto: 'email',
+      },
+      deathReportMockConfirmation: {
+        estadoCaso: 'RECIBIDO',
+        referenciaCaso: 'FALL-20260323-001',
+        siguientePaso: 'Nuestro equipo validara la informacion y te contactara por el canal registrado.',
+      },
+      deathReportWidgetMode: 'loading',
+      deathReportWidgetNotice: '',
+      deathReportLoadTimeoutId: null,
+      deathReportLoadMockFail: false,
+      isDeathReportSubmitting: false,
+      deathReportSubmitTimeoutId: null,
+      deathReportHasSubmitted: false,
+      deathReportLastSubmissionAt: '',
+      deathReportSubmitNotice: '',
+      deathReportCaseSequence: 2,
+      deathReportForm: {
+        nombreReportante: 'Cliente Demo',
+        documentoReportante: 'CC12345678',
+        nombreFallecido: 'Familiar Demo',
+        documentoFallecido: 'CC87654321',
+        fechaFallecimiento: '2026-03-23',
+        observacion: 'Reporte inicial en modo MVP para validacion de flujo.',
+        canalContacto: 'email',
+      },
+      deathReportFormErrors: {
+        nombreReportante: '',
+        documentoReportante: '',
+        nombreFallecido: '',
+        documentoFallecido: '',
+        fechaFallecimiento: '',
+        observacion: '',
+        canalContacto: '',
+      },
+      deathReportContextItems: [
+        {
+          key: 'policy-context',
+          label: 'Contexto poliza',
+          value: 'Disponible',
+        },
+      ],
       paymentHistoryMockRows: [
         {
           fecha: '2026-03-21T09:30:00-05:00',
@@ -917,6 +1190,7 @@ export default {
     this.syncRecoveryStage();
     this.initializeBeneficiariesWidget();
     this.initializePaymentHistoryWidget();
+    this.initializeDeathReportWidget();
   },
   beforeUnmount() {
     if (this.recoveryTimeoutId) {
@@ -938,8 +1212,25 @@ export default {
       window.clearTimeout(this.paymentHistoryLoadTimeoutId);
       this.paymentHistoryLoadTimeoutId = null;
     }
+
+    if (this.deathReportLoadTimeoutId) {
+      window.clearTimeout(this.deathReportLoadTimeoutId);
+      this.deathReportLoadTimeoutId = null;
+    }
+
+    if (this.deathReportSubmitTimeoutId) {
+      window.clearTimeout(this.deathReportSubmitTimeoutId);
+      this.deathReportSubmitTimeoutId = null;
+    }
   },
   computed: {
+    deathReportTodayIso() {
+      const now = new Date();
+      const year = `${now.getFullYear()}`;
+      const month = `${now.getMonth() + 1}`.padStart(2, '0');
+      const day = `${now.getDate()}`.padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    },
     resolvedMenuItems() {
       return this.menuItems.map((item) => {
         const resolved = this.resolveRoute(item.routeName, false);
@@ -1302,6 +1593,122 @@ export default {
         },
       };
     },
+    deathReportContractSummary() {
+      return {
+        ...this.deathReportDtoContract,
+        caseStatusEnum: [...this.deathReportCaseStatusEnum],
+        uiStateContract: [...this.deathReportUiStateContract],
+      };
+    },
+    deathReportContractIsReady() {
+      const payload = this.deathReportMockPayload;
+      const confirmation = this.deathReportMockConfirmation;
+
+      if (!payload || typeof payload !== 'object') {
+        return false;
+      }
+
+      if (!confirmation || typeof confirmation !== 'object') {
+        return false;
+      }
+
+      const hasRequiredPayloadFields = this.deathReportContractSummary.requiredFields.every((field) => {
+        if (!Object.prototype.hasOwnProperty.call(payload, field)) {
+          return false;
+        }
+
+        const value = payload[field];
+        return typeof value === 'string' && value.trim().length > 0;
+      });
+
+      if (!hasRequiredPayloadFields) {
+        return false;
+      }
+
+      const hasRequiredConfirmationFields = this.deathReportContractSummary.confirmationFields.every((field) => {
+        if (!Object.prototype.hasOwnProperty.call(confirmation, field)) {
+          return false;
+        }
+
+        const value = confirmation[field];
+        return typeof value === 'string' && value.trim().length > 0;
+      });
+
+      if (!hasRequiredConfirmationFields) {
+        return false;
+      }
+
+      return this.normalizeDeathReportCaseStatus(confirmation.estadoCaso) !== 'NO_RECONOCIDO';
+    },
+    deathReportConfirmationState() {
+      return this.normalizeDeathReportCaseStatus(this.deathReportMockConfirmation?.estadoCaso);
+    },
+    deathReportCanRetry() {
+      if (this.deathReportWidgetState !== 'error') {
+        return false;
+      }
+
+      return this.deathReportContractIsReady;
+    },
+    deathReportWidgetState() {
+      if (this.deathReportWidgetMode === 'loading') {
+        return 'loading';
+      }
+
+      if (this.deathReportWidgetMode === 'error') {
+        return 'error';
+      }
+
+      if (!this.deathReportContractIsReady) {
+        return 'error';
+      }
+
+      if (!Array.isArray(this.deathReportContextItems) || !this.deathReportContextItems.length) {
+        return 'empty';
+      }
+
+      return 'ready';
+    },
+    deathReportOperationalState() {
+      if (this.deathReportWidgetState === 'error') {
+        return 'bloqueado';
+      }
+
+      if (this.deathReportConfirmationState === 'NO_RECONOCIDO') {
+        return 'bloqueado';
+      }
+
+      if (this.deathReportWidgetState === 'empty' || this.deathReportConfirmationState === 'EN_VALIDACION') {
+        return 'alerta';
+      }
+
+      return 'normal';
+    },
+    deathReportWidgetMessage() {
+      if (this.deathReportWidgetState === 'loading') {
+        return 'Cargando contexto de reporte de fallecimiento...';
+      }
+
+      if (this.deathReportWidgetState === 'error') {
+        return this.deathReportCanRetry
+          ? 'Error preparando flujo de reporte. Reintenta para continuar.'
+          : 'Error de contrato detectado. Corrige payload base para habilitar el flujo.';
+      }
+
+      if (this.deathReportWidgetState === 'empty') {
+        return 'No hay contexto suficiente para iniciar el reporte.';
+      }
+
+      if (this.deathReportOperationalState === 'bloqueado') {
+        return 'El flujo se encuentra bloqueado.';
+      }
+
+      if (this.deathReportOperationalState === 'alerta') {
+        return 'Caso en validacion previa. Revisa datos antes de enviar reporte.';
+      }
+
+      return 'Flujo de reporte listo para captura y envio simulado en esta fase.';
+    },
     paymentHistoryNormalizedRows() {
       const sourceRows = Array.isArray(this.paymentHistoryMockRows)
         ? this.paymentHistoryMockRows
@@ -1562,6 +1969,185 @@ export default {
       } catch (error) {
         return `${currencyCode} ${Number(amount).toFixed(2)}`;
       }
+    },
+    normalizeDeathReportCaseStatus(status) {
+      const normalized = `${status || ''}`
+        .toUpperCase()
+        .trim();
+
+      if (this.deathReportCaseStatusEnum.includes(normalized)) {
+        return normalized;
+      }
+
+      return 'NO_RECONOCIDO';
+    },
+    initializeDeathReportWidget(forceError = false) {
+      this.deathReportWidgetNotice = '';
+      this.deathReportWidgetMode = 'loading';
+
+      if (this.deathReportLoadTimeoutId) {
+        window.clearTimeout(this.deathReportLoadTimeoutId);
+      }
+
+      this.deathReportLoadTimeoutId = window.setTimeout(() => {
+        if (forceError || this.deathReportLoadMockFail) {
+          this.deathReportWidgetMode = 'error';
+          this.deathReportWidgetNotice = 'Modo mock con fallo controlado para validar manejo de error.';
+        } else if (!this.deathReportContractIsReady) {
+          this.deathReportWidgetMode = 'error';
+          this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
+        } else {
+          this.deathReportWidgetMode = 'ready';
+        }
+
+        this.deathReportLoadTimeoutId = null;
+      }, 350);
+    },
+    retryDeathReportWidget() {
+      this.deathReportLoadMockFail = false;
+      this.initializeDeathReportWidget();
+    },
+    deathReportCaseStatusLabel(status) {
+      const normalized = this.normalizeDeathReportCaseStatus(status);
+
+      if (normalized === 'RECIBIDO') {
+        return 'Recibido';
+      }
+
+      if (normalized === 'EN_VALIDACION') {
+        return 'En validacion';
+      }
+
+      return 'No reconocido';
+    },
+    resetDeathReportFormErrors() {
+      this.deathReportFormErrors.nombreReportante = '';
+      this.deathReportFormErrors.documentoReportante = '';
+      this.deathReportFormErrors.nombreFallecido = '';
+      this.deathReportFormErrors.documentoFallecido = '';
+      this.deathReportFormErrors.fechaFallecimiento = '';
+      this.deathReportFormErrors.observacion = '';
+      this.deathReportFormErrors.canalContacto = '';
+    },
+    validateDeathReportForm() {
+      this.resetDeathReportFormErrors();
+
+      const nombreReportante = (this.deathReportForm.nombreReportante || '').trim();
+      const documentoReportante = (this.deathReportForm.documentoReportante || '').trim();
+      const nombreFallecido = (this.deathReportForm.nombreFallecido || '').trim();
+      const documentoFallecido = (this.deathReportForm.documentoFallecido || '').trim();
+      const fechaFallecimiento = (this.deathReportForm.fechaFallecimiento || '').trim();
+      const observacion = (this.deathReportForm.observacion || '').trim();
+      const canalContacto = `${this.deathReportForm.canalContacto || ''}`.toLowerCase().trim();
+      const documentPattern = /^[a-zA-Z0-9-]{5,20}$/;
+      const allowedChannels = ['email', 'telefono'];
+
+      if (nombreReportante.length < 3) {
+        this.deathReportFormErrors.nombreReportante = 'Ingresa un nombre valido (minimo 3 caracteres).';
+      }
+
+      if (!documentPattern.test(documentoReportante)) {
+        this.deathReportFormErrors.documentoReportante = 'Documento reportante invalido (5-20, letras/numeros/guion).';
+      }
+
+      if (nombreFallecido.length < 3) {
+        this.deathReportFormErrors.nombreFallecido = 'Ingresa un nombre valido (minimo 3 caracteres).';
+      }
+
+      if (!documentPattern.test(documentoFallecido)) {
+        this.deathReportFormErrors.documentoFallecido = 'Documento fallecido invalido (5-20, letras/numeros/guion).';
+      }
+
+      if (!fechaFallecimiento) {
+        this.deathReportFormErrors.fechaFallecimiento = 'Selecciona la fecha de fallecimiento.';
+      } else {
+        const selectedDate = new Date(`${fechaFallecimiento}T00:00:00`);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        if (!Number.isNaN(selectedDate.getTime()) && selectedDate > today) {
+          this.deathReportFormErrors.fechaFallecimiento = 'La fecha de fallecimiento no puede ser futura.';
+        }
+      }
+
+      if (observacion.length < 10) {
+        this.deathReportFormErrors.observacion = 'La observacion debe tener al menos 10 caracteres.';
+      }
+
+      if (!allowedChannels.includes(canalContacto)) {
+        this.deathReportFormErrors.canalContacto = 'Selecciona un canal de contacto valido.';
+      } else {
+        this.deathReportForm.canalContacto = canalContacto;
+      }
+
+      return !this.deathReportFormErrors.nombreReportante
+        && !this.deathReportFormErrors.documentoReportante
+        && !this.deathReportFormErrors.nombreFallecido
+        && !this.deathReportFormErrors.documentoFallecido
+        && !this.deathReportFormErrors.fechaFallecimiento
+        && !this.deathReportFormErrors.observacion
+        && !this.deathReportFormErrors.canalContacto;
+    },
+    buildDeathReportCaseReference() {
+      const now = new Date();
+      const year = `${now.getFullYear()}`;
+      const month = `${now.getMonth() + 1}`.padStart(2, '0');
+      const day = `${now.getDate()}`.padStart(2, '0');
+      const sequence = `${this.deathReportCaseSequence}`.padStart(3, '0');
+
+      return `FALL-${year}${month}${day}-${sequence}`;
+    },
+    submitDeathReportForm() {
+      if (this.isDeathReportSubmitting || this.deathReportHasSubmitted || this.deathReportWidgetState !== 'ready') {
+        return;
+      }
+
+      if (this.deathReportOperationalState === 'bloqueado') {
+        return;
+      }
+
+      this.deathReportSubmitNotice = '';
+
+      if (!this.validateDeathReportForm()) {
+        return;
+      }
+
+      const payloadToSend = {
+        nombreReportante: (this.deathReportForm.nombreReportante || '').trim(),
+        documentoReportante: (this.deathReportForm.documentoReportante || '').trim(),
+        nombreFallecido: (this.deathReportForm.nombreFallecido || '').trim(),
+        documentoFallecido: (this.deathReportForm.documentoFallecido || '').trim(),
+        fechaFallecimiento: (this.deathReportForm.fechaFallecimiento || '').trim(),
+        observacion: (this.deathReportForm.observacion || '').trim(),
+        canalContacto: `${this.deathReportForm.canalContacto || ''}`.toLowerCase().trim(),
+      };
+
+      if (this.deathReportSubmitTimeoutId) {
+        window.clearTimeout(this.deathReportSubmitTimeoutId);
+      }
+
+      this.isDeathReportSubmitting = true;
+      this.deathReportSubmitTimeoutId = window.setTimeout(() => {
+        const nowIso = new Date().toISOString();
+        const reference = this.buildDeathReportCaseReference();
+
+        // FE-007C: envio simulado. FE-008/FE-009 reemplaza esta rama por llamada API real.
+        this.deathReportMockPayload = payloadToSend;
+
+        this.deathReportMockConfirmation = {
+          estadoCaso: 'RECIBIDO',
+          referenciaCaso: reference,
+          siguientePaso: 'Reporte recibido. Nuestro equipo validara la informacion y te contactara por el canal seleccionado.',
+          fechaReporte: nowIso,
+        };
+
+        this.deathReportCaseSequence += 1;
+        this.deathReportHasSubmitted = true;
+        this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(nowIso));
+        this.deathReportSubmitNotice = 'Reporte enviado en modo simulado (FE-007C).';
+        this.isDeathReportSubmitting = false;
+        this.deathReportSubmitTimeoutId = null;
+      }, 600);
     },
     normalizePaymentHistoryStatus(status) {
       const normalized = `${status || ''}`
