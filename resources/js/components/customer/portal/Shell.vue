@@ -222,7 +222,7 @@
               {{ beneficiariesWidgetMessage }}
             </div>
 
-            <div v-if="beneficiariesWidgetNotice" class="alert alert-light-primary py-2 px-3 mb-3" role="alert">
+            <div v-if="beneficiariesWidgetNotice" class="alert py-2 px-3 mb-3" :class="beneficiariesWidgetNoticeClass" role="alert">
               {{ beneficiariesWidgetNotice }}
             </div>
 
@@ -522,7 +522,7 @@
               {{ paymentHistoryWidgetMessage }}
             </div>
 
-            <div v-if="paymentHistoryWidgetNotice" class="alert alert-light-primary py-2 px-3 mb-3" role="alert">
+            <div v-if="paymentHistoryWidgetNotice" class="alert py-2 px-3 mb-3" :class="paymentHistoryWidgetNoticeClass" role="alert">
               {{ paymentHistoryWidgetNotice }}
             </div>
 
@@ -581,7 +581,7 @@
           </div>
         </div>
 
-        <div v-if="activeKey === 'productos'" class="card shadow-sm border-0 mt-4">
+        <div v-if="activeKey === 'productos' && canAccessDeathReportFlow" class="card shadow-sm border-0 mt-4">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
               <div>
@@ -611,7 +611,7 @@
               {{ deathReportWidgetMessage }}
             </div>
 
-            <div v-if="deathReportWidgetNotice" class="alert alert-light-primary py-2 px-3 mb-3" role="alert">
+            <div v-if="deathReportWidgetNotice" class="alert py-2 px-3 mb-3" :class="deathReportWidgetNoticeClass" role="alert">
               {{ deathReportWidgetNotice }}
             </div>
 
@@ -791,6 +791,15 @@
           </div>
         </div>
 
+        <div v-else-if="activeKey === 'productos'" class="card shadow-sm border-0 mt-4">
+          <div class="card-body p-4 p-lg-5">
+            <h2 class="fs-4 fw-bold text-gray-900 mb-2">Reporte de fallecimiento</h2>
+            <div class="alert alert-light-warning mb-0" role="alert">
+              Este flujo solo esta disponible para clientes con rol CUSTOMER.
+            </div>
+          </div>
+        </div>
+
         <div class="card shadow-sm border-0 mt-4" v-if="activeModule.timeline && activeModule.timeline.length">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2 mb-3">
@@ -819,6 +828,16 @@
 </template>
 
 <script>
+import {
+  createBeneficiaryMock,
+  fetchBeneficiariesMock,
+  fetchDeathReportMock,
+  fetchModuleCatalogMock,
+  fetchPaymentHistoryMock,
+  getCustomerPortalMockSeeds,
+  submitDeathReportMock,
+} from './services/customerPortalMockService';
+
 export default {
   name: 'CustomerPortalShell',
   props: {
@@ -860,6 +879,8 @@ export default {
     },
   },
   data() {
+    const mockSeeds = getCustomerPortalMockSeeds();
+
     return {
       mobileMenuOpen: false,
       routeFallbackSegments: {
@@ -882,16 +903,13 @@ export default {
         confirm: '',
       },
       paymentMethodFormNotice: '',
-      beneficiariesWidgetMode: 'loading',
+      beneficiariesWidgetMode: 'idle',
       beneficiariesWidgetNotice: '',
-      beneficiariesLoadTimeoutId: null,
       beneficiariesLoadMockFail: false,
-      paymentHistoryWidgetMode: 'loading',
+      paymentHistoryWidgetMode: 'idle',
       paymentHistoryWidgetNotice: '',
-      paymentHistoryLoadTimeoutId: null,
       paymentHistoryLoadMockFail: false,
       isBeneficiarySubmitting: false,
-      beneficiarySubmitTimeoutId: null,
       paymentHistorySortDirection: 'desc',
       paymentHistoryStatusEnum: ['PAGADO', 'PENDIENTE', 'FALLIDO', 'EN_REVISION'],
       paymentHistoryDtoContract: {
@@ -912,29 +930,17 @@ export default {
         ],
         confirmationFields: ['estadoCaso', 'referenciaCaso', 'siguientePaso'],
       },
-      deathReportMockPayload: {
-        nombreReportante: 'Cliente Demo',
-        documentoReportante: 'CC12345678',
-        nombreFallecido: 'Familiar Demo',
-        documentoFallecido: 'CC87654321',
-        fechaFallecimiento: '2026-03-23',
-        observacion: 'Reporte inicial en modo MVP para validacion de flujo.',
-        canalContacto: 'email',
-      },
-      deathReportMockConfirmation: {
-        estadoCaso: 'RECIBIDO',
-        referenciaCaso: 'FALL-20260323-001',
-        siguientePaso: 'Nuestro equipo validara la informacion y te contactara por el canal registrado.',
-      },
-      deathReportWidgetMode: 'loading',
+      deathReportMockPayload: mockSeeds.deathReportPayload,
+      deathReportMockConfirmation: mockSeeds.deathReportConfirmation,
+      deathReportWidgetMode: 'idle',
       deathReportWidgetNotice: '',
-      deathReportLoadTimeoutId: null,
       deathReportLoadMockFail: false,
+      deathReportSubmitMockFail: false,
       isDeathReportSubmitting: false,
-      deathReportSubmitTimeoutId: null,
       deathReportHasSubmitted: false,
       deathReportLastSubmissionAt: '',
       deathReportSubmitNotice: '',
+      isComponentUnmounted: false,
       deathReportCaseSequence: 2,
       deathReportForm: {
         nombreReportante: 'Cliente Demo',
@@ -954,40 +960,10 @@ export default {
         observacion: '',
         canalContacto: '',
       },
-      deathReportContextItems: [
-        {
-          key: 'policy-context',
-          label: 'Contexto poliza',
-          value: 'Disponible',
-        },
-      ],
-      paymentHistoryMockRows: [
-        {
-          fecha: '2026-03-21T09:30:00-05:00',
-          referencia: 'PAY-20260321-001',
-          metodo: 'Visa **** 4242',
-          monto: 'USD 25.00',
-          estado: 'PAGADO',
-          detalle: 'Cobro conciliado correctamente.',
-        },
-        {
-          fecha: '2026-03-19T18:15:00-05:00',
-          referencia: 'PAY-20260319-002',
-          metodo: 'Visa **** 4242',
-          monto: 'USD 25.00',
-          estado: 'FALLIDO',
-          detalle: 'Rechazado por fondos insuficientes.',
-        },
-        {
-          fecha: '2026-03-18T08:00:00-05:00',
-          referencia: 'PAY-20260318-003',
-          metodo: 'Mastercard **** 5412',
-          monto: 'USD 35.00',
-          estado: 'EN_REVISION',
-          detalle: 'En validacion por conciliacion bancaria.',
-        },
-      ],
+      deathReportContextItems: mockSeeds.deathReportContextItems,
+      paymentHistoryMockRows: mockSeeds.paymentHistoryRows,
       beneficiaryNextId: 4,
+      beneficiarySubmitMockFail: false,
       showBeneficiaryForm: false,
       beneficiaryForm: {
         nombre: '',
@@ -1001,128 +977,8 @@ export default {
         parentesco: '',
         estado: '',
       },
-      beneficiariesItems: [
-        {
-          id: 1,
-          nombre: 'Laura Mendez',
-          documento: 'CC10424123',
-          parentesco: 'Conyuge',
-          estado: 'activo',
-        },
-        {
-          id: 2,
-          nombre: 'Mateo Mendez',
-          documento: 'TI20988721',
-          parentesco: 'Hijo',
-          estado: 'incompleto',
-        },
-        {
-          id: 3,
-          nombre: 'Gloria Rivera',
-          documento: 'CC30012190',
-          parentesco: 'Madre',
-          estado: 'bloqueado',
-        },
-      ],
-      moduleCatalog: {
-        dashboard: {
-          description: 'Vision rapida de productos, pagos y alertas de operacion.',
-          currentState: 'activo',
-          allowedActions: [
-            { label: 'Ir a productos', routeName: 'customer.products' },
-            { label: 'Revisar pagos pendientes', routeName: 'customer.payments.pending' },
-          ],
-          blockedReason: null,
-          blocks: [
-            { title: 'Productos activos', value: '2', hint: '1 anual y 1 mensual en estado vigente.' },
-            { title: 'Pagos pendientes', value: '1', hint: 'Proximo vencimiento en 3 dias.' },
-            { title: 'Ultimo cobro', value: 'Aprobado', hint: 'Procesado via Stripe sandbox.' },
-            { title: 'Alertas', value: 'Sin bloqueos', hint: 'No hay restricciones de emision/pago.' },
-          ],
-          timeline: [
-            { code: 'EVT-101', title: 'Login customer', detail: 'Sesion iniciada correctamente en portal cliente.' },
-            { code: 'EVT-114', title: 'Consulta dashboard', detail: 'Se cargan KPIs base de productos y pagos.' },
-          ],
-        },
-        productos: {
-          description: 'Productos contratados con estado, vigencia y acciones disponibles.',
-          currentState: 'activo',
-          allowedActions: [
-            { label: 'Ver transacciones', routeName: 'customer.transactions' },
-            { label: 'Solicitar anulacion', routeName: null },
-          ],
-          blockedReason: null,
-          blocks: [
-            { title: 'Plan principal', value: 'Vigente', hint: 'Cobertura activa hasta 2026-12-31.' },
-            { title: 'Plan complementario', value: 'Renovacion', hint: 'Renovacion automatica habilitada.' },
-            { title: 'Proxima cuota', value: 'USD 25.00', hint: 'Programada para el proximo ciclo.' },
-            { title: 'Accion sugerida', value: 'Revisar terminos', hint: 'Validar exclusiones y beneficiarios.' },
-          ],
-          timeline: [
-            { code: 'EVT-205', title: 'Producto emitido', detail: 'Emision confirmada y visible en portal.' },
-            { code: 'EVT-217', title: 'Estado actualizado', detail: 'Producto marca vigente luego de pago confirmado.' },
-          ],
-        },
-        transacciones: {
-          description: 'Historial financiero con resultado de intentos de cobro y conciliacion.',
-          currentState: 'reconciliado',
-          allowedActions: [
-            { label: 'Exportar historial', routeName: null },
-            { label: 'Ir a metodo de pago', routeName: 'customer.payment-method' },
-          ],
-          blockedReason: null,
-          blocks: [
-            { title: 'Transacciones mes', value: '4', hint: '3 aprobadas y 1 rechazada con reintento.' },
-            { title: 'Monto total', value: 'USD 85.00', hint: 'Incluye cuota principal y recargo menor.' },
-            { title: 'Ultimo estado', value: 'Exitoso', hint: 'El ultimo intento quedo conciliado.' },
-            { title: 'Webhook', value: 'Sincronizado', hint: 'Sin desfase de estado en el ultimo evento.' },
-          ],
-          timeline: [
-            { code: 'EVT-302', title: 'Pago rechazado', detail: 'Tarjeta declinada por fondos insuficientes.' },
-            { code: 'EVT-309', title: 'Reintento automatico', detail: 'Nuevo intento dentro de ventana permitida.' },
-            { code: 'EVT-310', title: 'Pago confirmado', detail: 'Estado final exitoso y reflejado en UI.' },
-          ],
-        },
-        'pagos-pendientes': {
-          description: 'Cuotas por pagar, fecha limite y acciones para regularizar estado.',
-          currentState: 'pago_pendiente',
-          allowedActions: [
-            { label: 'Actualizar metodo de pago', routeName: 'customer.payment-method' },
-            { label: 'Reintentar cobro (simulado)', simulateKey: 'retry-payment' },
-          ],
-          blockedReason: 'Existe una cuota vencida. Se recomienda actualizar metodo y reintentar cobro.',
-          blocks: [
-            { title: 'Cuotas pendientes', value: '1', hint: 'Cuota mensual con 2 dias de atraso.' },
-            { title: 'Monto pendiente', value: 'USD 25.00', hint: 'No incluye penalidad en este escenario.' },
-            { title: 'Fecha limite', value: '2026-03-21', hint: 'Luego pasa a estado de recuperacion.' },
-            { title: 'Canal de cobro', value: 'Stripe sandbox', hint: 'Reintento disponible una vez actualizado metodo.' },
-          ],
-          timeline: [
-            { code: 'EVT-401', title: 'Cuota generada', detail: 'Se crea obligacion de pago del ciclo actual.' },
-            { code: 'EVT-407', title: 'Cobro fallido', detail: 'Respuesta fallida del procesador de pago.' },
-            { code: 'EVT-409', title: 'Cliente notificado', detail: 'Se solicita actualizacion de metodo de pago.' },
-          ],
-        },
-        'metodo-pago': {
-          description: 'Gestion de tarjeta principal y acciones de actualizacion/eliminacion.',
-          currentState: 'requiere_actualizacion',
-          allowedActions: [
-            { label: 'Actualizar tarjeta (simulado)', simulateKey: 'update-payment-method' },
-            { label: 'Volver a pagos pendientes', routeName: 'customer.payments.pending' },
-          ],
-          blockedReason: 'Metodo actual con fallo recurrente en cobro. Requiere actualizacion para continuar.',
-          blocks: [
-            { title: 'Metodo principal', value: 'Visa **** 4242', hint: 'Registrada como predeterminada.' },
-            { title: 'Estado metodo', value: 'Con alerta', hint: 'Ultimo cobro rechazado por banco emisor.' },
-            { title: 'Ultima actualizacion', value: 'Hace 4 meses', hint: 'Se recomienda renovar vigencia.' },
-            { title: 'Siguiente accion', value: 'Actualizar', hint: 'Revalidar para habilitar reintento de cobro.' },
-          ],
-          timeline: [
-            { code: 'EVT-511', title: 'Token creado', detail: 'Metodo vinculado por flujo seguro.' },
-            { code: 'EVT-523', title: 'Cobro rechazado', detail: 'Se marca metodo con riesgo de rechazo.' },
-          ],
-        },
-      },
+      beneficiariesItems: mockSeeds.beneficiariesItems,
+      moduleCatalog: mockSeeds.moduleCatalog,
       menuItems: [
         {
           key: 'dashboard',
@@ -1184,43 +1040,25 @@ export default {
       ],
     };
   },
-  created() {
+  async created() {
+    this.isComponentUnmounted = false;
+    await this.initializeModuleCatalogMockData();
     this.ensureTimelineSeedTimestamps();
     this.restoreRecoveryStage();
     this.syncRecoveryStage();
     this.initializeBeneficiariesWidget();
     this.initializePaymentHistoryWidget();
-    this.initializeDeathReportWidget();
+
+    if (this.canAccessDeathReportFlow) {
+      this.initializeDeathReportWidget();
+    }
   },
   beforeUnmount() {
+    this.isComponentUnmounted = true;
+
     if (this.recoveryTimeoutId) {
       window.clearTimeout(this.recoveryTimeoutId);
       this.recoveryTimeoutId = null;
-    }
-
-    if (this.beneficiariesLoadTimeoutId) {
-      window.clearTimeout(this.beneficiariesLoadTimeoutId);
-      this.beneficiariesLoadTimeoutId = null;
-    }
-
-    if (this.beneficiarySubmitTimeoutId) {
-      window.clearTimeout(this.beneficiarySubmitTimeoutId);
-      this.beneficiarySubmitTimeoutId = null;
-    }
-
-    if (this.paymentHistoryLoadTimeoutId) {
-      window.clearTimeout(this.paymentHistoryLoadTimeoutId);
-      this.paymentHistoryLoadTimeoutId = null;
-    }
-
-    if (this.deathReportLoadTimeoutId) {
-      window.clearTimeout(this.deathReportLoadTimeoutId);
-      this.deathReportLoadTimeoutId = null;
-    }
-
-    if (this.deathReportSubmitTimeoutId) {
-      window.clearTimeout(this.deathReportSubmitTimeoutId);
-      this.deathReportSubmitTimeoutId = null;
     }
   },
   computed: {
@@ -1298,8 +1136,20 @@ export default {
 
       return this.moduleCatalog[this.initialSection] ? this.initialSection : 'dashboard';
     },
+    activeModuleFallback() {
+      return {
+        description: 'No fue posible cargar la configuracion del modulo activo.',
+        allowedActions: [],
+        blocks: [],
+        timeline: [],
+        currentState: 'bloqueado_por_metodo',
+        blockedReason: 'Error de carga del catalogo de modulos.',
+      };
+    },
     activeModule() {
-      return this.moduleCatalog[this.activeKey] || this.moduleCatalog.dashboard;
+      const active = this.moduleCatalog[this.activeKey];
+      const dashboard = this.moduleCatalog.dashboard;
+      return active || dashboard || this.activeModuleFallback;
     },
     activeTimeline() {
       const timeline = (this.activeModule.timeline || []).map((eventItem) => ({
@@ -1582,6 +1432,11 @@ export default {
 
       return 'Beneficiarios al dia y sin bloqueos operativos.';
     },
+    beneficiariesWidgetNoticeClass() {
+      return this.beneficiariesWidgetMode === 'error'
+        ? 'alert-light-danger'
+        : 'alert-light-primary';
+    },
     paymentHistoryContractSummary() {
       return {
         ...this.paymentHistoryDtoContract,
@@ -1684,6 +1539,9 @@ export default {
 
       return 'normal';
     },
+    canAccessDeathReportFlow() {
+      return `${this.userRole || ''}`.toUpperCase().trim() === 'CUSTOMER';
+    },
     deathReportWidgetMessage() {
       if (this.deathReportWidgetState === 'loading') {
         return 'Cargando contexto de reporte de fallecimiento...';
@@ -1768,6 +1626,16 @@ export default {
 
       return `Historial cargado: ${this.paymentHistoryNormalizedRows.length} movimiento(s).`;
     },
+    paymentHistoryWidgetNoticeClass() {
+      return this.paymentHistoryWidgetMode === 'error'
+        ? 'alert-light-danger'
+        : 'alert-light-primary';
+    },
+    deathReportWidgetNoticeClass() {
+      return this.deathReportWidgetMode === 'error'
+        ? 'alert-light-danger'
+        : 'alert-light-primary';
+    },
   },
   methods: {
     formatState(state) {
@@ -1851,30 +1719,66 @@ export default {
 
       return statusLabelMap[status] || 'En revision';
     },
-    initializePaymentHistoryWidget(forceError = false) {
+    async initializeModuleCatalogMockData(forceError = false) {
+      if (!forceError && this.isComponentUnmounted) {
+        return false;
+      }
+
+      const response = await fetchModuleCatalogMock({
+        forceError,
+        latencyMs: 220,
+      });
+
+      if (this.isComponentUnmounted) {
+        return false;
+      }
+
+      if (response.status === 'error' || !response.data || typeof response.data !== 'object') {
+        this.moduleCatalog = {};
+        return false;
+      }
+
+      this.moduleCatalog = response.data;
+      return true;
+    },
+    async initializePaymentHistoryWidget(forceError = false) {
+      if (!forceError && this.paymentHistoryWidgetMode === 'loading') {
+        return;
+      }
+
       this.paymentHistoryWidgetNotice = '';
       this.paymentHistoryWidgetMode = 'loading';
       this.syncTransactionsSummaryFromPaymentHistory();
 
-      if (this.paymentHistoryLoadTimeoutId) {
-        window.clearTimeout(this.paymentHistoryLoadTimeoutId);
+      const response = await fetchPaymentHistoryMock({
+        forceError: forceError || this.paymentHistoryLoadMockFail,
+        latencyMs: 350,
+      });
+
+      if (this.isComponentUnmounted) {
+        return;
       }
 
-      this.paymentHistoryLoadTimeoutId = window.setTimeout(() => {
-        if (forceError || this.paymentHistoryLoadMockFail) {
-          this.paymentHistoryWidgetMode = 'error';
-          this.paymentHistoryWidgetNotice = 'Modo mock con fallo controlado para validar manejo de error.';
-        } else if (!this.paymentHistoryContractIsReady) {
-          this.paymentHistoryWidgetMode = 'error';
-          this.paymentHistoryWidgetNotice = 'Contrato de historial invalido. Revisar payload de origen.';
-        } else {
-          this.paymentHistoryWidgetMode = 'ready';
-        }
-
+      if (response.status === 'error') {
+        this.paymentHistoryMockRows = [];
+        this.paymentHistoryWidgetMode = 'error';
+        this.paymentHistoryWidgetNotice = response.error?.message || 'Modo mock con fallo controlado para validar manejo de error.';
         this.syncTransactionsSummaryFromPaymentHistory();
+        return;
+      }
 
-        this.paymentHistoryLoadTimeoutId = null;
-      }, 350);
+      this.paymentHistoryMockRows = Array.isArray(response.data?.rows)
+        ? response.data.rows
+        : [];
+
+      if (!this.paymentHistoryContractIsReady) {
+        this.paymentHistoryWidgetMode = 'error';
+        this.paymentHistoryWidgetNotice = 'Contrato de historial invalido. Revisar payload de origen.';
+      } else {
+        this.paymentHistoryWidgetMode = 'ready';
+      }
+
+      this.syncTransactionsSummaryFromPaymentHistory();
     },
     retryPaymentHistoryWidget() {
       this.paymentHistoryLoadMockFail = false;
@@ -1981,27 +1885,39 @@ export default {
 
       return 'NO_RECONOCIDO';
     },
-    initializeDeathReportWidget(forceError = false) {
+    async initializeDeathReportWidget(forceError = false) {
+      if (!forceError && this.deathReportWidgetMode === 'loading') {
+        return;
+      }
+
       this.deathReportWidgetNotice = '';
       this.deathReportWidgetMode = 'loading';
 
-      if (this.deathReportLoadTimeoutId) {
-        window.clearTimeout(this.deathReportLoadTimeoutId);
+      const response = await fetchDeathReportMock({
+        forceError: forceError || this.deathReportLoadMockFail,
+        latencyMs: 350,
+      });
+
+      if (this.isComponentUnmounted) {
+        return;
       }
 
-      this.deathReportLoadTimeoutId = window.setTimeout(() => {
-        if (forceError || this.deathReportLoadMockFail) {
-          this.deathReportWidgetMode = 'error';
-          this.deathReportWidgetNotice = 'Modo mock con fallo controlado para validar manejo de error.';
-        } else if (!this.deathReportContractIsReady) {
-          this.deathReportWidgetMode = 'error';
-          this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
-        } else {
-          this.deathReportWidgetMode = 'ready';
-        }
+      if (response.status === 'error') {
+        this.deathReportWidgetMode = 'error';
+        this.deathReportWidgetNotice = response.error?.message || 'Modo mock con fallo controlado para validar manejo de error.';
+        return;
+      }
 
-        this.deathReportLoadTimeoutId = null;
-      }, 350);
+      this.deathReportMockPayload = response.data?.payload || {};
+      this.deathReportMockConfirmation = response.data?.confirmation || {};
+      this.deathReportContextItems = Array.isArray(response.data?.context) ? response.data.context : [];
+
+      if (!this.deathReportContractIsReady) {
+        this.deathReportWidgetMode = 'error';
+        this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
+      } else {
+        this.deathReportWidgetMode = 'ready';
+      }
     },
     retryDeathReportWidget() {
       this.deathReportLoadMockFail = false;
@@ -2097,7 +2013,13 @@ export default {
 
       return `FALL-${year}${month}${day}-${sequence}`;
     },
-    submitDeathReportForm() {
+    async submitDeathReportForm() {
+      if (!this.canAccessDeathReportFlow) {
+        this.deathReportSubmitNotice = '';
+        this.deathReportWidgetNotice = 'No autorizado para enviar reportes de fallecimiento con el rol actual.';
+        return;
+      }
+
       if (this.isDeathReportSubmitting || this.deathReportHasSubmitted || this.deathReportWidgetState !== 'ready') {
         return;
       }
@@ -2122,32 +2044,36 @@ export default {
         canalContacto: `${this.deathReportForm.canalContacto || ''}`.toLowerCase().trim(),
       };
 
-      if (this.deathReportSubmitTimeoutId) {
-        window.clearTimeout(this.deathReportSubmitTimeoutId);
+      this.isDeathReportSubmitting = true;
+
+      const response = await submitDeathReportMock(payloadToSend, {
+        forceError: this.deathReportSubmitMockFail,
+        latencyMs: 600,
+        caseSequence: this.deathReportCaseSequence,
+      });
+
+      if (this.isComponentUnmounted) {
+        return;
       }
 
-      this.isDeathReportSubmitting = true;
-      this.deathReportSubmitTimeoutId = window.setTimeout(() => {
-        const nowIso = new Date().toISOString();
-        const reference = this.buildDeathReportCaseReference();
-
-        // FE-007C: envio simulado. FE-008/FE-009 reemplaza esta rama por llamada API real.
-        this.deathReportMockPayload = payloadToSend;
-
-        this.deathReportMockConfirmation = {
-          estadoCaso: 'RECIBIDO',
-          referenciaCaso: reference,
-          siguientePaso: 'Reporte recibido. Nuestro equipo validara la informacion y te contactara por el canal seleccionado.',
-          fechaReporte: nowIso,
-        };
-
-        this.deathReportCaseSequence += 1;
-        this.deathReportHasSubmitted = true;
-        this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(nowIso));
-        this.deathReportSubmitNotice = 'Reporte enviado en modo simulado (FE-007C).';
+      if (response.status === 'error') {
+        this.deathReportWidgetMode = 'error';
+        this.deathReportWidgetNotice = response.error?.message || 'No fue posible enviar el reporte en modo mock.';
+        this.deathReportSubmitNotice = '';
         this.isDeathReportSubmitting = false;
-        this.deathReportSubmitTimeoutId = null;
-      }, 600);
+        return;
+      }
+
+      const confirmation = response.data?.confirmation || {};
+      this.deathReportMockPayload = response.data?.payload || payloadToSend;
+      this.deathReportMockConfirmation = confirmation;
+      this.deathReportContextItems = Array.isArray(response.data?.context) ? response.data.context : this.deathReportContextItems;
+
+      this.deathReportCaseSequence += 1;
+      this.deathReportHasSubmitted = true;
+      this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
+      this.deathReportSubmitNotice = 'Reporte enviado en modo simulado (FE-008C).';
+      this.isDeathReportSubmitting = false;
     },
     normalizePaymentHistoryStatus(status) {
       const normalized = `${status || ''}`
@@ -2287,23 +2213,33 @@ export default {
       this.beneficiariesWidgetNotice = '';
       this.showBeneficiaryForm = true;
     },
-    initializeBeneficiariesWidget(forceError = false) {
+    async initializeBeneficiariesWidget(forceError = false) {
+      if (!forceError && this.beneficiariesWidgetMode === 'loading') {
+        return;
+      }
+
       this.beneficiariesWidgetNotice = '';
       this.beneficiariesWidgetMode = 'loading';
 
-      if (this.beneficiariesLoadTimeoutId) {
-        window.clearTimeout(this.beneficiariesLoadTimeoutId);
+      const response = await fetchBeneficiariesMock({
+        forceError: forceError || this.beneficiariesLoadMockFail,
+        latencyMs: 350,
+      });
+
+      if (this.isComponentUnmounted) {
+        return;
       }
 
-      this.beneficiariesLoadTimeoutId = window.setTimeout(() => {
-        if (forceError || this.beneficiariesLoadMockFail || !Array.isArray(this.beneficiariesItems)) {
-          this.beneficiariesWidgetMode = 'error';
-        } else {
-          this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
-        }
+      if (response.status === 'error') {
+        this.beneficiariesWidgetMode = 'error';
+        this.beneficiariesWidgetNotice = response.error?.message || 'No fue posible cargar beneficiarios mock.';
+        return;
+      }
 
-        this.beneficiariesLoadTimeoutId = null;
-      }, 350);
+      this.beneficiariesItems = Array.isArray(response.data?.items)
+        ? response.data.items
+        : [];
+      this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
     },
     resetBeneficiaryForm() {
       this.beneficiaryForm.nombre = '';
@@ -2371,7 +2307,7 @@ export default {
 
       return `${raw.slice(0, 2)}***${raw.slice(-2)}`;
     },
-    submitBeneficiaryForm() {
+    async submitBeneficiaryForm() {
       if (this.isBeneficiarySubmitting) {
         return;
       }
@@ -2389,7 +2325,6 @@ export default {
       const rawDocumento = (this.beneficiaryForm.documento || '').trim();
 
       const newItem = {
-        id: this.beneficiaryNextId,
         nombre: (this.beneficiaryForm.nombre || '').trim(),
         documento: rawDocumento,
         parentesco: (this.beneficiaryForm.parentesco || '').trim(),
@@ -2397,16 +2332,27 @@ export default {
       };
 
       this.isBeneficiarySubmitting = true;
-      this.beneficiarySubmitTimeoutId = window.setTimeout(() => {
-        this.beneficiariesItems = [newItem, ...this.beneficiariesItems];
-        this.beneficiaryNextId += 1;
-        this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
-        this.showBeneficiaryForm = false;
-        this.resetBeneficiaryForm();
-        this.beneficiariesWidgetNotice = 'Beneficiario agregado en modo simulado (MVP FE-005 Fase 3).';
+
+      const response = await createBeneficiaryMock(newItem, {
+        forceError: this.beneficiarySubmitMockFail,
+        latencyMs: 500,
+        nextId: this.beneficiaryNextId,
+      });
+
+      if (response.status === 'error') {
+        this.beneficiariesWidgetNotice = response.error?.message || 'No fue posible guardar beneficiario mock.';
         this.isBeneficiarySubmitting = false;
-        this.beneficiarySubmitTimeoutId = null;
-      }, 500);
+        return;
+      }
+
+      const createdItem = response.data?.item || { ...newItem, id: this.beneficiaryNextId };
+      this.beneficiariesItems = [createdItem, ...this.beneficiariesItems];
+      this.beneficiaryNextId += 1;
+      this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+      this.showBeneficiaryForm = false;
+      this.resetBeneficiaryForm();
+      this.beneficiariesWidgetNotice = 'Beneficiario agregado en modo simulado (FE-008C).';
+      this.isBeneficiarySubmitting = false;
     },
     retryBeneficiariesWidget() {
       if (!Array.isArray(this.beneficiariesItems)) {
