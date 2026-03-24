@@ -837,6 +837,14 @@ import {
   getCustomerPortalMockSeeds,
   submitDeathReportMock,
 } from './services/customerPortalMockService';
+import {
+  createBeneficiaryApi,
+  fetchBeneficiariesApi,
+  fetchDeathReportApi,
+  fetchModuleCatalogApi,
+  fetchPaymentHistoryApi,
+  submitDeathReportApi,
+} from './services/customerPortalApiService';
 
 export default {
   name: 'CustomerPortalShell',
@@ -903,6 +911,12 @@ export default {
         confirm: '',
       },
       paymentMethodFormNotice: '',
+      moduleCatalogApiEndpoint: '/api/customer/portal/modules',
+      moduleCatalogLoadSource: 'mock',
+      moduleCatalogLoadNotice: '',
+      beneficiariesApiEndpoint: '/api/customer/beneficiaries',
+      paymentHistoryApiEndpoint: '/api/customer/payment-history',
+      deathReportApiEndpoint: '/api/customer/death-report',
       beneficiariesWidgetMode: 'idle',
       beneficiariesWidgetNotice: '',
       beneficiariesLoadMockFail: false,
@@ -1042,7 +1056,7 @@ export default {
   },
   async created() {
     this.isComponentUnmounted = false;
-    await this.initializeModuleCatalogMockData();
+    await this.initializeModuleCatalogData();
     this.ensureTimelineSeedTimestamps();
     this.restoreRecoveryStage();
     this.syncRecoveryStage();
@@ -1741,6 +1755,58 @@ export default {
       this.moduleCatalog = response.data;
       return true;
     },
+    async initializeModuleCatalogData() {
+      if (this.isComponentUnmounted) {
+        return false;
+      }
+
+      this.moduleCatalogLoadNotice = '';
+
+      const apiResponse = await fetchModuleCatalogApi({
+        endpoint: this.moduleCatalogApiEndpoint,
+      });
+
+      if (this.isComponentUnmounted) {
+        return false;
+      }
+
+      if (apiResponse.status === 'ready' && apiResponse.data && typeof apiResponse.data === 'object') {
+        this.moduleCatalog = apiResponse.data;
+        this.moduleCatalogLoadSource = 'api';
+        return true;
+      }
+
+      if (apiResponse.status === 'empty') {
+        this.moduleCatalog = {};
+        this.moduleCatalogLoadSource = 'api';
+        this.moduleCatalogLoadNotice = '';
+        return true;
+      }
+
+      if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
+        this.moduleCatalog = {};
+        this.moduleCatalogLoadSource = 'error';
+        this.moduleCatalogLoadNotice = apiResponse.error?.message || 'No fue posible cargar catalogo de modulos.';
+        return false;
+      }
+
+      const mockLoaded = await this.initializeModuleCatalogMockData(false);
+
+      if (this.isComponentUnmounted) {
+        return false;
+      }
+
+      if (mockLoaded) {
+        this.moduleCatalogLoadSource = 'mock-fallback';
+        this.moduleCatalogLoadNotice = apiResponse.error?.message
+          || 'Catalogo API no disponible. Se usa fallback mock controlado.';
+        return true;
+      }
+
+      this.moduleCatalogLoadSource = 'error';
+      this.moduleCatalogLoadNotice = apiResponse.error?.message || 'No fue posible cargar catalogo de modulos.';
+      return false;
+    },
     async initializePaymentHistoryWidget(forceError = false) {
       if (!forceError && this.paymentHistoryWidgetMode === 'loading') {
         return;
@@ -1749,6 +1815,33 @@ export default {
       this.paymentHistoryWidgetNotice = '';
       this.paymentHistoryWidgetMode = 'loading';
       this.syncTransactionsSummaryFromPaymentHistory();
+
+      if (!forceError && !this.paymentHistoryLoadMockFail) {
+        const apiResponse = await fetchPaymentHistoryApi({
+          endpoint: this.paymentHistoryApiEndpoint,
+        });
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        if (apiResponse.status !== 'error') {
+          this.paymentHistoryMockRows = Array.isArray(apiResponse.data?.rows)
+            ? apiResponse.data.rows
+            : [];
+          this.paymentHistoryWidgetMode = 'ready';
+          this.syncTransactionsSummaryFromPaymentHistory();
+          return;
+        }
+
+        if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
+          this.paymentHistoryMockRows = [];
+          this.paymentHistoryWidgetMode = 'error';
+          this.paymentHistoryWidgetNotice = apiResponse.error?.message || 'No fue posible cargar historial desde API.';
+          this.syncTransactionsSummaryFromPaymentHistory();
+          return;
+        }
+      }
 
       const response = await fetchPaymentHistoryMock({
         forceError: forceError || this.paymentHistoryLoadMockFail,
@@ -1892,6 +1985,37 @@ export default {
 
       this.deathReportWidgetNotice = '';
       this.deathReportWidgetMode = 'loading';
+
+      if (!forceError && !this.deathReportLoadMockFail) {
+        const apiResponse = await fetchDeathReportApi({
+          endpoint: this.deathReportApiEndpoint,
+        });
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        if (apiResponse.status !== 'error') {
+          this.deathReportMockPayload = apiResponse.data?.payload || {};
+          this.deathReportMockConfirmation = apiResponse.data?.confirmation || {};
+          this.deathReportContextItems = Array.isArray(apiResponse.data?.context) ? apiResponse.data.context : [];
+
+          if (!this.deathReportContractIsReady) {
+            this.deathReportWidgetMode = 'error';
+            this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
+          } else {
+            this.deathReportWidgetMode = 'ready';
+          }
+
+          return;
+        }
+
+        if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
+          this.deathReportWidgetMode = 'error';
+          this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible cargar reporte de fallecimiento desde API.';
+          return;
+        }
+      }
 
       const response = await fetchDeathReportMock({
         forceError: forceError || this.deathReportLoadMockFail,
@@ -2046,6 +2170,45 @@ export default {
 
       this.isDeathReportSubmitting = true;
 
+      if (!this.deathReportSubmitMockFail) {
+        const apiResponse = await submitDeathReportApi(payloadToSend, {
+          endpoint: this.deathReportApiEndpoint,
+        });
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        if (apiResponse.status !== 'error') {
+          const confirmation = apiResponse.data?.confirmation || {};
+
+          this.deathReportMockPayload = apiResponse.data?.payload || payloadToSend;
+          this.deathReportMockConfirmation = confirmation;
+          this.deathReportContextItems = Array.isArray(apiResponse.data?.context)
+            ? apiResponse.data.context
+            : this.deathReportContextItems;
+
+          this.deathReportCaseSequence += 1;
+          this.deathReportHasSubmitted = true;
+          this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
+          this.deathReportSubmitNotice = 'Reporte enviado desde API.';
+          this.isDeathReportSubmitting = false;
+          return;
+        }
+
+        const validationErrors = apiResponse.error?.validationErrors;
+        const hasValidationErrors = !!validationErrors && Object.keys(validationErrors).length > 0;
+
+        this.applyDeathReportApiValidationErrors(validationErrors);
+        this.deathReportWidgetMode = hasValidationErrors || apiResponse.error?.retriable !== true
+          ? 'ready'
+          : 'error';
+        this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible enviar reporte de fallecimiento en API.';
+        this.deathReportSubmitNotice = '';
+        this.isDeathReportSubmitting = false;
+        return;
+      }
+
       const response = await submitDeathReportMock(payloadToSend, {
         forceError: this.deathReportSubmitMockFail,
         latencyMs: 600,
@@ -2074,6 +2237,39 @@ export default {
       this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
       this.deathReportSubmitNotice = 'Reporte enviado en modo simulado (FE-008C).';
       this.isDeathReportSubmitting = false;
+    },
+    applyDeathReportApiValidationErrors(validationErrors) {
+      if (!validationErrors || typeof validationErrors !== 'object') {
+        return;
+      }
+
+      const fieldAliases = {
+        nombreReportante: 'nombreReportante',
+        documentoreportante: 'documentoReportante',
+        documentoReportante: 'documentoReportante',
+        nombreFallecido: 'nombreFallecido',
+        documentofallecido: 'documentoFallecido',
+        documentoFallecido: 'documentoFallecido',
+        fechaFallecimiento: 'fechaFallecimiento',
+        observacion: 'observacion',
+        canalContacto: 'canalContacto',
+      };
+
+      Object.keys(validationErrors).forEach((key) => {
+        const normalizedKey = `${key || ''}`.trim();
+        const targetField = fieldAliases[normalizedKey];
+
+        if (!targetField || !Object.prototype.hasOwnProperty.call(this.deathReportFormErrors, targetField)) {
+          return;
+        }
+
+        const rawValue = validationErrors[key];
+        const firstMessage = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+
+        if (typeof firstMessage === 'string' && firstMessage.trim().length) {
+          this.deathReportFormErrors[targetField] = firstMessage.trim();
+        }
+      });
     },
     normalizePaymentHistoryStatus(status) {
       const normalized = `${status || ''}`
@@ -2221,6 +2417,30 @@ export default {
       this.beneficiariesWidgetNotice = '';
       this.beneficiariesWidgetMode = 'loading';
 
+      if (!forceError && !this.beneficiariesLoadMockFail) {
+        const apiResponse = await fetchBeneficiariesApi({
+          endpoint: this.beneficiariesApiEndpoint,
+        });
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        if (apiResponse.status !== 'error') {
+          this.beneficiariesItems = Array.isArray(apiResponse.data?.items)
+            ? apiResponse.data.items
+            : [];
+          this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+          return;
+        }
+
+        if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
+          this.beneficiariesWidgetMode = 'error';
+          this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible cargar beneficiarios desde API.';
+          return;
+        }
+      }
+
       const response = await fetchBeneficiariesMock({
         forceError: forceError || this.beneficiariesLoadMockFail,
         latencyMs: 350,
@@ -2333,6 +2553,35 @@ export default {
 
       this.isBeneficiarySubmitting = true;
 
+      if (!this.beneficiarySubmitMockFail) {
+        const apiResponse = await createBeneficiaryApi(newItem, {
+          endpoint: this.beneficiariesApiEndpoint,
+        });
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        if (apiResponse.status !== 'error') {
+          const createdItem = apiResponse.data?.item;
+
+          if (createdItem) {
+            this.beneficiariesItems = [createdItem, ...this.beneficiariesItems];
+            this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+            this.showBeneficiaryForm = false;
+            this.resetBeneficiaryForm();
+            this.beneficiariesWidgetNotice = 'Beneficiario agregado desde API.';
+            this.isBeneficiarySubmitting = false;
+            return;
+          }
+        }
+
+        this.applyBeneficiaryApiValidationErrors(apiResponse.error?.validationErrors);
+        this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible guardar beneficiario en API.';
+        this.isBeneficiarySubmitting = false;
+        return;
+      }
+
       const response = await createBeneficiaryMock(newItem, {
         forceError: this.beneficiarySubmitMockFail,
         latencyMs: 500,
@@ -2353,6 +2602,52 @@ export default {
       this.resetBeneficiaryForm();
       this.beneficiariesWidgetNotice = 'Beneficiario agregado en modo simulado (FE-008C).';
       this.isBeneficiarySubmitting = false;
+    },
+    canUseMockFallbackForApiError(apiError) {
+      if (!apiError || typeof apiError !== 'object') {
+        return false;
+      }
+
+      const blockedCodes = ['API_UNAUTHORIZED', 'API_FORBIDDEN'];
+      const code = `${apiError.code || ''}`.trim().toUpperCase();
+
+      if (blockedCodes.includes(code)) {
+        return false;
+      }
+
+      return apiError.retriable === true;
+    },
+    applyBeneficiaryApiValidationErrors(validationErrors) {
+      if (!validationErrors || typeof validationErrors !== 'object') {
+        return;
+      }
+
+      const fieldAliases = {
+        nombre: 'nombre',
+        name: 'nombre',
+        documento: 'documento',
+        document: 'documento',
+        documento_identidad: 'documento',
+        parentesco: 'parentesco',
+        relationship: 'parentesco',
+        estado: 'estado',
+        status: 'estado',
+      };
+
+      Object.keys(validationErrors).forEach((key) => {
+        const targetField = fieldAliases[key];
+
+        if (!targetField || !Object.prototype.hasOwnProperty.call(this.beneficiaryFormErrors, targetField)) {
+          return;
+        }
+
+        const rawValue = validationErrors[key];
+        const firstMessage = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+
+        if (typeof firstMessage === 'string' && firstMessage.trim().length) {
+          this.beneficiaryFormErrors[targetField] = firstMessage.trim();
+        }
+      });
     },
     retryBeneficiariesWidget() {
       if (!Array.isArray(this.beneficiariesItems)) {
