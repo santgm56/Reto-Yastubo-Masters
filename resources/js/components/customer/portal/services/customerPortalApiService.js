@@ -3,6 +3,7 @@ import {
   adaptDeathReportDto,
   adaptModuleCatalogDto,
   adaptPaymentHistoryDto,
+  adaptStripePaymentStatusDto,
   buildApiEnvelope,
   mapAxiosErrorToPortalError,
 } from './customerPortalApiAdapters';
@@ -175,6 +176,80 @@ export async function createBeneficiaryApi(payload, {
 
 export async function fetchPaymentHistoryApi({
   endpoint = '/api/customer/payment-history',
+  fallbackEndpoints = ['/api/customer/payments/history'],
+  timeoutMs = 7000,
+} = {}) {
+  const startTime = Date.now();
+
+  if (typeof window === 'undefined' || !window.axios || typeof window.axios.get !== 'function') {
+    return buildApiEnvelope({
+      status: 'error',
+      error: {
+        code: 'API_CLIENT_UNAVAILABLE',
+        message: 'Cliente HTTP no disponible en runtime.',
+        retriable: true,
+      },
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  }
+
+  const endpointCandidates = [endpoint, ...fallbackEndpoints].filter((item, index, list) => {
+    const normalized = `${item || ''}`.trim();
+    return normalized.length > 0 && list.indexOf(item) === index;
+  });
+
+  let lastError = null;
+
+  for (let index = 0; index < endpointCandidates.length; index += 1) {
+    const candidate = endpointCandidates[index];
+
+    try {
+      const response = await window.axios.get(candidate, {
+        timeout: timeoutMs,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      const rawPayload = resolveApiPayload(response?.data);
+      const adapted = adaptPaymentHistoryDto(rawPayload);
+
+      return buildApiEnvelope({
+        status: adapted.rows.length ? 'ready' : 'empty',
+        data: {
+          ...adapted,
+          endpointUsed: candidate,
+        },
+        latencyMs: Date.now() - startTime,
+        source: 'api',
+      });
+    } catch (error) {
+      lastError = mapAxiosErrorToPortalError(error, 'API_PAYMENT_HISTORY_LOAD_ERROR');
+
+      const isLast = index === endpointCandidates.length - 1;
+      const canTryNext = !isLast && ['API_RESOURCE_NOT_FOUND', 'API_NETWORK_ERROR'].includes(lastError.code);
+
+      if (!canTryNext) {
+        break;
+      }
+    }
+  }
+
+  return buildApiEnvelope({
+    status: 'error',
+    error: lastError || {
+      code: 'API_PAYMENT_HISTORY_LOAD_ERROR',
+      message: 'No fue posible cargar historial de pagos.',
+      retriable: true,
+    },
+    latencyMs: Date.now() - startTime,
+    source: 'api',
+  });
+}
+
+export async function fetchStripePaymentStatusApi({
+  endpoint = '/api/customer/payments/status',
   timeoutMs = 7000,
 } = {}) {
   const startTime = Date.now();
@@ -201,10 +276,10 @@ export async function fetchPaymentHistoryApi({
     });
 
     const rawPayload = resolveApiPayload(response?.data);
-    const adapted = adaptPaymentHistoryDto(rawPayload);
+    const adapted = adaptStripePaymentStatusDto(rawPayload);
 
     return buildApiEnvelope({
-      status: adapted.rows.length ? 'ready' : 'empty',
+      status: 'ready',
       data: adapted,
       latencyMs: Date.now() - startTime,
       source: 'api',
@@ -212,7 +287,7 @@ export async function fetchPaymentHistoryApi({
   } catch (error) {
     return buildApiEnvelope({
       status: 'error',
-      error: mapAxiosErrorToPortalError(error, 'API_PAYMENT_HISTORY_LOAD_ERROR'),
+      error: mapAxiosErrorToPortalError(error, 'API_PAYMENT_STATUS_LOAD_ERROR'),
       latencyMs: Date.now() - startTime,
       source: 'api',
     });

@@ -1,6 +1,14 @@
-const CONTRACT_VERSION = 'fe008.v1';
+const CONTRACT_VERSION = 'fe010.v1';
 
-const PAYMENT_STATUS_ENUM = ['PAGADO', 'PENDIENTE', 'FALLIDO', 'EN_REVISION', 'NO_RECONOCIDO'];
+const STRIPE_PAYMENT_STATUS_ENUM = ['REQUIRES_ACTION', 'PROCESSING', 'PAID', 'FAILED', 'PAST_DUE', 'CANCELED'];
+const LEGACY_PAYMENT_STATUS_ALIAS = {
+  PAGADO: 'PAID',
+  PENDIENTE: 'PAST_DUE',
+  FALLIDO: 'FAILED',
+  EN_REVISION: 'PROCESSING',
+  CANCELADO: 'CANCELED',
+};
+const PAYMENT_STATUS_ENUM = [...STRIPE_PAYMENT_STATUS_ENUM, 'NO_RECONOCIDO'];
 const DEATH_REPORT_STATUS_ENUM = ['RECIBIDO', 'EN_VALIDACION', 'NO_RECONOCIDO'];
 const BENEFICIARY_STATUS_ENUM = ['activo', 'incompleto', 'bloqueado'];
 
@@ -19,7 +27,8 @@ function safeString(value, fallback = '') {
 
 function normalizePaymentStatus(status) {
   const normalized = safeString(status).toUpperCase();
-  return PAYMENT_STATUS_ENUM.includes(normalized) ? normalized : 'NO_RECONOCIDO';
+  const aliased = LEGACY_PAYMENT_STATUS_ALIAS[normalized] || normalized;
+  return PAYMENT_STATUS_ENUM.includes(aliased) ? aliased : 'NO_RECONOCIDO';
 }
 
 function normalizeDeathReportStatus(status) {
@@ -75,12 +84,16 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
   const serverData = axiosError?.response?.data || {};
   const serverCode = safeString(serverData.code || serverData.errorCode, '');
   const serverMessage = safeString(serverData.message || serverData.error, '');
+  const requestId = safeString(serverData.request_id || serverData.requestId, '');
+  const details = serverData?.details && typeof serverData.details === 'object' ? serverData.details : null;
 
   if (status === 401) {
     return {
       code: serverCode || 'API_UNAUTHORIZED',
       message: serverMessage || 'La sesion no es valida para esta operacion.',
       retriable: false,
+      requestId,
+      details,
     };
   }
 
@@ -89,6 +102,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
       code: serverCode || 'API_FORBIDDEN',
       message: serverMessage || 'No tienes permisos para ejecutar esta accion.',
       retriable: false,
+      requestId,
+      details,
     };
   }
 
@@ -97,6 +112,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
       code: serverCode || 'API_RESOURCE_NOT_FOUND',
       message: serverMessage || 'Recurso no encontrado en API.',
       retriable: false,
+      requestId,
+      details,
     };
   }
 
@@ -106,6 +123,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
       message: serverMessage || 'La solicitud no cumple las reglas de validacion.',
       retriable: false,
       validationErrors: serverData?.errors && typeof serverData.errors === 'object' ? serverData.errors : {},
+      requestId,
+      details,
     };
   }
 
@@ -114,6 +133,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
       code: serverCode || 'API_BUSINESS_ERROR',
       message: serverMessage || 'La solicitud no puede procesarse con los datos enviados.',
       retriable: false,
+      requestId,
+      details,
     };
   }
 
@@ -122,6 +143,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
       code: serverCode || 'API_SERVER_ERROR',
       message: serverMessage || 'Error interno del servicio. Intenta nuevamente.',
       retriable: true,
+      requestId,
+      details,
     };
   }
 
@@ -130,6 +153,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
       code: 'API_NETWORK_ERROR',
       message: 'No fue posible conectar con el servicio. Reintenta.',
       retriable: true,
+      requestId,
+      details,
     };
   }
 
@@ -137,6 +162,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
     code: serverCode || fallbackCode,
     message: serverMessage || 'Error no controlado durante consumo API.',
     retriable: true,
+    requestId,
+    details,
   };
 }
 
@@ -187,20 +214,25 @@ export function adaptBeneficiariesDto(rawData) {
 
 export function adaptPaymentHistoryDto(rawData) {
   const source = rawData && typeof rawData === 'object' ? rawData : {};
-  const rows = safeArray(source.rows).map((row, index) => {
+  const rawRows = safeArray(source.rows).length
+    ? safeArray(source.rows)
+    : safeArray(source.items).length
+      ? safeArray(source.items)
+      : safeArray(source.transactions);
+  const rows = rawRows.map((row, index) => {
     const item = row && typeof row === 'object' ? row : {};
 
     return {
-      fecha: safeString(item.fecha, ''),
-      referencia: safeString(item.referencia, `PENDING-REF-${index + 1}`),
-      metodo: safeString(item.metodo, 'Sin metodo'),
-      monto: safeString(item.monto, 'USD 0.00'),
-      estado: normalizePaymentStatus(item.estado),
-      detalle: safeString(item.detalle, 'Sin detalle disponible.'),
+      fecha: safeString(item.fecha || item.created_at || item.createdAt, ''),
+      referencia: safeString(item.referencia || item.reference || item.payment_reference, `PENDING-REF-${index + 1}`),
+      metodo: safeString(item.metodo || item.method || item.payment_method, 'Sin metodo'),
+      monto: safeString(item.monto || item.amount_display || item.amount, 'USD 0.00'),
+      estado: normalizePaymentStatus(item.estado || item.status),
+      detalle: safeString(item.detalle || item.detail || item.message, 'Sin detalle disponible.'),
     };
   });
 
-  const hasCritical = rows.some((item) => ['FALLIDO', 'NO_RECONOCIDO'].includes(item.estado));
+  const hasCritical = rows.some((item) => ['FAILED', 'PAST_DUE'].includes(item.estado));
 
   return {
     rows,
@@ -210,6 +242,25 @@ export function adaptPaymentHistoryDto(rawData) {
       hasCritical,
     },
     operationalState: hasCritical ? 'bloqueado' : rows.length ? 'normal' : 'alerta',
+  };
+}
+
+export function adaptStripePaymentStatusDto(rawData) {
+  const source = rawData && typeof rawData === 'object' ? rawData : {};
+  const paymentStatus = normalizePaymentStatus(source.paymentStatus || source.status || source.estado);
+  const syncState = safeString(source.syncState || source.webhookState || source.conciliationState, 'unknown').toLowerCase();
+
+  return {
+    paymentStatus,
+    syncState,
+    paymentReference: safeString(source.paymentReference || source.reference || source.referencia, ''),
+    requestId: safeString(source.request_id || source.requestId, ''),
+    updatedAt: safeString(source.updated_at || source.updatedAt, ''),
+    operationalState: ['failed', 'out_of_sync'].includes(syncState)
+      ? 'bloqueado'
+      : paymentStatus === 'PAST_DUE'
+        ? 'alerta'
+        : 'normal',
   };
 }
 
@@ -243,6 +294,15 @@ export const FE009A_CONTRACT = {
   contractVersion: CONTRACT_VERSION,
   uiStateEnum: ['loading', 'empty', 'error', 'ready'],
   paymentStatusEnum: PAYMENT_STATUS_ENUM,
+  stripePaymentStatusEnum: STRIPE_PAYMENT_STATUS_ENUM,
   deathReportStatusEnum: DEATH_REPORT_STATUS_ENUM,
   beneficiaryStatusEnum: BENEFICIARY_STATUS_ENUM,
+};
+
+export const FE010A_CONTRACT = {
+  contractVersion: CONTRACT_VERSION,
+  uiStateEnum: ['loading', 'empty', 'error', 'ready'],
+  operationalStateEnum: ['normal', 'alerta', 'bloqueado'],
+  stripePaymentStatusEnum: STRIPE_PAYMENT_STATUS_ENUM,
+  paymentStatusEnum: PAYMENT_STATUS_ENUM,
 };

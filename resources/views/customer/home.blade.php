@@ -9,6 +9,12 @@
     $supportAddress = config('mail.support_address');
     $supportUrl = $supportAddress ? ('mailto:' . $supportAddress) : '';
     $userErrorMessage = session('customer_profile_error', '');
+    $hasAclAssignments = $user
+        ? ($user->roles()->exists() || $user->permissions()->exists())
+        : false;
+    $userPermissions = $hasAclAssignments
+        ? $user->getAllPermissions()->pluck('name')->values()->all()
+        : null;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
@@ -35,6 +41,7 @@
             user-name="{{ e($displayName) }}"
             user-email="{{ e($displayEmail) }}"
             user-role="{{ e($displayRole) }}"
+            :user-permissions='@json($userPermissions)'
             user-status="{{ e($displayStatus) }}"
             user-error-message="{{ e($userErrorMessage) }}"
             support-label="Soporte"

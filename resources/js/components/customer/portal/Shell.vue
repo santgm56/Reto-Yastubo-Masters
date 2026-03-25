@@ -189,7 +189,7 @@
           </div>
         </div>
 
-        <div v-if="activeKey === 'dashboard'" class="card shadow-sm border-0 mt-4">
+        <div v-if="activeKey === 'dashboard' && canViewBeneficiariesWidget" class="card shadow-sm border-0 mt-4">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
               <div>
@@ -199,7 +199,8 @@
               <button
                 type="button"
                 class="btn btn-sm btn-light-primary"
-                :disabled="['loading', 'error'].includes(beneficiariesWidgetState) || showBeneficiaryForm"
+                :disabled="['loading', 'error'].includes(beneficiariesWidgetState) || showBeneficiaryForm || !canCreateBeneficiary"
+                :title="!canCreateBeneficiary ? beneficiaryCreateDeniedReason : null"
                 @click="openBeneficiaryForm"
               >
                 Agregar beneficiario (simulado)
@@ -309,18 +310,11 @@
             </div>
 
             <div v-else-if="beneficiariesWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
-              <div class="fw-semibold mb-1">No fue posible cargar los beneficiarios.</div>
-              <button type="button" class="btn btn-sm btn-light-danger" @click="retryBeneficiariesWidget">
-                Reintentar
-              </button>
+              No fue posible cargar beneficiarios. Reintenta para actualizar el estado operativo.
             </div>
 
             <div v-else-if="beneficiariesWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
-              <div class="fw-semibold mb-1">Aun no hay beneficiarios registrados.</div>
-              <div class="fs-8 mb-2">Usa "Agregar beneficiario" para iniciar la configuracion.</div>
-              <button v-if="!showBeneficiaryForm" type="button" class="btn btn-sm btn-light-warning" @click="openBeneficiaryForm">
-                Agregar beneficiario
-              </button>
+              No hay beneficiarios registrados. Puedes agregar uno nuevo desde este modulo.
             </div>
 
             <div v-else>
@@ -352,6 +346,15 @@
               <div v-if="hiddenBeneficiariesCount > 0" class="text-muted fs-9 mt-2">
                 + {{ hiddenBeneficiariesCount }} beneficiario(s) no mostrado(s) en este resumen.
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="activeKey === 'dashboard'" class="card shadow-sm border-0 mt-4">
+          <div class="card-body p-4 p-lg-5">
+            <h2 class="fs-4 fw-bold text-gray-900 mb-2">Beneficiarios</h2>
+            <div class="alert alert-light-warning mb-0" role="alert">
+              {{ beneficiariesAccessDeniedReason || 'No tienes permisos para visualizar este widget.' }}
             </div>
           </div>
         </div>
@@ -456,7 +459,13 @@
             </div>
 
             <div class="d-flex gap-2 mt-4">
-              <button class="btn btn-primary" type="button" @click="submitPaymentMethodForm">
+              <button
+                class="btn btn-primary"
+                type="button"
+                :disabled="!canExecutePaymentMethodUpdate"
+                :title="!canExecutePaymentMethodUpdate ? paymentMethodUpdateDeniedReason : null"
+                @click="submitPaymentMethodForm"
+              >
                 Guardar metodo (simulado)
               </button>
               <button class="btn btn-light" type="button" @click="resetPaymentMethodForm">
@@ -478,7 +487,7 @@
           </div>
         </div>
 
-        <div v-if="activeKey === 'transacciones'" class="card shadow-sm border-0 mt-4">
+        <div v-if="activeKey === 'transacciones' && canViewPaymentHistoryWidget" class="card shadow-sm border-0 mt-4">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
               <div>
@@ -577,6 +586,15 @@
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="activeKey === 'transacciones'" class="card shadow-sm border-0 mt-4">
+          <div class="card-body p-4 p-lg-5">
+            <h2 class="fs-4 fw-bold text-gray-900 mb-2">Historial de pagos</h2>
+            <div class="alert alert-light-warning mb-0" role="alert">
+              {{ paymentHistoryAccessDeniedReason || 'No tienes permisos para visualizar este widget.' }}
             </div>
           </div>
         </div>
@@ -731,13 +749,17 @@
                         <button
                           type="submit"
                           class="btn btn-sm btn-primary"
-                          :disabled="isDeathReportSubmitting || deathReportHasSubmitted || deathReportOperationalState === 'bloqueado'"
+                          :disabled="isDeathReportSubmitting || deathReportHasSubmitted || deathReportOperationalState === 'bloqueado' || !canSubmitDeathReport"
+                          :title="!canSubmitDeathReport ? deathReportSubmitDeniedReason : null"
                         >
                           <span v-if="isDeathReportSubmitting">Enviando...</span>
                           <span v-else-if="deathReportHasSubmitted">Reporte enviado</span>
                           <span v-else>Enviar reporte (mock)</span>
                         </button>
-                        <span v-if="deathReportOperationalState === 'bloqueado'" class="text-danger fs-8">
+                        <span v-if="!canSubmitDeathReport" class="text-danger fs-8">
+                          {{ deathReportSubmitDeniedReason || 'No autorizado para enviar reporte.' }}
+                        </span>
+                        <span v-else-if="deathReportOperationalState === 'bloqueado'" class="text-danger fs-8">
                           Flujo bloqueado por estado de contrato.
                         </span>
                         <span v-else-if="deathReportHasSubmitted" class="text-muted fs-8">
@@ -795,7 +817,7 @@
           <div class="card-body p-4 p-lg-5">
             <h2 class="fs-4 fw-bold text-gray-900 mb-2">Reporte de fallecimiento</h2>
             <div class="alert alert-light-warning mb-0" role="alert">
-              Este flujo solo esta disponible para clientes con rol CUSTOMER.
+              {{ deathReportAccessDeniedReason || 'Este flujo no esta disponible para el contexto actual.' }}
             </div>
           </div>
         </div>
@@ -843,8 +865,13 @@ import {
   fetchDeathReportApi,
   fetchModuleCatalogApi,
   fetchPaymentHistoryApi,
+  fetchStripePaymentStatusApi,
   submitDeathReportApi,
 } from './services/customerPortalApiService';
+import {
+  createCustomerPortalPermissionEvaluator,
+  getCustomerPortalPermissionContract,
+} from './services/customerPortalPermissions';
 
 export default {
   name: 'CustomerPortalShell',
@@ -872,6 +899,9 @@ export default {
     userRole: {
       type: String,
       default: '',
+    },
+    userPermissions: {
+      type: Array,
     },
     userStatus: {
       type: String,
@@ -916,6 +946,7 @@ export default {
       moduleCatalogLoadNotice: '',
       beneficiariesApiEndpoint: '/api/customer/beneficiaries',
       paymentHistoryApiEndpoint: '/api/customer/payment-history',
+      paymentStatusApiEndpoint: '/api/customer/payments/status',
       deathReportApiEndpoint: '/api/customer/death-report',
       beneficiariesWidgetMode: 'idle',
       beneficiariesWidgetNotice: '',
@@ -923,9 +954,50 @@ export default {
       paymentHistoryWidgetMode: 'idle',
       paymentHistoryWidgetNotice: '',
       paymentHistoryLoadMockFail: false,
+      paymentStatusPollingTimerId: null,
+      paymentStatusPollingDelayMs: 2500,
+      paymentStatusPollingMaxAttempts: 4,
+      paymentStatusPollingAttempt: 0,
+      paymentStatusSyncInFlight: false,
+      paymentStatusLastEventKey: '',
+      paymentRecoveryLastOutcomeEventKey: '',
+      paymentStatusLastAppliedRequestAt: 0,
+      paymentTimelineLastOutcomeEventKey: '',
+      paymentStatusConsecutiveNetworkErrors: 0,
+      paymentStatusNetworkErrorLimit: 3,
+      paymentRetryFinalizeTimeoutMs: 6500,
+      paymentRetryFinalizeTimeoutId: null,
+      paymentRetryPendingLockTtlMs: 45000,
+      paymentRetryPendingUntil: 0,
+      paymentStatusTransitionRules: {
+        REQUIRES_ACTION: ['REQUIRES_ACTION', 'PROCESSING', 'PAID', 'FAILED', 'PAST_DUE', 'CANCELED'],
+        PROCESSING: ['PROCESSING', 'PAID', 'FAILED', 'PAST_DUE', 'REQUIRES_ACTION', 'CANCELED'],
+        PAID: ['PAID'],
+        FAILED: ['FAILED', 'REQUIRES_ACTION', 'PAST_DUE'],
+        PAST_DUE: ['PAST_DUE', 'PROCESSING', 'PAID', 'FAILED', 'REQUIRES_ACTION'],
+        CANCELED: ['CANCELED'],
+      },
+      recoveryStageTransitionRules: {
+        bloqueado_por_metodo: ['bloqueado_por_metodo', 'metodo_actualizado', 'en_reintento', 'al_dia'],
+        metodo_actualizado: ['metodo_actualizado', 'en_reintento', 'al_dia', 'bloqueado_por_metodo'],
+        en_reintento: ['en_reintento', 'al_dia', 'metodo_actualizado', 'bloqueado_por_metodo'],
+        al_dia: ['al_dia', 'bloqueado_por_metodo'],
+      },
       isBeneficiarySubmitting: false,
       paymentHistorySortDirection: 'desc',
-      paymentHistoryStatusEnum: ['PAGADO', 'PENDIENTE', 'FALLIDO', 'EN_REVISION'],
+      paymentHistoryStatusEnum: [
+        'REQUIRES_ACTION',
+        'PROCESSING',
+        'PAID',
+        'FAILED',
+        'PAST_DUE',
+        'CANCELED',
+        'PAGADO',
+        'PENDIENTE',
+        'FALLIDO',
+        'EN_REVISION',
+        'NO_RECONOCIDO',
+      ],
       paymentHistoryDtoContract: {
         requiredFields: ['fecha', 'referencia', 'metodo', 'monto', 'estado', 'detalle'],
         defaultSort: 'fecha_desc',
@@ -1059,9 +1131,17 @@ export default {
     await this.initializeModuleCatalogData();
     this.ensureTimelineSeedTimestamps();
     this.restoreRecoveryStage();
+    this.restoreRetryPendingLock();
+    this.restorePaymentTimelineEventKey();
     this.syncRecoveryStage();
-    this.initializeBeneficiariesWidget();
-    this.initializePaymentHistoryWidget();
+
+    if (this.canViewBeneficiariesWidget) {
+      this.initializeBeneficiariesWidget();
+    }
+
+    if (this.canViewPaymentHistoryWidget) {
+      this.initializePaymentHistoryWidget();
+    }
 
     if (this.canAccessDeathReportFlow) {
       this.initializeDeathReportWidget();
@@ -1074,8 +1154,27 @@ export default {
       window.clearTimeout(this.recoveryTimeoutId);
       this.recoveryTimeoutId = null;
     }
+
+    if (this.paymentStatusPollingTimerId) {
+      window.clearTimeout(this.paymentStatusPollingTimerId);
+      this.paymentStatusPollingTimerId = null;
+    }
+
+    if (this.paymentRetryFinalizeTimeoutId) {
+      window.clearTimeout(this.paymentRetryFinalizeTimeoutId);
+      this.paymentRetryFinalizeTimeoutId = null;
+    }
   },
   computed: {
+    permissionContractSummary() {
+      return getCustomerPortalPermissionContract();
+    },
+    permissionEvaluator() {
+      return createCustomerPortalPermissionEvaluator({
+        userRole: this.userRole,
+        userPermissions: this.userPermissions,
+      });
+    },
     deathReportTodayIso() {
       const now = new Date();
       const year = `${now.getFullYear()}`;
@@ -1086,13 +1185,16 @@ export default {
     resolvedMenuItems() {
       return this.menuItems.map((item) => {
         const resolved = this.resolveRoute(item.routeName, false);
+        const permission = this.permissionEvaluator.canViewModule(item.key);
 
         return {
           ...item,
           path: resolved.path,
           routeSource: resolved.source,
+          canView: permission.allowed,
+          deniedReason: permission.reason,
         };
-      });
+      }).filter((item) => item.canView);
     },
     isFallbackNavigation() {
       return this.resolvedMenuItems.some((item) => item.routeSource === 'fallback');
@@ -1148,7 +1250,12 @@ export default {
         return active.key;
       }
 
-      return this.moduleCatalog[this.initialSection] ? this.initialSection : 'dashboard';
+      if (this.resolvedMenuItems.some((item) => item.key === this.initialSection)) {
+        return this.initialSection;
+      }
+
+      const fallbackKey = this.resolvedMenuItems[0]?.key || 'dashboard';
+      return this.moduleCatalog[fallbackKey] ? fallbackKey : 'dashboard';
     },
     activeModuleFallback() {
       return {
@@ -1456,9 +1563,9 @@ export default {
         ...this.paymentHistoryDtoContract,
         statusEnum: [...this.paymentHistoryStatusEnum],
         operationalStates: {
-          normal: ['PAGADO'],
-          alerta: ['PENDIENTE', 'EN_REVISION'],
-          bloqueado: ['FALLIDO'],
+          normal: ['PAID', 'CANCELED'],
+          alerta: ['REQUIRES_ACTION', 'PROCESSING', 'PAST_DUE'],
+          bloqueado: ['FAILED', 'NO_RECONOCIDO'],
         },
       };
     },
@@ -1553,8 +1660,54 @@ export default {
 
       return 'normal';
     },
+    canViewBeneficiariesWidget() {
+      return this.permissionEvaluator.canViewModule('beneficiarios').allowed;
+    },
+    beneficiariesAccessDeniedReason() {
+      return this.permissionEvaluator.canViewModule('beneficiarios').reason;
+    },
+    canViewPaymentHistoryWidget() {
+      return this.permissionEvaluator.canViewModule('payment-history').allowed;
+    },
+    paymentHistoryAccessDeniedReason() {
+      return this.permissionEvaluator.canViewModule('payment-history').reason;
+    },
     canAccessDeathReportFlow() {
-      return `${this.userRole || ''}`.toUpperCase().trim() === 'CUSTOMER';
+      return this.permissionEvaluator.canViewModule('death-report').allowed;
+    },
+    deathReportAccessDeniedReason() {
+      return this.permissionEvaluator.canViewModule('death-report').reason;
+    },
+    permissionActionDecisions() {
+      return {
+        deathReportSubmit: this.permissionEvaluator.canExecuteAction({
+          actionKey: 'death-report.submit',
+        }),
+        beneficiaryCreate: this.permissionEvaluator.canExecuteAction({
+          actionKey: 'beneficiaries.create',
+        }),
+        paymentMethodUpdate: this.permissionEvaluator.canExecuteAction({
+          simulateKey: 'update-payment-method',
+        }),
+      };
+    },
+    canSubmitDeathReport() {
+      return this.permissionActionDecisions.deathReportSubmit.allowed;
+    },
+    deathReportSubmitDeniedReason() {
+      return this.permissionActionDecisions.deathReportSubmit.reason;
+    },
+    canCreateBeneficiary() {
+      return this.permissionActionDecisions.beneficiaryCreate.allowed;
+    },
+    beneficiaryCreateDeniedReason() {
+      return this.permissionActionDecisions.beneficiaryCreate.reason;
+    },
+    canExecutePaymentMethodUpdate() {
+      return this.permissionActionDecisions.paymentMethodUpdate.allowed;
+    },
+    paymentMethodUpdateDeniedReason() {
+      return this.permissionActionDecisions.paymentMethodUpdate.reason;
     },
     deathReportWidgetMessage() {
       if (this.deathReportWidgetState === 'loading') {
@@ -1713,6 +1866,12 @@ export default {
     },
     paymentHistoryStatusBadgeClass(status) {
       const statusClassMap = {
+        REQUIRES_ACTION: 'badge-light-warning text-warning',
+        PROCESSING: 'badge-light-info text-info',
+        PAID: 'badge-light-success text-success',
+        FAILED: 'badge-light-danger text-danger',
+        PAST_DUE: 'badge-light-warning text-warning',
+        CANCELED: 'badge-light text-gray-700',
         PAGADO: 'badge-light-success text-success',
         PENDIENTE: 'badge-light-warning text-warning',
         FALLIDO: 'badge-light-danger text-danger',
@@ -1724,6 +1883,12 @@ export default {
     },
     paymentHistoryStatusLabel(status) {
       const statusLabelMap = {
+        REQUIRES_ACTION: 'Requiere accion',
+        PROCESSING: 'Procesando',
+        PAID: 'Pagado',
+        FAILED: 'Fallido',
+        PAST_DUE: 'Vencido',
+        CANCELED: 'Cancelado',
         PAGADO: 'Pagado',
         PENDIENTE: 'Pendiente',
         FALLIDO: 'Fallido',
@@ -1732,6 +1897,19 @@ export default {
       };
 
       return statusLabelMap[status] || 'En revision';
+    },
+    paymentHistoryOperationalStateByStatus(status) {
+      const normalized = this.normalizePaymentHistoryStatus(status);
+
+      if (['FAILED', 'NO_RECONOCIDO'].includes(normalized)) {
+        return 'bloqueado';
+      }
+
+      if (['REQUIRES_ACTION', 'PROCESSING', 'PAST_DUE'].includes(normalized)) {
+        return 'alerta';
+      }
+
+      return 'normal';
     },
     async initializeModuleCatalogMockData(forceError = false) {
       if (!forceError && this.isComponentUnmounted) {
@@ -1812,6 +1990,7 @@ export default {
         return;
       }
 
+      this.resetPaymentStatusPolling(true);
       this.paymentHistoryWidgetNotice = '';
       this.paymentHistoryWidgetMode = 'loading';
       this.syncTransactionsSummaryFromPaymentHistory();
@@ -1826,11 +2005,26 @@ export default {
         }
 
         if (apiResponse.status !== 'error') {
-          this.paymentHistoryMockRows = Array.isArray(apiResponse.data?.rows)
+          const apiRows = Array.isArray(apiResponse.data?.rows)
             ? apiResponse.data.rows
             : [];
+          this.paymentHistoryMockRows = await this.trySyncLatestPaymentStatus(apiRows);
+
+          if (this.isComponentUnmounted) {
+            return;
+          }
+
+          if (apiResponse.data?.endpointUsed && apiResponse.data.endpointUsed !== this.paymentHistoryApiEndpoint) {
+            this.paymentHistoryWidgetNotice = 'Se activo endpoint alterno de historial para mantener continuidad operativa.';
+          }
+
           this.paymentHistoryWidgetMode = 'ready';
           this.syncTransactionsSummaryFromPaymentHistory();
+
+          if (this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
+            this.schedulePaymentStatusPolling();
+          }
+
           return;
         }
 
@@ -1853,6 +2047,7 @@ export default {
       }
 
       if (response.status === 'error') {
+        this.resetPaymentStatusPolling(false);
         this.paymentHistoryMockRows = [];
         this.paymentHistoryWidgetMode = 'error';
         this.paymentHistoryWidgetNotice = response.error?.message || 'Modo mock con fallo controlado para validar manejo de error.';
@@ -1865,6 +2060,7 @@ export default {
         : [];
 
       if (!this.paymentHistoryContractIsReady) {
+        this.resetPaymentStatusPolling(false);
         this.paymentHistoryWidgetMode = 'error';
         this.paymentHistoryWidgetNotice = 'Contrato de historial invalido. Revisar payload de origen.';
       } else {
@@ -2138,9 +2334,9 @@ export default {
       return `FALL-${year}${month}${day}-${sequence}`;
     },
     async submitDeathReportForm() {
-      if (!this.canAccessDeathReportFlow) {
+      if (!this.canSubmitDeathReport) {
         this.deathReportSubmitNotice = '';
-        this.deathReportWidgetNotice = 'No autorizado para enviar reportes de fallecimiento con el rol actual.';
+        this.deathReportWidgetNotice = this.deathReportSubmitDeniedReason || 'No autorizado para enviar reportes de fallecimiento con el rol actual.';
         return;
       }
 
@@ -2200,7 +2396,7 @@ export default {
         const hasValidationErrors = !!validationErrors && Object.keys(validationErrors).length > 0;
 
         this.applyDeathReportApiValidationErrors(validationErrors);
-        this.deathReportWidgetMode = hasValidationErrors || apiResponse.error?.retriable !== true
+        this.deathReportWidgetMode = hasValidationErrors || apiResponse.error?.retriable === true
           ? 'ready'
           : 'error';
         this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible enviar reporte de fallecimiento en API.';
@@ -2276,11 +2472,521 @@ export default {
         .toUpperCase()
         .trim();
 
-      if (this.paymentHistoryStatusEnum.includes(normalized)) {
-        return normalized;
+      const statusAlias = {
+        PAGADO: 'PAID',
+        PENDIENTE: 'PAST_DUE',
+        FALLIDO: 'FAILED',
+        EN_REVISION: 'PROCESSING',
+        CANCELADO: 'CANCELED',
+      };
+      const mappedStatus = statusAlias[normalized] || normalized;
+
+      if (this.paymentHistoryStatusEnum.includes(mappedStatus)) {
+        return mappedStatus;
       }
 
       return 'NO_RECONOCIDO';
+    },
+    hasTransientPaymentStatuses(rows) {
+      const safeRows = Array.isArray(rows) ? rows : [];
+      return safeRows.some((item) => ['REQUIRES_ACTION', 'PROCESSING'].includes(this.normalizePaymentHistoryStatus(item?.estado)));
+    },
+    resetPaymentStatusPolling(resetEventKey = false) {
+      if (this.paymentStatusPollingTimerId) {
+        window.clearTimeout(this.paymentStatusPollingTimerId);
+        this.paymentStatusPollingTimerId = null;
+      }
+
+      this.paymentStatusPollingAttempt = 0;
+      this.paymentStatusSyncInFlight = false;
+
+      if (resetEventKey) {
+        this.paymentStatusLastEventKey = '';
+      }
+    },
+    isPaymentStatusTransitionAllowed(currentStatus, nextStatus) {
+      const current = this.normalizePaymentHistoryStatus(currentStatus);
+      const next = this.normalizePaymentHistoryStatus(nextStatus);
+
+      if (next === 'NO_RECONOCIDO') {
+        return false;
+      }
+
+      if (current === 'NO_RECONOCIDO' || current === next) {
+        return true;
+      }
+
+      const allowedNextStatuses = this.paymentStatusTransitionRules[current];
+      return Array.isArray(allowedNextStatuses)
+        ? allowedNextStatuses.includes(next)
+        : false;
+    },
+    isRecoveryStageTransitionAllowed(currentStage, nextStage) {
+      const normalizedCurrent = this.normalizeRestoredStage(currentStage);
+      const normalizedNext = this.normalizeRestoredStage(nextStage);
+      const allowedStages = this.recoveryStageTransitionRules[normalizedCurrent] || [];
+      return allowedStages.includes(normalizedNext);
+    },
+    resolveRecoveryStageFromPaymentStatus(status) {
+      const normalizedStatus = this.normalizePaymentHistoryStatus(status);
+
+      if (normalizedStatus === 'PAID' || normalizedStatus === 'CANCELED') {
+        return 'al_dia';
+      }
+
+      if (normalizedStatus === 'PROCESSING') {
+        return 'en_reintento';
+      }
+
+      if (normalizedStatus === 'FAILED' || normalizedStatus === 'NO_RECONOCIDO') {
+        return 'bloqueado_por_metodo';
+      }
+
+      if (normalizedStatus === 'REQUIRES_ACTION' || normalizedStatus === 'PAST_DUE') {
+        return this.paymentRecoveryStage === 'bloqueado_por_metodo'
+          ? 'bloqueado_por_metodo'
+          : 'metodo_actualizado';
+      }
+
+      return this.paymentRecoveryStage;
+    },
+    clearRetryOutcomeTimeout() {
+      if (!this.paymentRetryFinalizeTimeoutId) {
+        return;
+      }
+
+      window.clearTimeout(this.paymentRetryFinalizeTimeoutId);
+      this.paymentRetryFinalizeTimeoutId = null;
+    },
+    scheduleRetryOutcomeTimeout() {
+      this.clearRetryOutcomeTimeout();
+
+      this.paymentRetryFinalizeTimeoutId = window.setTimeout(() => {
+        this.paymentRetryFinalizeTimeoutId = null;
+
+        if (this.paymentRecoveryStage !== 'en_reintento') {
+          this.recoverySimulationBusy = false;
+          this.processingActionKey = null;
+          return;
+        }
+
+        this.persistRetryPendingLock();
+        this.paymentHistoryWidgetNotice = 'Reintento en verificacion: no se recibio confirmacion final todavia. Espera sincronizacion antes de intentar de nuevo.';
+        this.recoverySimulationBusy = false;
+        this.processingActionKey = null;
+      }, this.paymentRetryFinalizeTimeoutMs);
+    },
+    getRetryPendingStorageKey() {
+      if (!this.recoveryStorageKey) {
+        return null;
+      }
+
+      return `${this.recoveryStorageKey}.retryPending`;
+    },
+    restoreRetryPendingLock() {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const storageKey = this.getRetryPendingStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      try {
+        const rawValue = window.sessionStorage.getItem(storageKey);
+        const parsedValue = Number.parseInt(`${rawValue || ''}`, 10);
+
+        if (Number.isFinite(parsedValue) && parsedValue > Date.now()) {
+          this.paymentRetryPendingUntil = parsedValue;
+          return;
+        }
+
+        this.paymentRetryPendingUntil = 0;
+        window.sessionStorage.removeItem(storageKey);
+      } catch (error) {
+        this.paymentRetryPendingUntil = 0;
+      }
+    },
+    getPaymentTimelineEventStorageKey() {
+      if (!this.recoveryStorageKey) {
+        return null;
+      }
+
+      return `${this.recoveryStorageKey}.timelineEventKey`;
+    },
+    restorePaymentTimelineEventKey() {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const storageKey = this.getPaymentTimelineEventStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      try {
+        const restored = window.sessionStorage.getItem(storageKey);
+        this.paymentTimelineLastOutcomeEventKey = `${restored || ''}`.trim();
+      } catch (error) {
+        this.paymentTimelineLastOutcomeEventKey = '';
+      }
+    },
+    persistPaymentTimelineEventKey(eventKey) {
+      this.paymentTimelineLastOutcomeEventKey = `${eventKey || ''}`.trim();
+
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const storageKey = this.getPaymentTimelineEventStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      try {
+        if (this.paymentTimelineLastOutcomeEventKey) {
+          window.sessionStorage.setItem(storageKey, this.paymentTimelineLastOutcomeEventKey);
+        } else {
+          window.sessionStorage.removeItem(storageKey);
+        }
+      } catch (error) {
+        // Si sessionStorage falla, se conserva solo en memoria.
+      }
+    },
+    persistRetryPendingLock() {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const storageKey = this.getRetryPendingStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      const now = Date.now();
+      const activeUntil = this.paymentRetryPendingUntil > now
+        ? this.paymentRetryPendingUntil
+        : now + this.paymentRetryPendingLockTtlMs;
+
+      this.paymentRetryPendingUntil = activeUntil;
+
+      try {
+        window.sessionStorage.setItem(storageKey, `${activeUntil}`);
+      } catch (error) {
+        // Si sessionStorage falla, el lock sigue vigente en memoria.
+      }
+    },
+    clearRetryPendingLock() {
+      this.paymentRetryPendingUntil = 0;
+
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const storageKey = this.getRetryPendingStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      try {
+        window.sessionStorage.removeItem(storageKey);
+      } catch (error) {
+        // Si sessionStorage falla, no se interrumpe el flujo principal.
+      }
+    },
+    hasRetryPendingLock() {
+      const now = Date.now();
+
+      if (this.paymentRetryPendingUntil > now) {
+        return true;
+      }
+
+      if (this.paymentRetryPendingUntil > 0) {
+        this.clearRetryPendingLock();
+      }
+
+      return false;
+    },
+    reconcileRecoveryStageFromPaymentStatus(status, {
+      eventKey = '',
+      requestId = '',
+    } = {}) {
+      const normalizedStatus = this.normalizePaymentHistoryStatus(status);
+
+      if (normalizedStatus === 'NO_RECONOCIDO') {
+        return false;
+      }
+
+      if (eventKey && eventKey === this.paymentRecoveryLastOutcomeEventKey) {
+        return false;
+      }
+
+      const nextStage = this.resolveRecoveryStageFromPaymentStatus(normalizedStatus);
+
+      if (!this.isRecoveryStageTransitionAllowed(this.paymentRecoveryStage, nextStage)) {
+        return false;
+      }
+
+      const stageChanged = this.paymentRecoveryStage !== nextStage;
+      this.paymentRecoveryStage = nextStage;
+      this.syncRecoveryStage();
+      this.persistRecoveryStage();
+
+      if (normalizedStatus === 'PROCESSING') {
+        this.scheduleRetryOutcomeTimeout();
+        this.persistRetryPendingLock();
+      } else {
+        this.clearRetryOutcomeTimeout();
+        this.clearRetryPendingLock();
+        this.recoverySimulationBusy = false;
+        this.processingActionKey = null;
+      }
+
+      if (eventKey) {
+        this.paymentRecoveryLastOutcomeEventKey = eventKey;
+      }
+
+      if (requestId && stageChanged) {
+        this.paymentHistoryWidgetNotice = `Estado de recuperacion conciliado (${this.paymentHistoryStatusLabel(normalizedStatus)}) · req: ${requestId}`;
+      }
+
+      return stageChanged;
+    },
+    handlePaymentStatusSyncError(apiError, {
+      fromPolling = false,
+    } = {}) {
+      const errorCode = `${apiError?.code || ''}`.trim().toUpperCase();
+      const requestIdSuffix = apiError?.requestId ? ` (req: ${apiError.requestId})` : '';
+      const fallbackMessage = `${apiError?.message || 'No fue posible sincronizar estado de pago.'}${requestIdSuffix}`;
+      const nonRetriableCodes = ['API_UNAUTHORIZED', 'API_FORBIDDEN', 'API_VALIDATION_ERROR', 'API_BUSINESS_ERROR'];
+      const networkRetryableCodes = ['API_NETWORK_ERROR', 'API_SERVER_ERROR'];
+
+      if (networkRetryableCodes.includes(errorCode)) {
+        this.paymentStatusConsecutiveNetworkErrors += 1;
+
+        if (this.paymentStatusConsecutiveNetworkErrors >= this.paymentStatusNetworkErrorLimit) {
+          this.resetPaymentStatusPolling(false);
+          this.clearRetryOutcomeTimeout();
+          this.clearRetryPendingLock();
+          this.recoverySimulationBusy = false;
+          this.processingActionKey = null;
+          this.paymentHistoryWidgetMode = 'error';
+          this.paymentHistoryWidgetNotice = `Servicio de pagos no disponible temporalmente. Se detuvo la sincronizacion automatica tras ${this.paymentStatusConsecutiveNetworkErrors} fallos consecutivos.${requestIdSuffix}`;
+          return;
+        }
+      } else {
+        this.paymentStatusConsecutiveNetworkErrors = 0;
+      }
+
+      if (['API_UNAUTHORIZED', 'API_FORBIDDEN'].includes(errorCode)) {
+        this.resetPaymentStatusPolling(false);
+        this.clearRetryOutcomeTimeout();
+        this.clearRetryPendingLock();
+        this.recoverySimulationBusy = false;
+        this.processingActionKey = null;
+        this.paymentHistoryWidgetMode = 'error';
+        this.paymentHistoryWidgetNotice = fallbackMessage;
+        return;
+      }
+
+      if (nonRetriableCodes.includes(errorCode)) {
+        this.resetPaymentStatusPolling(false);
+        this.recoverySimulationBusy = false;
+        this.processingActionKey = null;
+        this.paymentHistoryWidgetNotice = fallbackMessage;
+        return;
+      }
+
+      if (this.paymentRecoveryStage === 'en_reintento') {
+        this.scheduleRetryOutcomeTimeout();
+      }
+
+      if (!fromPolling && ['API_RESOURCE_NOT_FOUND', 'API_NETWORK_ERROR', 'API_SERVER_ERROR'].includes(errorCode)) {
+        this.paymentHistoryWidgetNotice = `Sincronizacion diferida (${errorCode || 'sin codigo'}). Se conserva estado local y se reintentara automaticamente.${requestIdSuffix}`;
+        return;
+      }
+
+      this.paymentHistoryWidgetNotice = fallbackMessage;
+    },
+    schedulePaymentStatusPolling() {
+      if (this.isComponentUnmounted || this.paymentStatusPollingTimerId) {
+        return;
+      }
+
+      if (this.paymentHistoryWidgetMode === 'error') {
+        this.resetPaymentStatusPolling(false);
+        return;
+      }
+
+      if (!this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
+        this.resetPaymentStatusPolling(false);
+        return;
+      }
+
+      if (this.paymentStatusPollingAttempt >= this.paymentStatusPollingMaxAttempts) {
+        if (this.paymentStatusPollingTimerId) {
+          window.clearTimeout(this.paymentStatusPollingTimerId);
+          this.paymentStatusPollingTimerId = null;
+        }
+
+        this.paymentStatusSyncInFlight = false;
+        this.paymentHistoryWidgetNotice = 'Sincronizacion en proceso: estado transitorio sin confirmacion final. Reintenta en unos segundos.';
+        return;
+      }
+
+      this.paymentStatusPollingTimerId = window.setTimeout(async () => {
+        this.paymentStatusPollingTimerId = null;
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        this.paymentStatusPollingAttempt += 1;
+
+        const syncedRows = await this.trySyncLatestPaymentStatus(this.paymentHistoryMockRows, {
+          fromPolling: true,
+        });
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        this.paymentHistoryMockRows = syncedRows;
+        this.syncTransactionsSummaryFromPaymentHistory();
+
+        if (this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
+          this.schedulePaymentStatusPolling();
+        } else {
+          this.resetPaymentStatusPolling(false);
+        }
+      }, this.paymentStatusPollingDelayMs);
+    },
+    async trySyncLatestPaymentStatus(rows, {
+      fromPolling = false,
+    } = {}) {
+      const safeRows = Array.isArray(rows) ? rows : [];
+
+      if (!safeRows.length) {
+        return safeRows;
+      }
+
+      if (this.paymentStatusSyncInFlight) {
+        return safeRows;
+      }
+
+      const requestStartedAt = Date.now();
+
+      this.paymentStatusSyncInFlight = true;
+
+      try {
+        const response = await fetchStripePaymentStatusApi({
+          endpoint: this.paymentStatusApiEndpoint,
+        });
+
+        if (this.isComponentUnmounted) {
+          return safeRows;
+        }
+
+        if (response.status === 'error') {
+          this.handlePaymentStatusSyncError(response.error, {
+            fromPolling,
+          });
+
+          return safeRows;
+        }
+
+        const normalizedStatus = this.normalizePaymentHistoryStatus(response.data?.paymentStatus);
+        this.paymentStatusConsecutiveNetworkErrors = 0;
+
+        if (normalizedStatus === 'NO_RECONOCIDO') {
+          this.paymentHistoryWidgetNotice = 'Estado de pago no reconocido durante sincronizacion. Se conserva historial local.';
+
+          if (this.paymentRecoveryStage === 'en_reintento') {
+            this.scheduleRetryOutcomeTimeout();
+          }
+
+          return safeRows;
+        }
+
+        const normalizedReference = `${response.data?.paymentReference || ''}`.trim();
+        if (!normalizedReference) {
+          if (!fromPolling) {
+            this.paymentHistoryWidgetNotice = 'Sincronizacion diferida: no llego referencia de pago para conciliar fila visible.';
+          }
+
+          if (this.paymentRecoveryStage === 'en_reintento') {
+            this.scheduleRetryOutcomeTimeout();
+          }
+
+          return safeRows;
+        }
+
+        const requestId = `${response.data?.requestId || ''}`.trim();
+        const eventKey = `${normalizedReference}|${normalizedStatus}|${requestId || 'no-request-id'}`;
+
+        if (requestStartedAt < this.paymentStatusLastAppliedRequestAt) {
+          if (!fromPolling) {
+            this.paymentHistoryWidgetNotice = 'Se ignoro una respuesta rezagada para preservar el estado mas reciente.';
+          }
+          return safeRows;
+        }
+
+        if (eventKey === this.paymentStatusLastEventKey) {
+          if (!fromPolling) {
+            this.paymentHistoryWidgetNotice = 'Evento de webhook duplicado detectado; no se aplicaron cambios redundantes.';
+          }
+          return safeRows;
+        }
+
+        const nextRows = safeRows.map((item) => ({ ...item }));
+        const targetIndex = normalizedReference
+          ? nextRows.findIndex((item) => `${item?.referencia || ''}`.trim() === normalizedReference)
+          : -1;
+
+        if (targetIndex < 0) {
+          if (!fromPolling) {
+            this.paymentHistoryWidgetNotice = `Sincronizacion recibida para referencia no visible (${normalizedReference}). Se conserva historial actual.`;
+          }
+          return safeRows;
+        }
+
+        const currentStatus = this.normalizePaymentHistoryStatus(nextRows[targetIndex]?.estado);
+        if (!this.isPaymentStatusTransitionAllowed(currentStatus, normalizedStatus)) {
+          this.paymentHistoryWidgetNotice = `Transicion de estado no valida (${currentStatus} -> ${normalizedStatus}). Se ignora evento.`;
+          return safeRows;
+        }
+
+        nextRows[targetIndex] = {
+          ...nextRows[targetIndex],
+          estado: normalizedStatus,
+        };
+
+        this.paymentStatusLastAppliedRequestAt = requestStartedAt;
+        this.paymentStatusLastEventKey = eventKey;
+        this.reconcileRecoveryStageFromPaymentStatus(normalizedStatus, {
+          eventKey,
+          requestId,
+        });
+        this.appendConsolidatedPaymentTimelineEvent({
+          status: normalizedStatus,
+          reference: normalizedReference,
+          requestId,
+        });
+
+        if (requestId) {
+          this.paymentHistoryWidgetNotice = `Estado sincronizado por webhook (${normalizedStatus}) · req: ${requestId}`;
+        }
+
+        return nextRows;
+      } finally {
+        this.paymentStatusSyncInFlight = false;
+      }
     },
     normalizePaymentHistoryDate(value) {
       const raw = `${value || ''}`.trim();
@@ -2392,7 +3098,7 @@ export default {
 
       const items = this.paymentHistoryNormalizedRows;
       const latest = items[0] || null;
-      const hasCritical = items.some((item) => ['FALLIDO', 'NO_RECONOCIDO'].includes(item.estado));
+      const hasCritical = items.some((item) => ['FAILED', 'PAST_DUE'].includes(item.estado));
 
       txCountBlock.value = `${items.length}`;
       txCountBlock.hint = `Movimientos disponibles en historial: ${items.length}.`;
@@ -2400,8 +3106,97 @@ export default {
       lastStatusBlock.hint = hasCritical
         ? 'Se detectan estados de pago con riesgo operativo.'
         : 'Estado sincronizado con el historial cargado.';
+
+      this.syncPaymentConsistencyFromHistory(items);
+    },
+    syncPaymentConsistencyFromHistory(normalizedRows = null) {
+      const rows = Array.isArray(normalizedRows)
+        ? normalizedRows
+        : this.paymentHistoryNormalizedRows;
+
+      const paymentsModule = this.moduleCatalog['pagos-pendientes'];
+      const dashboardModule = this.moduleCatalog.dashboard;
+      const transactionsModule = this.moduleCatalog.transacciones;
+
+      if (!paymentsModule || !dashboardModule || !transactionsModule) {
+        return;
+      }
+
+      if (!Array.isArray(rows) || !rows.length) {
+        return;
+      }
+
+      const latest = rows[0];
+      const latestStatus = this.normalizePaymentHistoryStatus(latest?.estado);
+
+      if (latestStatus === 'PROCESSING') {
+        paymentsModule.currentState = 'en_reintento';
+        paymentsModule.blockedReason = 'Reintento en proceso. Espera confirmacion final del cobro (historial reciente).';
+      } else if (['FAILED', 'PAST_DUE', 'REQUIRES_ACTION', 'NO_RECONOCIDO'].includes(latestStatus)) {
+        paymentsModule.currentState = 'bloqueado_por_metodo';
+        paymentsModule.blockedReason = 'Cobro pendiente de regularizacion detectado en historial reciente. Requiere accion para continuar.';
+      } else {
+        paymentsModule.currentState = 'al_dia';
+        paymentsModule.blockedReason = null;
+      }
+
+      if (Array.isArray(transactionsModule.blocks) && transactionsModule.blocks[2]) {
+        transactionsModule.blocks[2].value = this.paymentHistoryStatusLabel(latestStatus);
+      }
+    },
+    appendConsolidatedPaymentTimelineEvent({
+      status,
+      reference,
+      requestId,
+    }) {
+      const normalizedStatus = this.normalizePaymentHistoryStatus(status);
+
+      if (normalizedStatus === 'NO_RECONOCIDO') {
+        return;
+      }
+
+      const cleanRequestId = `${requestId || ''}`.trim();
+      const cleanReference = `${reference || ''}`.trim() || 'NOREF';
+      const eventKey = cleanRequestId || `${cleanReference}|${normalizedStatus}`;
+
+      if (eventKey === this.paymentTimelineLastOutcomeEventKey) {
+        return;
+      }
+
+      this.persistPaymentTimelineEventKey(eventKey);
+
+      const titleByStatus = {
+        PAID: 'Pago conciliado',
+        CANCELED: 'Pago conciliado',
+        PROCESSING: 'Reintento en proceso',
+        REQUIRES_ACTION: 'Reintento requiere accion',
+        PAST_DUE: 'Pago en mora',
+        FAILED: 'Reintento fallido',
+      };
+      const detailByStatus = {
+        PAID: 'El cobro fue confirmado y la cuenta se mantiene operativa.',
+        CANCELED: 'No se requiere cobro adicional para la referencia conciliada.',
+        PROCESSING: 'El reintento sigue en procesamiento y espera confirmacion final.',
+        REQUIRES_ACTION: 'El cobro requiere accion del cliente para finalizarse.',
+        PAST_DUE: 'La referencia permanece vencida y requiere regularizacion.',
+        FAILED: 'El reintento no se completo; se requiere nueva accion operativa.',
+      };
+      const eventCode = cleanRequestId
+        ? `EVT-PAY-${cleanRequestId}`
+        : `EVT-PAY-${cleanReference}-${normalizedStatus}`;
+
+      this.appendTimelineEvent('transacciones', {
+        code: eventCode,
+        title: titleByStatus[normalizedStatus] || 'Actualizacion de pago',
+        detail: `${detailByStatus[normalizedStatus] || 'Se recibio un cambio de estado en pagos.'} Ref: ${cleanReference}.`,
+      });
     },
     openBeneficiaryForm() {
+      if (!this.canCreateBeneficiary) {
+        this.beneficiariesWidgetNotice = this.beneficiaryCreateDeniedReason || 'No tienes permisos para agregar beneficiarios.';
+        return;
+      }
+
       if (['loading', 'error'].includes(this.beneficiariesWidgetState)) {
         return;
       }
@@ -2532,6 +3327,11 @@ export default {
         return;
       }
 
+      if (!this.canCreateBeneficiary) {
+        this.beneficiariesWidgetNotice = this.beneficiaryCreateDeniedReason || 'No tienes permisos para agregar beneficiarios.';
+        return;
+      }
+
       this.beneficiariesWidgetNotice = '';
 
       if (['loading', 'error'].includes(this.beneficiariesWidgetState)) {
@@ -2609,10 +3409,15 @@ export default {
       }
 
       const blockedCodes = ['API_UNAUTHORIZED', 'API_FORBIDDEN'];
+      const allowedFallbackCodes = ['API_RESOURCE_NOT_FOUND'];
       const code = `${apiError.code || ''}`.trim().toUpperCase();
 
       if (blockedCodes.includes(code)) {
         return false;
+      }
+
+      if (allowedFallbackCodes.includes(code)) {
+        return true;
       }
 
       return apiError.retriable === true;
@@ -2766,6 +3571,20 @@ export default {
       }
     },
     getActionStatus(action) {
+      const hasMappedExecution = !!(action && (action.routeName || action.simulateKey || action.actionKey || action.permissionKey));
+
+      if (hasMappedExecution) {
+        const permissionStatus = this.permissionEvaluator.canExecuteAction(action);
+
+        if (!permissionStatus.allowed) {
+          return {
+            disabled: true,
+            disabledReason: permissionStatus.reason,
+            isUpcoming: false,
+          };
+        }
+      }
+
       if (this.recoverySimulationBusy && action.simulateKey) {
         return {
           disabled: true,
@@ -2783,6 +3602,14 @@ export default {
       }
 
       if (action.simulateKey === 'retry-payment') {
+        if (this.hasRetryPendingLock()) {
+          return {
+            disabled: true,
+            disabledReason: 'Reintento en verificacion; espera confirmacion para evitar duplicidad.',
+            isUpcoming: false,
+          };
+        }
+
         if (this.paymentRecoveryStage === 'metodo_actualizado' || this.paymentRecoveryStage === 'en_reintento') {
           return {
             disabled: false,
@@ -3015,18 +3842,26 @@ export default {
         && (this.paymentRecoveryStage === 'metodo_actualizado' || this.paymentRecoveryStage === 'en_reintento')) {
         this.processingActionKey = simulateKey;
         this.recoverySimulationBusy = true;
+        this.persistRetryPendingLock();
         this.paymentRecoveryStage = 'en_reintento';
         this.syncRecoveryStage();
         this.persistRecoveryStage();
+        this.scheduleRetryOutcomeTimeout();
 
-        this.recoveryTimeoutId = window.setTimeout(() => {
-          this.paymentRecoveryStage = 'al_dia';
-          this.syncRecoveryStage();
-          this.persistRecoveryStage();
-          this.recoverySimulationBusy = false;
-          this.processingActionKey = null;
-          this.recoveryTimeoutId = null;
-        }, 900);
+        this.trySyncLatestPaymentStatus(this.paymentHistoryMockRows, {
+          fromPolling: false,
+        }).then((syncedRows) => {
+          if (this.isComponentUnmounted) {
+            return;
+          }
+
+          this.paymentHistoryMockRows = syncedRows;
+          this.syncTransactionsSummaryFromPaymentHistory();
+
+          if (this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
+            this.schedulePaymentStatusPolling();
+          }
+        });
       }
     },
     onAction(action) {
@@ -3064,6 +3899,11 @@ export default {
       return !this.paymentMethodFormErrors.reference && !this.paymentMethodFormErrors.confirm;
     },
     submitPaymentMethodForm() {
+      if (!this.canExecutePaymentMethodUpdate) {
+        this.paymentMethodFormNotice = this.paymentMethodUpdateDeniedReason || 'No tienes permisos para actualizar metodo de pago.';
+        return;
+      }
+
       this.paymentMethodFormNotice = '';
 
       if (this.paymentRecoveryStage === 'al_dia') {
