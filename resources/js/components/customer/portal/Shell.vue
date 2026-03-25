@@ -1,7 +1,7 @@
 <template>
-  <div class="customer-shell min-vh-100 d-flex">
-    <aside class="shell-sidebar bg-white border-end" :class="{ 'is-open': mobileMenuOpen }">
-      <div class="sidebar-top px-4 py-4 border-bottom">
+  <div class="customer-shell customer-shell-theme min-vh-100 d-flex">
+    <aside class="shell-sidebar" :class="{ 'is-open': mobileMenuOpen }">
+      <div class="sidebar-top px-4 py-4">
         <div class="d-flex align-items-center justify-content-between">
           <div class="fw-bold fs-3 text-gray-900">yastubo</div>
           <button
@@ -38,7 +38,7 @@
     </aside>
 
     <div class="shell-content flex-grow-1 d-flex flex-column">
-      <header class="bg-white border-bottom px-4 py-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+      <header class="shell-header px-4 py-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
           <button
             class="btn btn-icon btn-light d-lg-none"
@@ -93,21 +93,21 @@
         </div>
       </header>
 
-      <main class="p-4 p-lg-6 flex-grow-1">
+      <main class="shell-main p-4 p-lg-6 flex-grow-1">
         <div v-if="isFallbackNavigation" class="alert alert-warning mb-4" role="alert">
           Navegacion en modo fallback local. Verifica la inyeccion de @routes/Ziggy en esta vista.
         </div>
 
-        <div class="alert alert-info mb-4" role="alert">
+        <div class="shell-note mb-4" role="alert">
           Datos simulados FE-003 para validar estados, transiciones y recuperacion de pago.
         </div>
 
-        <div class="card shadow-sm border-0 mb-4">
+        <div class="card shell-panel shadow-sm border-0 mb-4">
           <div class="card-body p-4 p-lg-5">
             <h2 class="fs-4 fw-bold text-gray-900 mb-3">Matriz de estado cliente y pago</h2>
             <div class="row g-3">
               <div class="col-12 col-md-6 col-xl-4" v-for="entry in statusMatrix" :key="entry.state">
-                <div class="border rounded p-3 h-100">
+                <div class="border rounded p-3 h-100 shell-state-card">
                   <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="badge fs-8" :class="stateBadgeClass(entry.state)">{{ formatState(entry.state) }}</span>
                     <span v-if="entry.state === paymentRecoveryStage" class="badge badge-light-primary">Actual</span>
@@ -120,16 +120,16 @@
           </div>
         </div>
 
-        <div class="card shadow-sm border-0">
+        <div class="card shell-panel shadow-sm border-0">
           <div class="card-body p-5">
-            <h1 class="fs-2hx fw-bold text-gray-900 mb-2">{{ activeTitle }}</h1>
+            <h1 class="shell-page-title fw-bold text-gray-900 mb-2">{{ activeTitle }}</h1>
             <p class="text-muted mb-0">
               {{ activeModule.description }}
             </p>
           </div>
         </div>
 
-        <div v-if="activeKey === 'dashboard'" class="card shadow-sm border-0 mt-4">
+        <div v-if="activeKey === 'dashboard'" class="card shell-panel shadow-sm border-0 mt-4">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h2 class="fs-4 fw-bold text-gray-900 mb-0">Resumen operativo</h2>
@@ -174,7 +174,7 @@
 
             <div v-else class="row g-3">
               <div class="col-12 col-sm-6 col-xl-4" v-for="card in dashboardSummaryCards" :key="card.key">
-                <div class="border rounded p-3 h-100">
+                <div class="border rounded p-3 h-100 shell-summary-card">
                   <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                     <div class="fw-semibold text-gray-800 fs-8 text-truncate" :title="card.label">{{ card.label }}</div>
                     <span class="badge fs-9 flex-shrink-0" :class="summaryStateBadgeClass(card.state)">
@@ -189,7 +189,7 @@
           </div>
         </div>
 
-        <div v-if="activeKey === 'dashboard' && canViewBeneficiariesWidget" class="card shadow-sm border-0 mt-4">
+        <div v-if="activeKey === 'dashboard' && canViewBeneficiariesWidget" class="card shell-panel shadow-sm border-0 mt-4">
           <div class="card-body p-4 p-lg-5">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
               <div>
@@ -872,6 +872,9 @@ import {
   createCustomerPortalPermissionEvaluator,
   getCustomerPortalPermissionContract,
 } from './services/customerPortalPermissions';
+import {
+  createCustomerPortalTelemetryService,
+} from './services/customerPortalTelemetryService';
 
 export default {
   name: 'CustomerPortalShell',
@@ -1027,6 +1030,8 @@ export default {
       deathReportLastSubmissionAt: '',
       deathReportSubmitNotice: '',
       isComponentUnmounted: false,
+      telemetryService: null,
+      telemetryPermissionSeenKeys: {},
       deathReportCaseSequence: 2,
       deathReportForm: {
         nombreReportante: 'Cliente Demo',
@@ -1128,6 +1133,7 @@ export default {
   },
   async created() {
     this.isComponentUnmounted = false;
+    this.telemetryService = createCustomerPortalTelemetryService();
     await this.initializeModuleCatalogData();
     this.ensureTimelineSeedTimestamps();
     this.restoreRecoveryStage();
@@ -1146,6 +1152,8 @@ export default {
     if (this.canAccessDeathReportFlow) {
       this.initializeDeathReportWidget();
     }
+
+    this.trackInitialPermissionDecisions();
   },
   beforeUnmount() {
     this.isComponentUnmounted = true;
@@ -1805,6 +1813,100 @@ export default {
     },
   },
   methods: {
+    trackPortalEvent(eventName, payload = {}, options = {}) {
+      if (!this.telemetryService || typeof this.telemetryService.track !== 'function') {
+        return;
+      }
+
+      this.telemetryService.track(eventName, {
+        module: payload.module || this.activeKey || 'dashboard',
+        action: payload.action || 'unknown',
+        outcome: payload.outcome || 'success',
+        severity: payload.severity || 'info',
+        widgetState: payload.widgetState || 'na',
+        operationalState: payload.operationalState || 'na',
+        permissionDecision: payload.permissionDecision || 'na',
+        reasonCode: payload.reasonCode || '',
+        correlation: payload.correlation || {},
+        meta: payload.meta || {},
+      }, {
+        dedupeKey: options.dedupeKey,
+      });
+    },
+    trackPermissionDecisionEvent({
+      module,
+      action,
+      allowed,
+      reason,
+      permissionKey,
+    }) {
+      if (!this.telemetryService || typeof this.telemetryService.trackPermissionDecision !== 'function') {
+        return;
+      }
+
+      const dedupeKey = `${module || 'na'}|${action || 'permission-check'}|${allowed ? 'allow' : 'deny'}|${permissionKey || ''}`;
+
+      if (this.telemetryPermissionSeenKeys[dedupeKey]) {
+        return;
+      }
+
+      this.telemetryPermissionSeenKeys[dedupeKey] = true;
+
+      this.telemetryService.trackPermissionDecision({
+        module: module || 'na',
+        action: action || 'permission-check',
+        permissionDecision: allowed ? 'allow' : 'deny',
+        reasonCode: allowed ? 'PERMISSION_GRANTED' : 'PERMISSION_DENIED',
+        outcome: allowed ? 'success' : 'blocked',
+        severity: allowed ? 'info' : 'warn',
+        meta: {
+          reason: reason || '',
+          permissionKey: permissionKey || '',
+        },
+      }, {
+        dedupeKey,
+      });
+    },
+    trackInitialPermissionDecisions() {
+      const moduleChecks = ['dashboard', 'beneficiarios', 'payment-history', 'death-report'];
+
+      moduleChecks.forEach((moduleKey) => {
+        const decision = this.permissionEvaluator.canViewModule(moduleKey);
+        this.trackPermissionDecisionEvent({
+          module: moduleKey,
+          action: 'view-module',
+          allowed: decision.allowed,
+          reason: decision.reason,
+          permissionKey: decision.permissionKey,
+        });
+      });
+
+      const actionChecks = [
+        {
+          key: 'beneficiaries.create',
+          action: { actionKey: 'beneficiaries.create' },
+        },
+        {
+          key: 'death-report.submit',
+          action: { actionKey: 'death-report.submit' },
+        },
+        {
+          key: 'update-payment-method',
+          action: { simulateKey: 'update-payment-method' },
+        },
+      ];
+
+      actionChecks.forEach((entry) => {
+        const decision = this.permissionEvaluator.canExecuteAction(entry.action);
+        this.trackPermissionDecisionEvent({
+          module: this.activeKey || 'dashboard',
+          action: entry.key,
+          allowed: decision.allowed,
+          reason: decision.reason,
+          permissionKey: decision.permissionKey,
+        });
+      });
+    },
     formatState(state) {
       return (state || '')
         .split('_')
@@ -1951,6 +2053,18 @@ export default {
       if (apiResponse.status === 'ready' && apiResponse.data && typeof apiResponse.data === 'object') {
         this.moduleCatalog = apiResponse.data;
         this.moduleCatalogLoadSource = 'api';
+        this.trackPortalEvent('customer.portal.dashboard.load', {
+          module: 'dashboard',
+          action: 'load-module-catalog',
+          outcome: 'success',
+          widgetState: 'ready',
+          operationalState: this.dashboardSummaryStatus?.state || 'normal',
+          meta: {
+            source: 'api',
+          },
+        }, {
+          dedupeKey: 'dashboard-load-ready-api',
+        });
         return true;
       }
 
@@ -1958,6 +2072,19 @@ export default {
         this.moduleCatalog = {};
         this.moduleCatalogLoadSource = 'api';
         this.moduleCatalogLoadNotice = '';
+        this.trackPortalEvent('customer.portal.dashboard.load', {
+          module: 'dashboard',
+          action: 'load-module-catalog',
+          outcome: 'ignored',
+          severity: 'warn',
+          widgetState: 'empty',
+          operationalState: 'alerta',
+          meta: {
+            source: 'api',
+          },
+        }, {
+          dedupeKey: 'dashboard-load-empty-api',
+        });
         return true;
       }
 
@@ -1965,6 +2092,21 @@ export default {
         this.moduleCatalog = {};
         this.moduleCatalogLoadSource = 'error';
         this.moduleCatalogLoadNotice = apiResponse.error?.message || 'No fue posible cargar catalogo de modulos.';
+        this.trackPortalEvent('customer.portal.dashboard.load', {
+          module: 'dashboard',
+          action: 'load-module-catalog',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: 'error',
+          operationalState: 'bloqueado',
+          reasonCode: 'API_ERROR',
+          meta: {
+            source: 'api',
+            errorCode: apiResponse.error?.code || '',
+          },
+        }, {
+          dedupeKey: `dashboard-load-error-${apiResponse.error?.code || 'unknown'}`,
+        });
         return false;
       }
 
@@ -1978,11 +2120,40 @@ export default {
         this.moduleCatalogLoadSource = 'mock-fallback';
         this.moduleCatalogLoadNotice = apiResponse.error?.message
           || 'Catalogo API no disponible. Se usa fallback mock controlado.';
+        this.trackPortalEvent('customer.portal.dashboard.load', {
+          module: 'dashboard',
+          action: 'load-module-catalog',
+          outcome: 'success',
+          severity: 'warn',
+          widgetState: 'ready',
+          operationalState: this.dashboardSummaryStatus?.state || 'normal',
+          meta: {
+            source: 'mock-fallback',
+            errorCode: apiResponse.error?.code || '',
+          },
+        }, {
+          dedupeKey: `dashboard-load-mock-${apiResponse.error?.code || 'unknown'}`,
+        });
         return true;
       }
 
       this.moduleCatalogLoadSource = 'error';
       this.moduleCatalogLoadNotice = apiResponse.error?.message || 'No fue posible cargar catalogo de modulos.';
+      this.trackPortalEvent('customer.portal.dashboard.load', {
+        module: 'dashboard',
+        action: 'load-module-catalog',
+        outcome: 'failure',
+        severity: 'error',
+        widgetState: 'error',
+        operationalState: 'bloqueado',
+        reasonCode: 'API_ERROR',
+        meta: {
+          source: 'mock-fallback',
+          errorCode: apiResponse.error?.code || '',
+        },
+      }, {
+        dedupeKey: `dashboard-load-final-error-${apiResponse.error?.code || 'unknown'}`,
+      });
       return false;
     },
     async initializePaymentHistoryWidget(forceError = false) {
@@ -2020,6 +2191,19 @@ export default {
 
           this.paymentHistoryWidgetMode = 'ready';
           this.syncTransactionsSummaryFromPaymentHistory();
+          this.trackPortalEvent('customer.portal.payments.history.view', {
+            module: 'payment-history',
+            action: 'view-history',
+            outcome: 'success',
+            widgetState: this.paymentHistoryWidgetState,
+            operationalState: this.dashboardSummaryStatus?.state || 'normal',
+            meta: {
+              source: 'api',
+              rows: this.paymentHistoryMockRows.length,
+            },
+          }, {
+            dedupeKey: `payments-history-api-${this.paymentHistoryMockRows.length}`,
+          });
 
           if (this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
             this.schedulePaymentStatusPolling();
@@ -2033,6 +2217,21 @@ export default {
           this.paymentHistoryWidgetMode = 'error';
           this.paymentHistoryWidgetNotice = apiResponse.error?.message || 'No fue posible cargar historial desde API.';
           this.syncTransactionsSummaryFromPaymentHistory();
+          this.trackPortalEvent('customer.portal.payments.history.view', {
+            module: 'payment-history',
+            action: 'view-history',
+            outcome: 'failure',
+            severity: 'error',
+            widgetState: 'error',
+            operationalState: 'bloqueado',
+            reasonCode: 'API_ERROR',
+            meta: {
+              source: 'api',
+              errorCode: apiResponse.error?.code || '',
+            },
+          }, {
+            dedupeKey: `payments-history-error-${apiResponse.error?.code || 'unknown'}`,
+          });
           return;
         }
       }
@@ -2052,6 +2251,20 @@ export default {
         this.paymentHistoryWidgetMode = 'error';
         this.paymentHistoryWidgetNotice = response.error?.message || 'Modo mock con fallo controlado para validar manejo de error.';
         this.syncTransactionsSummaryFromPaymentHistory();
+        this.trackPortalEvent('customer.portal.payments.history.view', {
+          module: 'payment-history',
+          action: 'view-history',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: 'error',
+          operationalState: 'bloqueado',
+          reasonCode: 'API_ERROR',
+          meta: {
+            source: 'mock',
+          },
+        }, {
+          dedupeKey: 'payments-history-mock-error',
+        });
         return;
       }
 
@@ -2066,6 +2279,21 @@ export default {
       } else {
         this.paymentHistoryWidgetMode = 'ready';
       }
+
+      this.trackPortalEvent('customer.portal.payments.history.view', {
+        module: 'payment-history',
+        action: 'view-history',
+        outcome: this.paymentHistoryWidgetState === 'error' ? 'failure' : 'success',
+        severity: this.paymentHistoryWidgetState === 'error' ? 'error' : 'info',
+        widgetState: this.paymentHistoryWidgetState,
+        operationalState: this.paymentHistoryOperationalStateByStatus(this.paymentHistoryNormalizedRows[0]?.estado),
+        meta: {
+          source: 'mock',
+          rows: this.paymentHistoryMockRows.length,
+        },
+      }, {
+        dedupeKey: `payments-history-mock-${this.paymentHistoryWidgetState}-${this.paymentHistoryMockRows.length}`,
+      });
 
       this.syncTransactionsSummaryFromPaymentHistory();
     },
@@ -2337,6 +2565,18 @@ export default {
       if (!this.canSubmitDeathReport) {
         this.deathReportSubmitNotice = '';
         this.deathReportWidgetNotice = this.deathReportSubmitDeniedReason || 'No autorizado para enviar reportes de fallecimiento con el rol actual.';
+        this.trackPortalEvent('customer.portal.death-report.submit', {
+          module: 'death-report',
+          action: 'submit-death-report',
+          outcome: 'blocked',
+          severity: 'warn',
+          widgetState: this.deathReportWidgetState,
+          operationalState: this.deathReportOperationalState,
+          permissionDecision: 'deny',
+          reasonCode: 'PERMISSION_DENIED',
+        }, {
+          dedupeKey: 'death-report-submit-permission-denied',
+        });
         return;
       }
 
@@ -2388,6 +2628,24 @@ export default {
           this.deathReportHasSubmitted = true;
           this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
           this.deathReportSubmitNotice = 'Reporte enviado desde API.';
+          this.trackPortalEvent('customer.portal.death-report.submit', {
+            module: 'death-report',
+            action: 'submit-death-report',
+            outcome: 'success',
+            widgetState: this.deathReportWidgetState,
+            operationalState: this.deathReportOperationalState,
+            permissionDecision: 'allow',
+            reasonCode: 'ACTION_EXECUTED',
+            correlation: {
+              requestId: confirmation.requestId || '',
+            },
+            meta: {
+              source: 'api',
+              caseStatus: confirmation.estadoCaso || '',
+            },
+          }, {
+            dedupeKey: `death-report-submit-api-${confirmation.referenciaCaso || this.deathReportCaseSequence}`,
+          });
           this.isDeathReportSubmitting = false;
           return;
         }
@@ -2401,6 +2659,22 @@ export default {
           : 'error';
         this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible enviar reporte de fallecimiento en API.';
         this.deathReportSubmitNotice = '';
+        this.trackPortalEvent('customer.portal.death-report.submit', {
+          module: 'death-report',
+          action: 'submit-death-report',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: this.deathReportWidgetState,
+          operationalState: this.deathReportOperationalState,
+          permissionDecision: 'allow',
+          reasonCode: apiResponse.error?.validationErrors ? 'VALIDATION_ERROR' : 'API_ERROR',
+          meta: {
+            source: 'api',
+            errorCode: apiResponse.error?.code || '',
+          },
+        }, {
+          dedupeKey: `death-report-submit-api-error-${apiResponse.error?.code || 'unknown'}`,
+        });
         this.isDeathReportSubmitting = false;
         return;
       }
@@ -2419,6 +2693,21 @@ export default {
         this.deathReportWidgetMode = 'error';
         this.deathReportWidgetNotice = response.error?.message || 'No fue posible enviar el reporte en modo mock.';
         this.deathReportSubmitNotice = '';
+        this.trackPortalEvent('customer.portal.death-report.submit', {
+          module: 'death-report',
+          action: 'submit-death-report',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: this.deathReportWidgetState,
+          operationalState: this.deathReportOperationalState,
+          permissionDecision: 'allow',
+          reasonCode: 'API_ERROR',
+          meta: {
+            source: 'mock',
+          },
+        }, {
+          dedupeKey: 'death-report-submit-mock-error',
+        });
         this.isDeathReportSubmitting = false;
         return;
       }
@@ -2432,6 +2721,21 @@ export default {
       this.deathReportHasSubmitted = true;
       this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
       this.deathReportSubmitNotice = 'Reporte enviado en modo simulado (FE-008C).';
+      this.trackPortalEvent('customer.portal.death-report.submit', {
+        module: 'death-report',
+        action: 'submit-death-report',
+        outcome: 'success',
+        widgetState: this.deathReportWidgetState,
+        operationalState: this.deathReportOperationalState,
+        permissionDecision: 'allow',
+        reasonCode: 'ACTION_EXECUTED',
+        meta: {
+          source: 'mock',
+          caseStatus: confirmation.estadoCaso || '',
+        },
+      }, {
+        dedupeKey: `death-report-submit-mock-${confirmation.referenciaCaso || this.deathReportCaseSequence}`,
+      });
       this.isDeathReportSubmitting = false;
     },
     applyDeathReportApiValidationErrors(validationErrors) {
@@ -2754,6 +3058,26 @@ export default {
 
       if (requestId && stageChanged) {
         this.paymentHistoryWidgetNotice = `Estado de recuperacion conciliado (${this.paymentHistoryStatusLabel(normalizedStatus)}) · req: ${requestId}`;
+      }
+
+      if (stageChanged) {
+        this.trackPortalEvent('customer.portal.payments.reconcile', {
+          module: 'payment-history',
+          action: 'reconcile-recovery-stage',
+          outcome: 'success',
+          widgetState: this.paymentHistoryWidgetState,
+          operationalState: this.dashboardSummaryStatus?.state || 'normal',
+          correlation: {
+            requestId,
+            eventKey,
+          },
+          meta: {
+            status: normalizedStatus,
+            stage: this.paymentRecoveryStage,
+          },
+        }, {
+          dedupeKey: `payments-reconcile-${eventKey || normalizedStatus}`,
+        });
       }
 
       return stageChanged;
@@ -3226,12 +3550,40 @@ export default {
             ? apiResponse.data.items
             : [];
           this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+          this.trackPortalEvent('customer.portal.beneficiaries.view', {
+            module: 'beneficiarios',
+            action: 'view-beneficiaries',
+            outcome: 'success',
+            widgetState: this.beneficiariesWidgetState,
+            operationalState: this.beneficiariesOperationalState,
+            meta: {
+              source: 'api',
+              total: this.beneficiariesItems.length,
+            },
+          }, {
+            dedupeKey: `beneficiaries-view-api-${this.beneficiariesItems.length}`,
+          });
           return;
         }
 
         if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
           this.beneficiariesWidgetMode = 'error';
           this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible cargar beneficiarios desde API.';
+          this.trackPortalEvent('customer.portal.beneficiaries.view', {
+            module: 'beneficiarios',
+            action: 'view-beneficiaries',
+            outcome: 'failure',
+            severity: 'error',
+            widgetState: 'error',
+            operationalState: 'bloqueado',
+            reasonCode: 'API_ERROR',
+            meta: {
+              source: 'api',
+              errorCode: apiResponse.error?.code || '',
+            },
+          }, {
+            dedupeKey: `beneficiaries-view-error-${apiResponse.error?.code || 'unknown'}`,
+          });
           return;
         }
       }
@@ -3248,6 +3600,20 @@ export default {
       if (response.status === 'error') {
         this.beneficiariesWidgetMode = 'error';
         this.beneficiariesWidgetNotice = response.error?.message || 'No fue posible cargar beneficiarios mock.';
+        this.trackPortalEvent('customer.portal.beneficiaries.view', {
+          module: 'beneficiarios',
+          action: 'view-beneficiaries',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: 'error',
+          operationalState: 'bloqueado',
+          reasonCode: 'API_ERROR',
+          meta: {
+            source: 'mock',
+          },
+        }, {
+          dedupeKey: 'beneficiaries-view-mock-error',
+        });
         return;
       }
 
@@ -3255,6 +3621,19 @@ export default {
         ? response.data.items
         : [];
       this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+      this.trackPortalEvent('customer.portal.beneficiaries.view', {
+        module: 'beneficiarios',
+        action: 'view-beneficiaries',
+        outcome: 'success',
+        widgetState: this.beneficiariesWidgetState,
+        operationalState: this.beneficiariesOperationalState,
+        meta: {
+          source: 'mock',
+          total: this.beneficiariesItems.length,
+        },
+      }, {
+        dedupeKey: `beneficiaries-view-mock-${this.beneficiariesItems.length}`,
+      });
     },
     resetBeneficiaryForm() {
       this.beneficiaryForm.nombre = '';
@@ -3329,6 +3708,18 @@ export default {
 
       if (!this.canCreateBeneficiary) {
         this.beneficiariesWidgetNotice = this.beneficiaryCreateDeniedReason || 'No tienes permisos para agregar beneficiarios.';
+        this.trackPortalEvent('customer.portal.beneficiaries.add', {
+          module: 'beneficiarios',
+          action: 'add-beneficiary',
+          outcome: 'blocked',
+          severity: 'warn',
+          widgetState: this.beneficiariesWidgetState,
+          operationalState: this.beneficiariesOperationalState,
+          permissionDecision: 'deny',
+          reasonCode: 'PERMISSION_DENIED',
+        }, {
+          dedupeKey: 'beneficiary-add-permission-denied',
+        });
         return;
       }
 
@@ -3371,6 +3762,20 @@ export default {
             this.showBeneficiaryForm = false;
             this.resetBeneficiaryForm();
             this.beneficiariesWidgetNotice = 'Beneficiario agregado desde API.';
+            this.trackPortalEvent('customer.portal.beneficiaries.add', {
+              module: 'beneficiarios',
+              action: 'add-beneficiary',
+              outcome: 'success',
+              widgetState: this.beneficiariesWidgetState,
+              operationalState: this.beneficiariesOperationalState,
+              permissionDecision: 'allow',
+              reasonCode: 'ACTION_EXECUTED',
+              meta: {
+                source: 'api',
+              },
+            }, {
+              dedupeKey: `beneficiary-add-api-${createdItem.id || createdItem.documento || Date.now()}`,
+            });
             this.isBeneficiarySubmitting = false;
             return;
           }
@@ -3378,6 +3783,22 @@ export default {
 
         this.applyBeneficiaryApiValidationErrors(apiResponse.error?.validationErrors);
         this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible guardar beneficiario en API.';
+        this.trackPortalEvent('customer.portal.beneficiaries.add', {
+          module: 'beneficiarios',
+          action: 'add-beneficiary',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: this.beneficiariesWidgetState,
+          operationalState: this.beneficiariesOperationalState,
+          permissionDecision: 'allow',
+          reasonCode: 'API_ERROR',
+          meta: {
+            source: 'api',
+            errorCode: apiResponse.error?.code || '',
+          },
+        }, {
+          dedupeKey: `beneficiary-add-api-error-${apiResponse.error?.code || 'unknown'}`,
+        });
         this.isBeneficiarySubmitting = false;
         return;
       }
@@ -3390,6 +3811,21 @@ export default {
 
       if (response.status === 'error') {
         this.beneficiariesWidgetNotice = response.error?.message || 'No fue posible guardar beneficiario mock.';
+        this.trackPortalEvent('customer.portal.beneficiaries.add', {
+          module: 'beneficiarios',
+          action: 'add-beneficiary',
+          outcome: 'failure',
+          severity: 'error',
+          widgetState: this.beneficiariesWidgetState,
+          operationalState: this.beneficiariesOperationalState,
+          permissionDecision: 'allow',
+          reasonCode: 'API_ERROR',
+          meta: {
+            source: 'mock',
+          },
+        }, {
+          dedupeKey: 'beneficiary-add-mock-error',
+        });
         this.isBeneficiarySubmitting = false;
         return;
       }
@@ -3401,6 +3837,21 @@ export default {
       this.showBeneficiaryForm = false;
       this.resetBeneficiaryForm();
       this.beneficiariesWidgetNotice = 'Beneficiario agregado en modo simulado (FE-008C).';
+      this.trackPortalEvent('customer.portal.beneficiaries.add', {
+        module: 'beneficiarios',
+        action: 'add-beneficiary',
+        outcome: 'success',
+        widgetState: this.beneficiariesWidgetState,
+        operationalState: this.beneficiariesOperationalState,
+        permissionDecision: 'allow',
+        reasonCode: 'ACTION_EXECUTED',
+        meta: {
+          source: 'mock',
+          id: createdItem.id || null,
+        },
+      }, {
+        dedupeKey: `beneficiary-add-mock-${createdItem.id || Date.now()}`,
+      });
       this.isBeneficiarySubmitting = false;
     },
     canUseMockFallbackForApiError(apiError) {
@@ -3834,6 +4285,16 @@ export default {
         this.paymentRecoveryStage = 'metodo_actualizado';
         this.syncRecoveryStage();
         this.persistRecoveryStage();
+        this.trackPortalEvent('customer.portal.payments.retry', {
+          module: 'metodo-pago',
+          action: 'update-payment-method',
+          outcome: 'success',
+          widgetState: this.paymentHistoryWidgetState,
+          operationalState: this.dashboardSummaryStatus?.state || 'normal',
+          reasonCode: 'ACTION_EXECUTED',
+        }, {
+          dedupeKey: 'payments-update-method-success',
+        });
         this.processingActionKey = null;
         return;
       }
@@ -3846,6 +4307,16 @@ export default {
         this.paymentRecoveryStage = 'en_reintento';
         this.syncRecoveryStage();
         this.persistRecoveryStage();
+        this.trackPortalEvent('customer.portal.payments.retry', {
+          module: 'payment-history',
+          action: 'retry-payment',
+          outcome: 'success',
+          widgetState: this.paymentHistoryWidgetState,
+          operationalState: this.dashboardSummaryStatus?.state || 'alerta',
+          reasonCode: 'ACTION_EXECUTED',
+        }, {
+          dedupeKey: `payments-retry-start-${Date.now()}`,
+        });
         this.scheduleRetryOutcomeTimeout();
 
         this.trySyncLatestPaymentStatus(this.paymentHistoryMockRows, {
@@ -3945,14 +4416,100 @@ export default {
   position: relative;
 }
 
+.customer-shell-theme {
+  --shell-bg: #f4f7fb;
+  --shell-surface: #ffffff;
+  --shell-border: #dbe5f1;
+  --shell-text: #11203b;
+  --shell-muted: #60708d;
+  --shell-primary: #1d9bf0;
+  --shell-primary-strong: #0c78c0;
+  --shell-primary-soft: #e9f4fd;
+  --shell-shadow: 0 8px 24px rgba(14, 36, 72, 0.08);
+  background:
+    radial-gradient(1200px 500px at 0% 0%, #edf6ff 0%, transparent 60%),
+    radial-gradient(900px 420px at 100% 100%, #f7fbff 0%, transparent 58%),
+    var(--shell-bg);
+  color: var(--shell-text);
+}
+
 .shell-sidebar {
   width: 280px;
   min-height: 100vh;
   z-index: 1040;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  border-right: 1px solid var(--shell-border);
+  box-shadow: 1px 0 0 rgba(17, 32, 59, 0.02);
+}
+
+.sidebar-top {
+  border-bottom: 1px solid var(--shell-border);
 }
 
 .shell-nav-btn {
   border-radius: 12px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  transition: all 0.16s ease;
+}
+
+.shell-nav-btn.btn-light-primary {
+  background: transparent;
+  color: #1f355a;
+}
+
+.shell-nav-btn.btn-light-primary:hover {
+  background: var(--shell-primary-soft);
+  border-color: #c7e4fb;
+  color: #144d7d;
+}
+
+.shell-nav-btn.btn-primary {
+  background: linear-gradient(135deg, var(--shell-primary), var(--shell-primary-strong));
+  border-color: transparent;
+  box-shadow: 0 8px 14px rgba(29, 155, 240, 0.22);
+}
+
+.shell-content {
+  min-width: 0;
+}
+
+.shell-header {
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid var(--shell-border);
+  backdrop-filter: blur(6px);
+}
+
+.shell-main {
+  background: transparent;
+}
+
+.shell-note {
+  border: 1px solid #d4e7fb;
+  background: linear-gradient(180deg, #f3f9ff 0%, #eef7ff 100%);
+  color: #184f83;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  font-weight: 500;
+}
+
+.shell-panel {
+  border: 1px solid var(--shell-border) !important;
+  background: var(--shell-surface);
+  box-shadow: var(--shell-shadow) !important;
+  border-radius: 14px;
+}
+
+.shell-state-card,
+.shell-summary-card {
+  border-color: #d9e4f1 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+}
+
+.shell-page-title {
+  font-size: clamp(1.8rem, 2.3vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .account-chip {
@@ -3984,6 +4541,7 @@ export default {
     height: 100vh;
     transform: translateX(-100%);
     transition: transform 0.2s ease;
+    box-shadow: 12px 0 30px rgba(14, 36, 72, 0.2);
   }
 
   .shell-sidebar.is-open {
