@@ -1,6 +1,6 @@
 # Local DB Setup (sin depender de terceros)
 
-Este flujo levanta tu base local para `gfa-emisiones` usando el dump existente.
+Este flujo levanta tu base local para `frontend-yastubo` usando el dump existente.
 
 ## 1) Requisitos
 
@@ -14,7 +14,7 @@ Este flujo levanta tu base local para `gfa-emisiones` usando el dump existente.
 Desde PowerShell:
 
 ```powershell
-Set-Location "D:\SantiiPC\Downloads\craft_html_v1.1.6\gfa-emisiones"
+Set-Location "D:\SantiiPC\Downloads\craft_html_v1.1.6\frontend-yastubo"
 Set-ExecutionPolicy -Scope Process Bypass
 ./scripts/bootstrap-local-db.ps1
 ```
@@ -46,7 +46,7 @@ Si `migrate:status` responde sin error de conexion, la app ya puede trabajar con
 Cuando ya tengas BD importada y activa:
 
 ```powershell
-Set-Location "D:\SantiiPC\Downloads\craft_html_v1.1.6\gfa-emisiones"
+Set-Location "D:\SantiiPC\Downloads\craft_html_v1.1.6\frontend-yastubo"
 Set-ExecutionPolicy -Scope Process Bypass
 ./scripts/start-local.ps1
 ```

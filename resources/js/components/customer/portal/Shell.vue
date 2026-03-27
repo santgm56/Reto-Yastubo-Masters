@@ -1,483 +1,119 @@
 <template>
   <div class="customer-shell customer-shell-theme min-vh-100 d-flex">
-    <aside class="shell-sidebar" :class="{ 'is-open': mobileMenuOpen }">
-      <div class="sidebar-top px-4 py-4">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="fw-bold fs-3 text-gray-900">yastubo</div>
-          <button
-            class="btn btn-sm btn-icon btn-light d-lg-none"
-            type="button"
-            @click="mobileMenuOpen = false"
-            aria-label="Cerrar menu"
-          >
-            <span aria-hidden="true">X</span>
-          </button>
-        </div>
-        <div class="mt-4">
-          <div class="fw-semibold text-gray-900">{{ userName }}</div>
-          <div class="text-success fs-8 fw-semibold">Protegido</div>
-        </div>
-      </div>
-
-      <nav class="p-3">
-        <button
-          v-for="item in resolvedMenuItems"
-          :key="item.key"
-          class="btn w-100 text-start mb-2 shell-nav-btn"
-          :class="item.path === currentPath ? 'btn-primary' : 'btn-light-primary'
-          "
-          type="button"
-          :disabled="recoverySimulationBusy"
-          :title="recoverySimulationBusy ? 'Navegacion bloqueada mientras termina la simulacion' : null"
-          @click="goTo(item.routeName)"
-        >
-          <span class="me-2 text-muted">•</span>
-          {{ item.label }}
-        </button>
-      </nav>
-    </aside>
+    <CustomerPortalSidebar
+      :mobile-menu-open="mobileMenuOpen"
+      :user-name="userName"
+      :resolved-menu-items="resolvedMenuItems"
+      :current-path="currentPath"
+      :recovery-action-busy="recoveryActionBusy"
+      @close-mobile-menu="mobileMenuOpen = false"
+      @navigate="goTo"
+    />
 
     <div class="shell-content flex-grow-1 d-flex flex-column">
-      <header class="shell-header px-4 py-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-        <div class="d-flex align-items-center gap-3">
-          <button
-            class="btn btn-icon btn-light d-lg-none"
-            type="button"
-            @click="mobileMenuOpen = true"
-            aria-label="Abrir menu"
-          >
-            <span aria-hidden="true">Menu</span>
-          </button>
-          <div>
-            <div class="fw-bold fs-4 text-gray-900">Hola, {{ userName }}</div>
-            <div class="text-muted fs-8">Portal Cliente</div>
-          </div>
-        </div>
+      <CustomerPortalHeader
+        :user-name="userName"
+        :support-label="supportLabel"
+        :support-url="supportUrl"
+        :is-user-loading="isUserLoading"
+        :has-user-load-error="hasUserLoadError"
+        :user-error-message="userErrorMessage"
+        :account-initials="accountInitials"
+        :display-user-name="displayUserName"
+        :display-user-meta="displayUserMeta"
+        @open-mobile-menu="mobileMenuOpen = true"
+        @open-support="openSupport"
+      />
 
-        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-          <div class="account-chip border rounded px-3 py-2 bg-light d-flex align-items-center gap-2">
-            <template v-if="isUserLoading">
-              <div class="placeholder-glow d-flex align-items-center gap-2">
-                <span class="placeholder rounded-circle" style="width: 32px; height: 32px;"></span>
-                <span class="placeholder col-6" style="height: 10px;"></span>
-              </div>
-            </template>
-            <template v-else-if="hasUserLoadError">
-              <div class="avatar-circle fw-bold">!</div>
-              <div class="lh-sm account-text-wrap">
-                <div class="fw-semibold text-warning fs-8 text-truncate">Perfil no disponible</div>
-                <div class="text-muted fs-9 text-truncate">{{ userErrorMessage || 'Usando datos minimos de sesion' }}</div>
-              </div>
-            </template>
-            <template v-else>
-              <div class="avatar-circle fw-bold">{{ accountInitials }}</div>
-              <div class="lh-sm account-text-wrap">
-                <div class="fw-semibold text-gray-900 fs-8 text-truncate">{{ displayUserName }}</div>
-                <div class="text-muted fs-9 text-truncate">{{ displayUserMeta }}</div>
-              </div>
-            </template>
-          </div>
-
-          <button
-            class="btn btn-sm btn-light-primary"
-            type="button"
-            :disabled="!supportUrl"
-            :title="supportUrl ? null : 'Canal de soporte en configuracion'"
-            @click="openSupport()"
-          >
-            {{ supportLabel }}
-          </button>
-          <div v-if="!supportUrl" class="text-muted fs-9 w-100 text-end">
-            Canal de soporte en configuracion
-          </div>
-        </div>
-      </header>
-
-      <main class="shell-main p-4 p-lg-6 flex-grow-1">
+      <main class="shell-main p-3 p-lg-5 flex-grow-1">
         <div v-if="isFallbackNavigation" class="alert alert-warning mb-4" role="alert">
           Navegacion en modo fallback local. Verifica la inyeccion de @routes/Ziggy en esta vista.
         </div>
 
-        <div class="shell-note mb-4" role="alert">
-          Datos simulados FE-003 para validar estados, transiciones y recuperacion de pago.
-        </div>
+        <section class="portal-stage">
+          <CustomerStatusMatrixCard
+            :status-matrix="statusMatrix"
+            :payment-recovery-stage="paymentRecoveryStage"
+            :active-title="activeTitle"
+            :active-module="activeModule"
+            :state-badge-class="stateBadgeClass"
+            :format-state="formatState"
+          />
 
-        <div class="card shell-panel shadow-sm border-0 mb-4">
-          <div class="card-body p-4 p-lg-5">
-            <h2 class="fs-4 fw-bold text-gray-900 mb-3">Matriz de estado cliente y pago</h2>
-            <div class="row g-3">
-              <div class="col-12 col-md-6 col-xl-4" v-for="entry in statusMatrix" :key="entry.state">
-                <div class="border rounded p-3 h-100 shell-state-card">
-                  <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="badge fs-8" :class="stateBadgeClass(entry.state)">{{ formatState(entry.state) }}</span>
-                    <span v-if="entry.state === paymentRecoveryStage" class="badge badge-light-primary">Actual</span>
-                  </div>
-                  <div class="text-gray-800 fw-semibold mb-1">{{ entry.description }}</div>
-                  <div class="text-muted fs-8">Transicion permitida: {{ entry.next }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          <CustomerDashboardSummaryCard
+            :active-key="activeKey"
+            :summary-state="dashboardSummaryState"
+            :summary-status="dashboardSummaryStatus"
+            :summary-banner-message="dashboardSummaryBannerMessage"
+            :summary-cards="dashboardSummaryCards"
+            :summary-state-badge-class="summaryStateBadgeClass"
+            :summary-state-label="summaryStateLabel"
+          />
+        </section>
 
-        <div class="card shell-panel shadow-sm border-0">
-          <div class="card-body p-5">
-            <h1 class="shell-page-title fw-bold text-gray-900 mb-2">{{ activeTitle }}</h1>
-            <p class="text-muted mb-0">
-              {{ activeModule.description }}
-            </p>
-          </div>
-        </div>
+        <CustomerBeneficiariesCard
+          v-if="activeKey === 'dashboard'"
+          :can-view="canViewBeneficiariesWidget"
+          :access-denied-reason="beneficiariesAccessDeniedReason"
+          :widget-state="beneficiariesWidgetState"
+          :operational-state="beneficiariesOperationalState"
+          :widget-message="beneficiariesWidgetMessage"
+          :widget-notice="beneficiariesWidgetNotice"
+          :widget-notice-class="beneficiariesWidgetNoticeClass"
+          :show-form="showBeneficiaryForm"
+          :can-create="canCreateBeneficiary"
+          :create-denied-reason="beneficiaryCreateDeniedReason"
+          :is-submitting="isBeneficiarySubmitting"
+          :summary="beneficiariesSummary"
+          :visible-items="beneficiariesVisibleItems"
+          :hidden-count="hiddenBeneficiariesCount"
+          :form-nombre="beneficiaryForm.nombre"
+          :form-documento="beneficiaryForm.documento"
+          :form-parentesco="beneficiaryForm.parentesco"
+          :form-estado="beneficiaryForm.estado"
+          :form-errors="beneficiaryFormErrors"
+          :beneficiary-status-badge-class="beneficiaryStatusBadgeClass"
+          :beneficiary-status-label="beneficiaryStatusLabel"
+          :mask-document="maskBeneficiaryDocument"
+          @open-form="openBeneficiaryForm"
+          @submit-form="submitBeneficiaryForm"
+          @cancel-form="cancelBeneficiaryForm"
+          @update-form-field="onBeneficiaryFormFieldUpdate"
+        />
 
-        <div v-if="activeKey === 'dashboard'" class="card shell-panel shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h2 class="fs-4 fw-bold text-gray-900 mb-0">Resumen operativo</h2>
-              <span class="text-muted fs-8">FE-004A/B · Mock local</span>
-            </div>
+        <CustomerActionBoardCard
+          :active-state="activeModule.currentState"
+          :actions="activeActions"
+          :non-operational-actions="nonOperationalActions"
+          :processing-action-key="processingActionKey"
+          :blocked-reason="activeModule.blockedReason"
+          :state-badge-class="stateBadgeClass"
+          :format-state="formatState"
+          @run-action="onAction"
+        />
 
-            <div
-              class="alert py-2 px-3 mb-3"
-              :class="dashboardSummaryState === 'error'
-                ? 'alert-light-danger'
-                : dashboardSummaryState === 'empty'
-                  ? 'alert-light-warning'
-                  : dashboardSummaryState === 'loading'
-                    ? 'alert-light-info'
-                    : dashboardSummaryStatus.state === 'bloqueado'
-                      ? 'alert-light-danger'
-                      : dashboardSummaryStatus.state === 'alerta'
-                        ? 'alert-light-warning'
-                        : 'alert-light-success'"
-              role="status"
-            >
-              {{ dashboardSummaryBannerMessage }}
-            </div>
+        <CustomerPaymentMethodCard
+          v-if="activeKey === 'metodo-pago'"
+          :masked-display="paymentMethodMaskedDisplay"
+          :status-display="paymentMethodStatusDisplay"
+          :notice="paymentMethodFormNotice"
+          :reference="paymentMethodForm.reference"
+          :confirm="paymentMethodForm.confirm"
+          :reference-error="paymentMethodFormErrors.reference"
+          :confirm-error="paymentMethodFormErrors.confirm"
+          :can-execute-update="canExecutePaymentMethodUpdate"
+          :update-denied-reason="paymentMethodUpdateDeniedReason"
+          :api-busy="paymentMethodApiBusy"
+          @update:reference="onPaymentMethodReferenceInput"
+          @update:confirm="onPaymentMethodConfirmInput"
+          @submit="submitPaymentMethodForm"
+          @remove="removePaymentMethod"
+          @reset="resetPaymentMethodForm"
+        />
 
-            <div v-if="dashboardSummaryState === 'loading'" class="row g-3">
-              <div class="col-12 col-sm-6 col-xl-4" v-for="index in 3" :key="`summary-loading-${index}`">
-                <div class="border rounded p-3 h-100 placeholder-glow">
-                  <div class="placeholder col-7 mb-2" style="height: 12px;"></div>
-                  <div class="placeholder col-6 mb-2" style="height: 26px;"></div>
-                  <div class="placeholder col-8" style="height: 10px;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="dashboardSummaryState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
-              No fue posible cargar el resumen operativo. Intenta recargar la vista o valida la configuracion de datos base.
-            </div>
-
-            <div v-else-if="dashboardSummaryState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
-              No hay datos suficientes para mostrar tarjetas de resumen en este momento.
-            </div>
-
-            <div v-else class="row g-3">
-              <div class="col-12 col-sm-6 col-xl-4" v-for="card in dashboardSummaryCards" :key="card.key">
-                <div class="border rounded p-3 h-100 shell-summary-card">
-                  <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <div class="fw-semibold text-gray-800 fs-8 text-truncate" :title="card.label">{{ card.label }}</div>
-                    <span class="badge fs-9 flex-shrink-0" :class="summaryStateBadgeClass(card.state)">
-                      {{ summaryStateLabel(card.state) }}
-                    </span>
-                  </div>
-                  <div class="fs-4 fw-bold text-gray-900 mb-1 text-break lh-sm">{{ card.value }}</div>
-                  <div class="text-muted fs-8">{{ card.hint }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="activeKey === 'dashboard' && canViewBeneficiariesWidget" class="card shell-panel shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-              <div>
-                <h2 class="fs-4 fw-bold text-gray-900 mb-0">Beneficiarios</h2>
-                <div class="text-muted fs-8">FE-005 Fase 3 · Widget MVP</div>
-              </div>
-              <button
-                type="button"
-                class="btn btn-sm btn-light-primary"
-                :disabled="['loading', 'error'].includes(beneficiariesWidgetState) || showBeneficiaryForm || !canCreateBeneficiary"
-                :title="!canCreateBeneficiary ? beneficiaryCreateDeniedReason : null"
-                @click="openBeneficiaryForm"
-              >
-                Agregar beneficiario (simulado)
-              </button>
-            </div>
-
-            <div
-              class="alert py-2 px-3 mb-3"
-              :class="beneficiariesWidgetState === 'error'
-                ? 'alert-light-danger'
-                : beneficiariesWidgetState === 'loading'
-                  ? 'alert-light-info'
-                  : beneficiariesOperationalState === 'bloqueado'
-                    ? 'alert-light-danger'
-                    : beneficiariesOperationalState === 'alerta'
-                      ? 'alert-light-warning'
-                      : 'alert-light-success'"
-              role="status"
-            >
-              {{ beneficiariesWidgetMessage }}
-            </div>
-
-            <div v-if="beneficiariesWidgetNotice" class="alert py-2 px-3 mb-3" :class="beneficiariesWidgetNoticeClass" role="alert">
-              {{ beneficiariesWidgetNotice }}
-            </div>
-
-            <div v-if="showBeneficiaryForm && !['loading', 'error'].includes(beneficiariesWidgetState)" class="border rounded p-3 mb-3 bg-light">
-              <div class="fw-semibold text-gray-900 mb-3">Nuevo beneficiario (simulado)</div>
-
-              <div class="row g-3">
-                <div class="col-12 col-lg-6">
-                  <label class="form-label fw-semibold">Nombre completo</label>
-                  <input
-                    v-model="beneficiaryForm.nombre"
-                    type="text"
-                    class="form-control"
-                    placeholder="Ej. Ana Perez"
-                  >
-                  <div v-if="beneficiaryFormErrors.nombre" class="text-danger fs-8 mt-1">
-                    {{ beneficiaryFormErrors.nombre }}
-                  </div>
-                </div>
-
-                <div class="col-12 col-lg-6">
-                  <label class="form-label fw-semibold">Documento</label>
-                  <input
-                    v-model="beneficiaryForm.documento"
-                    type="text"
-                    class="form-control"
-                    placeholder="Ej. CC 123456789"
-                  >
-                  <div v-if="beneficiaryFormErrors.documento" class="text-danger fs-8 mt-1">
-                    {{ beneficiaryFormErrors.documento }}
-                  </div>
-                </div>
-
-                <div class="col-12 col-lg-6">
-                  <label class="form-label fw-semibold">Parentesco</label>
-                  <input
-                    v-model="beneficiaryForm.parentesco"
-                    type="text"
-                    class="form-control"
-                    placeholder="Ej. Conyuge"
-                  >
-                  <div v-if="beneficiaryFormErrors.parentesco" class="text-danger fs-8 mt-1">
-                    {{ beneficiaryFormErrors.parentesco }}
-                  </div>
-                </div>
-
-                <div class="col-12 col-lg-6">
-                  <label class="form-label fw-semibold">Estado inicial</label>
-                  <select v-model="beneficiaryForm.estado" class="form-select">
-                    <option value="activo">Activo</option>
-                    <option value="incompleto">Incompleto</option>
-                    <option value="bloqueado">Bloqueado</option>
-                  </select>
-                  <div v-if="beneficiaryFormErrors.estado" class="text-danger fs-8 mt-1">
-                    {{ beneficiaryFormErrors.estado }}
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex flex-wrap gap-2 mt-3">
-                <button
-                  type="button"
-                  class="btn btn-sm btn-primary"
-                  :disabled="isBeneficiarySubmitting"
-                  @click="submitBeneficiaryForm"
-                >
-                  <span v-if="isBeneficiarySubmitting">Guardando...</span>
-                  <span v-else>Guardar beneficiario</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-light" @click="cancelBeneficiaryForm">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-
-            <div v-if="beneficiariesWidgetState === 'loading'" class="row g-3">
-              <div class="col-12" v-for="index in 3" :key="`benef-loading-${index}`">
-                <div class="border rounded p-3 placeholder-glow">
-                  <div class="placeholder col-5 mb-2" style="height: 12px;"></div>
-                  <div class="placeholder col-3 mb-2" style="height: 12px;"></div>
-                  <div class="placeholder col-6" style="height: 10px;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="beneficiariesWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
-              No fue posible cargar beneficiarios. Reintenta para actualizar el estado operativo.
-            </div>
-
-            <div v-else-if="beneficiariesWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
-              No hay beneficiarios registrados. Puedes agregar uno nuevo desde este modulo.
-            </div>
-
-            <div v-else>
-              <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="badge badge-light-primary">Total: {{ beneficiariesSummary.total }}</span>
-                <span class="badge badge-light-success">Activos: {{ beneficiariesSummary.activos }}</span>
-                <span class="badge badge-light-warning">Con alerta: {{ beneficiariesSummary.incompletos }}</span>
-                <span class="badge badge-light-danger">Bloqueados: {{ beneficiariesSummary.bloqueados }}</span>
-              </div>
-
-              <div class="d-flex flex-column gap-2">
-                <div
-                  v-for="item in beneficiariesVisibleItems"
-                  :key="item.id"
-                  class="border rounded p-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2"
-                >
-                  <div class="min-w-0">
-                    <div class="fw-semibold text-gray-900 text-break">{{ item.nombre }}</div>
-                    <div class="text-muted fs-8 text-break">
-                      {{ item.parentesco }} · {{ maskBeneficiaryDocument(item.documento) }}
-                    </div>
-                  </div>
-                  <span class="badge fs-9 flex-shrink-0" :class="beneficiaryStatusBadgeClass(item.estado)">
-                    {{ beneficiaryStatusLabel(item.estado) }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="hiddenBeneficiariesCount > 0" class="text-muted fs-9 mt-2">
-                + {{ hiddenBeneficiariesCount }} beneficiario(s) no mostrado(s) en este resumen.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="activeKey === 'dashboard'" class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <h2 class="fs-4 fw-bold text-gray-900 mb-2">Beneficiarios</h2>
-            <div class="alert alert-light-warning mb-0" role="alert">
-              {{ beneficiariesAccessDeniedReason || 'No tienes permisos para visualizar este widget.' }}
-            </div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
-              <div>
-                <div class="text-muted fs-8 mb-1">Estado actual</div>
-                <span class="badge fs-7" :class="stateBadgeClass(activeModule.currentState)">
-                  {{ formatState(activeModule.currentState) }}
-                </span>
-              </div>
-
-              <div class="flex-grow-1">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                  <div class="text-muted fs-8">Acciones permitidas</div>
-                  <div v-if="nonOperationalActions.length" class="text-muted fs-9">
-                    {{ nonOperationalActions.length }} accion(es) en modo "Proximamente"
-                  </div>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                  <button
-                    v-for="action in activeActions"
-                    :key="action.label"
-                    type="button"
-                    class="btn btn-sm"
-                    :class="action.routeName || action.simulateKey ? 'btn-light-primary' : 'btn-light-secondary text-muted'"
-                    :disabled="action.disabled"
-                    :title="action.disabledReason || null"
-                    @click="onAction(action)"
-                  >
-                    <span v-if="processingActionKey === action.actionKey">Procesando...</span>
-                    <span v-else>{{ action.label }}</span>
-                    <span v-if="action.isUpcoming" class="ms-2 badge badge-light d-none d-md-inline">Proximamente</span>
-                  </button>
-                </div>
-
-                <div v-if="nonOperationalActions.length" class="alert alert-light mt-3 mb-0 py-2 px-3" role="alert">
-                  <div class="text-muted fs-8 mb-1">No operativas en esta fase:</div>
-                  <div class="d-flex flex-column gap-1">
-                    <div
-                      v-for="action in nonOperationalActions"
-                      :key="action.actionKey"
-                      class="text-muted fs-8"
-                    >
-                      <span class="fw-semibold">{{ action.label }}:</span>
-                      <span> {{ action.disabledReason || 'Disponible en siguiente fase' }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="activeModule.blockedReason" class="alert alert-light-warning mt-4 mb-0" role="alert">
-              Bloqueo operativo: {{ activeModule.blockedReason }}
-            </div>
-          </div>
-        </div>
-
-        <div v-if="activeKey === 'metodo-pago'" class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <h2 class="fs-4 fw-bold text-gray-900 mb-3">Actualizar metodo de pago (simulado)</h2>
-            <p class="text-muted fs-8 mb-4">
-              Este formulario es de respaldo para FE-003C y no persiste en backend.
-            </p>
-
-            <div v-if="paymentMethodFormNotice" class="alert alert-light-success mb-4" role="alert">
-              {{ paymentMethodFormNotice }}
-            </div>
-
-            <div class="row g-3">
-              <div class="col-12 col-lg-6">
-                <label class="form-label fw-semibold">Token o referencia del metodo</label>
-                <input
-                  v-model="paymentMethodForm.reference"
-                  type="text"
-                  class="form-control"
-                  placeholder="pm_tok_demo_12345"
-                >
-                <div v-if="paymentMethodFormErrors.reference" class="text-danger fs-8 mt-1">
-                  {{ paymentMethodFormErrors.reference }}
-                </div>
-              </div>
-
-              <div class="col-12 col-lg-6">
-                <label class="form-label fw-semibold">Estado esperado</label>
-                <input type="text" class="form-control" value="Metodo actualizado" disabled>
-              </div>
-
-              <div class="col-12">
-                <label class="form-check form-check-custom form-check-sm">
-                  <input v-model="paymentMethodForm.confirm" class="form-check-input" type="checkbox">
-                  <span class="form-check-label text-muted">
-                    Confirmo que este cambio es una simulacion controlada para FE-003C.
-                  </span>
-                </label>
-                <div v-if="paymentMethodFormErrors.confirm" class="text-danger fs-8 mt-1">
-                  {{ paymentMethodFormErrors.confirm }}
-                </div>
-              </div>
-            </div>
-
-            <div class="d-flex gap-2 mt-4">
-              <button
-                class="btn btn-primary"
-                type="button"
-                :disabled="!canExecutePaymentMethodUpdate"
-                :title="!canExecutePaymentMethodUpdate ? paymentMethodUpdateDeniedReason : null"
-                @click="submitPaymentMethodForm"
-              >
-                Guardar metodo (simulado)
-              </button>
-              <button class="btn btn-light" type="button" @click="resetPaymentMethodForm">
-                Limpiar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="activeKey !== 'dashboard'" class="row g-4 mt-1">
+        <div v-if="activeKey !== 'dashboard'" class="row g-4 mt-1 module-metrics-grid">
           <div class="col-12 col-md-6 col-xl-3" v-for="block in activeModule.blocks" :key="block.title">
-            <div class="card h-100 border-0 shadow-sm">
+            <div class="card h-100 border-0 shell-panel module-metric-card">
               <div class="card-body">
                 <div class="fw-semibold text-gray-800 mb-1">{{ block.title }}</div>
                 <div class="fs-2 fw-bold text-gray-900 mb-2">{{ block.value }}</div>
@@ -487,361 +123,49 @@
           </div>
         </div>
 
-        <div v-if="activeKey === 'transacciones' && canViewPaymentHistoryWidget" class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-              <div>
-                <h2 class="fs-4 fw-bold text-gray-900 mb-0">Historial de pagos</h2>
-                <div class="text-muted fs-8">FE-006 Fase 3 · Tabla operativa (Mock)</div>
-              </div>
-              <div v-if="paymentHistoryWidgetState === 'ready'" class="d-flex align-items-center gap-2 flex-wrap justify-content-lg-end">
-                <span class="badge badge-light-primary">Orden por fecha: {{ paymentHistorySortDirection === 'desc' ? 'Descendente' : 'Ascendente' }}</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Orden historial pagos">
-                  <button
-                    type="button"
-                    class="btn"
-                    :class="paymentHistorySortDirection === 'desc' ? 'btn-primary' : 'btn-light-primary'"
-                    @click="setPaymentHistorySortDirection('desc')"
-                  >
-                    Recientes
-                  </button>
-                  <button
-                    type="button"
-                    class="btn"
-                    :class="paymentHistorySortDirection === 'asc' ? 'btn-primary' : 'btn-light-primary'"
-                    @click="setPaymentHistorySortDirection('asc')"
-                  >
-                    Antiguos
-                  </button>
-                </div>
-              </div>
-            </div>
+        <CustomerPaymentHistoryCard
+          v-if="activeKey === 'transacciones'"
+          :can-view="canViewPaymentHistoryWidget"
+          :access-denied-reason="paymentHistoryAccessDeniedReason"
+          :widget-state="paymentHistoryWidgetState"
+          :widget-message="paymentHistoryWidgetMessage"
+          :widget-notice="paymentHistoryWidgetNotice"
+          :widget-notice-class="paymentHistoryWidgetNoticeClass"
+          :sort-direction="paymentHistorySortDirection"
+          :rows="paymentHistoryViewRows"
+          @set-sort="setPaymentHistorySortDirection"
+          @retry="retryPaymentHistoryWidget"
+        />
 
-            <div
-              class="alert py-2 px-3 mb-3"
-              :class="paymentHistoryWidgetState === 'error'
-                ? 'alert-light-danger'
-                : paymentHistoryWidgetState === 'loading'
-                  ? 'alert-light-info'
-                  : paymentHistoryWidgetState === 'empty'
-                    ? 'alert-light-warning'
-                    : 'alert-light-success'"
-              role="status"
-            >
-              {{ paymentHistoryWidgetMessage }}
-            </div>
+        <CustomerDeathReportCard
+          v-if="activeKey === 'productos'"
+          :can-access="canAccessDeathReportFlow"
+          :access-denied-reason="deathReportAccessDeniedReason"
+          :widget-state="deathReportWidgetState"
+          :operational-state="deathReportOperationalState"
+          :widget-message="deathReportWidgetMessage"
+          :widget-notice="deathReportWidgetNotice"
+          :widget-notice-class="deathReportWidgetNoticeClass"
+          :can-retry="deathReportCanRetry"
+          :form="deathReportForm"
+          :form-errors="deathReportFormErrors"
+          :today-iso="deathReportTodayIso"
+          :is-submitting="isDeathReportSubmitting"
+          :has-submitted="deathReportHasSubmitted"
+          :can-submit="canSubmitDeathReport"
+          :submit-denied-reason="deathReportSubmitDeniedReason"
+          :confirmation="deathReportMockConfirmation"
+          :case-status-label="deathReportCaseStatusLabel"
+          :summary-state-badge-class="summaryStateBadgeClass"
+          :summary-state-label="summaryStateLabel"
+          :last-submission-at="deathReportLastSubmissionAt"
+          :submit-notice="deathReportSubmitNotice"
+          @retry="retryDeathReportWidget"
+          @submit="submitDeathReportForm"
+          @update-form-field="onDeathReportFormFieldUpdate"
+        />
 
-            <div v-if="paymentHistoryWidgetNotice" class="alert py-2 px-3 mb-3" :class="paymentHistoryWidgetNoticeClass" role="alert">
-              {{ paymentHistoryWidgetNotice }}
-            </div>
-
-            <div v-if="paymentHistoryWidgetState === 'loading'" class="row g-3">
-              <div class="col-12" v-for="index in 3" :key="`payments-loading-${index}`">
-                <div class="border rounded p-3 placeholder-glow">
-                  <div class="placeholder col-4 mb-2" style="height: 12px;"></div>
-                  <div class="placeholder col-8 mb-2" style="height: 10px;"></div>
-                  <div class="placeholder col-6" style="height: 10px;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="paymentHistoryWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
-              <div class="fw-semibold mb-1">No fue posible cargar el historial de pagos.</div>
-              <button type="button" class="btn btn-sm btn-light-danger" @click="retryPaymentHistoryWidget">
-                Reintentar
-              </button>
-            </div>
-
-            <div v-else-if="paymentHistoryWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
-              <div class="fw-semibold mb-1">No hay movimientos de pago para este cliente.</div>
-              <div class="fs-8">Cuando existan pagos, se listaran aqui ordenados por fecha.</div>
-            </div>
-
-            <div v-else>
-              <div class="table-responsive">
-                <table class="table align-middle table-row-dashed mb-0">
-                  <thead>
-                    <tr class="text-muted fw-semibold fs-8 text-uppercase gs-0">
-                      <th class="text-nowrap">Fecha</th>
-                      <th class="text-nowrap">Referencia</th>
-                      <th>Metodo</th>
-                      <th class="text-nowrap text-end">Monto</th>
-                      <th class="text-nowrap">Estado</th>
-                      <th>Detalle</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in paymentHistoryNormalizedRows" :key="item.referencia">
-                      <td class="text-gray-800 fw-semibold text-nowrap">{{ item.fecha }}</td>
-                      <td class="text-muted text-nowrap">{{ item.referencia }}</td>
-                      <td class="text-muted text-break" :title="item.metodo">{{ item.metodo }}</td>
-                      <td class="text-gray-900 fw-semibold text-end text-nowrap">{{ item.monto }}</td>
-                      <td>
-                        <span class="badge fs-9" :class="paymentHistoryStatusBadgeClass(item.estado)">
-                          {{ paymentHistoryStatusLabel(item.estado) }}
-                        </span>
-                      </td>
-                      <td class="text-muted fs-8 text-break" :title="item.detalle">{{ item.detalle }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="activeKey === 'transacciones'" class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <h2 class="fs-4 fw-bold text-gray-900 mb-2">Historial de pagos</h2>
-            <div class="alert alert-light-warning mb-0" role="alert">
-              {{ paymentHistoryAccessDeniedReason || 'No tienes permisos para visualizar este widget.' }}
-            </div>
-          </div>
-        </div>
-
-        <div v-if="activeKey === 'productos' && canAccessDeathReportFlow" class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-              <div>
-                <h2 class="fs-4 fw-bold text-gray-900 mb-0">Reporte de fallecimiento</h2>
-                <div class="text-muted fs-8">FE-007 Fase 2 · Estado de flujo (Mock)</div>
-              </div>
-              <span class="badge fs-9" :class="summaryStateBadgeClass(deathReportOperationalState)">
-                {{ summaryStateLabel(deathReportOperationalState) }}
-              </span>
-            </div>
-
-            <div
-              class="alert py-2 px-3 mb-3"
-              :class="deathReportWidgetState === 'error'
-                ? 'alert-light-danger'
-                : deathReportWidgetState === 'loading'
-                  ? 'alert-light-info'
-                  : deathReportWidgetState === 'empty'
-                    ? 'alert-light-warning'
-                    : deathReportOperationalState === 'bloqueado'
-                      ? 'alert-light-danger'
-                      : deathReportOperationalState === 'alerta'
-                        ? 'alert-light-warning'
-                        : 'alert-light-success'"
-              role="status"
-            >
-              {{ deathReportWidgetMessage }}
-            </div>
-
-            <div v-if="deathReportWidgetNotice" class="alert py-2 px-3 mb-3" :class="deathReportWidgetNoticeClass" role="alert">
-              {{ deathReportWidgetNotice }}
-            </div>
-
-            <div v-if="deathReportWidgetState === 'loading'" class="row g-3">
-              <div class="col-12 col-lg-6" v-for="index in 2" :key="`death-report-loading-${index}`">
-                <div class="border rounded p-3 placeholder-glow">
-                  <div class="placeholder col-7 mb-2" style="height: 12px;"></div>
-                  <div class="placeholder col-9 mb-2" style="height: 10px;"></div>
-                  <div class="placeholder col-6" style="height: 10px;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="deathReportWidgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
-              <div class="fw-semibold mb-1">No fue posible preparar el flujo de reporte.</div>
-              <div class="fs-8 mb-2">
-                {{ deathReportCanRetry
-                  ? 'Valida conectividad y reintenta para continuar.'
-                  : 'Se detecto un contrato invalido. Revisa el payload base antes de continuar.' }}
-              </div>
-              <button v-if="deathReportCanRetry" type="button" class="btn btn-sm btn-light-danger" @click="retryDeathReportWidget">
-                Reintentar
-              </button>
-            </div>
-
-            <div v-else-if="deathReportWidgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
-              <div class="fw-semibold mb-1">Aun no hay contexto para iniciar el reporte.</div>
-              <div class="fs-8">Completa datos base del cliente para habilitar el flujo.</div>
-            </div>
-
-            <div v-else class="row g-3">
-              <div class="col-12 col-xl-6">
-                <div class="card border h-100">
-                  <div class="card-header bg-light fw-semibold py-2">Contexto operativo</div>
-                  <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                      <span class="text-muted fs-8">Estado del flujo</span>
-                      <span class="badge fs-9" :class="summaryStateBadgeClass(deathReportOperationalState)">
-                        {{ summaryStateLabel(deathReportOperationalState) }}
-                      </span>
-                    </div>
-                    <div class="text-muted fs-8">
-                      Este flujo opera en modo mock para FE-007C y mantiene separacion con API real futura.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-12 col-xl-6">
-                <div class="card border h-100">
-                  <div class="card-header bg-light fw-semibold py-2">Formulario MVP</div>
-                  <div class="card-body">
-                    <form @submit.prevent="submitDeathReportForm" novalidate>
-                      <fieldset :disabled="isDeathReportSubmitting || deathReportHasSubmitted">
-                      <div class="row g-3">
-                        <div class="col-12 col-md-6">
-                          <label class="form-label fs-8 text-muted mb-1">Nombre reportante</label>
-                          <input v-model="deathReportForm.nombreReportante" type="text" class="form-control" maxlength="80">
-                          <div v-if="deathReportFormErrors.nombreReportante" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.nombreReportante }}
-                          </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                          <label class="form-label fs-8 text-muted mb-1">Documento reportante</label>
-                          <input v-model="deathReportForm.documentoReportante" type="text" class="form-control" maxlength="20">
-                          <div v-if="deathReportFormErrors.documentoReportante" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.documentoReportante }}
-                          </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                          <label class="form-label fs-8 text-muted mb-1">Nombre fallecido</label>
-                          <input v-model="deathReportForm.nombreFallecido" type="text" class="form-control" maxlength="80">
-                          <div v-if="deathReportFormErrors.nombreFallecido" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.nombreFallecido }}
-                          </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                          <label class="form-label fs-8 text-muted mb-1">Documento fallecido</label>
-                          <input v-model="deathReportForm.documentoFallecido" type="text" class="form-control" maxlength="20">
-                          <div v-if="deathReportFormErrors.documentoFallecido" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.documentoFallecido }}
-                          </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                          <label class="form-label fs-8 text-muted mb-1">Fecha fallecimiento</label>
-                          <input v-model="deathReportForm.fechaFallecimiento" type="date" class="form-control" :max="deathReportTodayIso">
-                          <div v-if="deathReportFormErrors.fechaFallecimiento" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.fechaFallecimiento }}
-                          </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                          <label class="form-label fs-8 text-muted mb-1">Canal contacto</label>
-                          <select v-model="deathReportForm.canalContacto" class="form-select">
-                            <option value="">Selecciona...</option>
-                            <option value="email">Email</option>
-                            <option value="telefono">Telefono</option>
-                          </select>
-                          <div v-if="deathReportFormErrors.canalContacto" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.canalContacto }}
-                          </div>
-                        </div>
-                        <div class="col-12">
-                          <label class="form-label fs-8 text-muted mb-1">Observacion inicial</label>
-                          <textarea
-                            v-model="deathReportForm.observacion"
-                            class="form-control"
-                            rows="3"
-                            maxlength="240"
-                          ></textarea>
-                          <div v-if="deathReportFormErrors.observacion" class="text-danger fs-8 mt-1">
-                            {{ deathReportFormErrors.observacion }}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-                        <button
-                          type="submit"
-                          class="btn btn-sm btn-primary"
-                          :disabled="isDeathReportSubmitting || deathReportHasSubmitted || deathReportOperationalState === 'bloqueado' || !canSubmitDeathReport"
-                          :title="!canSubmitDeathReport ? deathReportSubmitDeniedReason : null"
-                        >
-                          <span v-if="isDeathReportSubmitting">Enviando...</span>
-                          <span v-else-if="deathReportHasSubmitted">Reporte enviado</span>
-                          <span v-else>Enviar reporte (mock)</span>
-                        </button>
-                        <span v-if="!canSubmitDeathReport" class="text-danger fs-8">
-                          {{ deathReportSubmitDeniedReason || 'No autorizado para enviar reporte.' }}
-                        </span>
-                        <span v-else-if="deathReportOperationalState === 'bloqueado'" class="text-danger fs-8">
-                          Flujo bloqueado por estado de contrato.
-                        </span>
-                        <span v-else-if="deathReportHasSubmitted" class="text-muted fs-8">
-                          Ya se registro un envio en esta sesion.
-                        </span>
-                      </div>
-                      </fieldset>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-12 col-xl-6">
-                <div class="card border h-100">
-                  <div class="card-header bg-light fw-semibold py-2">Confirmacion de envio</div>
-                  <div class="card-body">
-                    <div v-if="!deathReportHasSubmitted" class="text-muted fs-8">
-                      Aun no se ha enviado un reporte en esta sesion.
-                    </div>
-                    <div v-else>
-                      <div class="fs-8 mb-2">
-                        Estado caso: <span class="fw-semibold">{{ deathReportCaseStatusLabel(deathReportMockConfirmation.estadoCaso) }}</span>
-                      </div>
-                      <div class="fs-8 mb-2">
-                        Referencia: <span class="fw-semibold">{{ deathReportMockConfirmation.referenciaCaso }}</span>
-                      </div>
-                      <div class="fs-8 mb-2">{{ deathReportMockConfirmation.siguientePaso }}</div>
-                      <div class="text-muted fs-9">Fecha reporte: {{ deathReportLastSubmissionAt }}</div>
-                    </div>
-                    <div v-if="deathReportSubmitNotice" class="alert alert-light-success py-2 px-3 fs-8 mt-3 mb-0">
-                      {{ deathReportSubmitNotice }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-12 col-xl-6">
-                <div class="card border h-100">
-                  <div class="card-header bg-light fw-semibold py-2">Integracion futura</div>
-                  <div class="card-body">
-                    <div class="text-muted fs-8 mb-2">
-                      Este envio es simulado para FE-007C. No persiste en backend productivo.
-                    </div>
-                    <div class="text-muted fs-8">
-                      Pendiente FE-008/FE-009: conectar endpoint real, codigos de error API y trazabilidad completa.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="activeKey === 'productos'" class="card shadow-sm border-0 mt-4">
-          <div class="card-body p-4 p-lg-5">
-            <h2 class="fs-4 fw-bold text-gray-900 mb-2">Reporte de fallecimiento</h2>
-            <div class="alert alert-light-warning mb-0" role="alert">
-              {{ deathReportAccessDeniedReason || 'Este flujo no esta disponible para el contexto actual.' }}
-            </div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm border-0 mt-4" v-if="activeModule.timeline && activeModule.timeline.length">
-          <div class="card-body p-4 p-lg-5">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2 mb-3">
-              <h2 class="fs-4 fw-bold text-gray-900 mb-0">Trazabilidad operativa</h2>
-              <div class="text-muted fs-8" v-if="activeTimeline[0]">
-                Ultimo evento: {{ activeTimeline[0].code }} · {{ activeTimeline[0].when }}
-              </div>
-            </div>
-            <div class="d-flex flex-column gap-3">
-              <div v-for="eventItem in activeTimeline" :key="eventItem.code" class="d-flex gap-3">
-                <span class="badge badge-light-primary align-self-start flex-shrink-0">{{ eventItem.code }}</span>
-                <div>
-                  <div class="fw-semibold text-gray-800">{{ eventItem.title }}</div>
-                  <div class="text-muted fs-8">{{ eventItem.detail }}</div>
-                  <div class="text-muted fs-9 mt-1">{{ eventItem.when }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CustomerTimelineCard :timeline="activeTimeline" />
       </main>
     </div>
 
@@ -850,23 +174,27 @@
 </template>
 
 <script>
-import {
-  createBeneficiaryMock,
-  fetchBeneficiariesMock,
-  fetchDeathReportMock,
-  fetchModuleCatalogMock,
-  fetchPaymentHistoryMock,
-  getCustomerPortalMockSeeds,
-  submitDeathReportMock,
-} from './services/customerPortalMockService';
+import CustomerPortalHeader from './layout/CustomerPortalHeader.vue';
+import CustomerPortalSidebar from './layout/CustomerPortalSidebar.vue';
+import CustomerActionBoardCard from './modules/CustomerActionBoardCard.vue';
+import CustomerBeneficiariesCard from './modules/CustomerBeneficiariesCard.vue';
+import CustomerDashboardSummaryCard from './modules/CustomerDashboardSummaryCard.vue';
+import CustomerDeathReportCard from './modules/CustomerDeathReportCard.vue';
+import CustomerPaymentHistoryCard from './modules/CustomerPaymentHistoryCard.vue';
+import CustomerPaymentMethodCard from './modules/CustomerPaymentMethodCard.vue';
+import CustomerStatusMatrixCard from './modules/CustomerStatusMatrixCard.vue';
+import CustomerTimelineCard from './modules/CustomerTimelineCard.vue';
 import {
   createBeneficiaryApi,
+  deletePaymentMethodApi,
   fetchBeneficiariesApi,
   fetchDeathReportApi,
   fetchModuleCatalogApi,
+  fetchPaymentMethodApi,
   fetchPaymentHistoryApi,
   fetchStripePaymentStatusApi,
   submitDeathReportApi,
+  updatePaymentMethodApi,
 } from './services/customerPortalApiService';
 import {
   createCustomerPortalPermissionEvaluator,
@@ -878,6 +206,18 @@ import {
 
 export default {
   name: 'CustomerPortalShell',
+  components: {
+    CustomerActionBoardCard,
+    CustomerBeneficiariesCard,
+    CustomerDashboardSummaryCard,
+    CustomerDeathReportCard,
+    CustomerPaymentHistoryCard,
+    CustomerPaymentMethodCard,
+    CustomerPortalHeader,
+    CustomerPortalSidebar,
+    CustomerStatusMatrixCard,
+    CustomerTimelineCard,
+  },
   props: {
     initialSection: {
       type: String,
@@ -920,8 +260,6 @@ export default {
     },
   },
   data() {
-    const mockSeeds = getCustomerPortalMockSeeds();
-
     return {
       mobileMenuOpen: false,
       routeFallbackSegments: {
@@ -932,7 +270,7 @@ export default {
         'customer.payment-method': 'metodo-pago',
       },
       paymentRecoveryStage: 'bloqueado_por_metodo',
-      recoverySimulationBusy: false,
+      recoveryActionBusy: false,
       recoveryTimeoutId: null,
       processingActionKey: null,
       paymentMethodForm: {
@@ -944,8 +282,17 @@ export default {
         confirm: '',
       },
       paymentMethodFormNotice: '',
+      paymentMethodApiEndpoint: '/api/customer/payment-method',
+      paymentMethodApiBusy: false,
+      paymentMethodSnapshot: {
+        reference: '',
+        brand: 'CARD',
+        masked: 'Sin metodo',
+        status: 'UNKNOWN',
+        updated_at: '',
+      },
       moduleCatalogApiEndpoint: '/api/customer/portal/modules',
-      moduleCatalogLoadSource: 'mock',
+      moduleCatalogLoadSource: 'api',
       moduleCatalogLoadNotice: '',
       beneficiariesApiEndpoint: '/api/customer/beneficiaries',
       paymentHistoryApiEndpoint: '/api/customer/payment-history',
@@ -953,10 +300,8 @@ export default {
       deathReportApiEndpoint: '/api/customer/death-report',
       beneficiariesWidgetMode: 'idle',
       beneficiariesWidgetNotice: '',
-      beneficiariesLoadMockFail: false,
       paymentHistoryWidgetMode: 'idle',
       paymentHistoryWidgetNotice: '',
-      paymentHistoryLoadMockFail: false,
       paymentStatusPollingTimerId: null,
       paymentStatusPollingDelayMs: 2500,
       paymentStatusPollingMaxAttempts: 4,
@@ -1019,12 +364,10 @@ export default {
         ],
         confirmationFields: ['estadoCaso', 'referenciaCaso', 'siguientePaso'],
       },
-      deathReportMockPayload: mockSeeds.deathReportPayload,
-      deathReportMockConfirmation: mockSeeds.deathReportConfirmation,
+      deathReportMockPayload: {},
+      deathReportMockConfirmation: {},
       deathReportWidgetMode: 'idle',
       deathReportWidgetNotice: '',
-      deathReportLoadMockFail: false,
-      deathReportSubmitMockFail: false,
       isDeathReportSubmitting: false,
       deathReportHasSubmitted: false,
       deathReportLastSubmissionAt: '',
@@ -1051,10 +394,9 @@ export default {
         observacion: '',
         canalContacto: '',
       },
-      deathReportContextItems: mockSeeds.deathReportContextItems,
-      paymentHistoryMockRows: mockSeeds.paymentHistoryRows,
+      deathReportContextItems: [],
+      paymentHistoryMockRows: [],
       beneficiaryNextId: 4,
-      beneficiarySubmitMockFail: false,
       showBeneficiaryForm: false,
       beneficiaryForm: {
         nombre: '',
@@ -1068,27 +410,27 @@ export default {
         parentesco: '',
         estado: '',
       },
-      beneficiariesItems: mockSeeds.beneficiariesItems,
-      moduleCatalog: mockSeeds.moduleCatalog,
+      beneficiariesItems: [],
+      moduleCatalog: {},
       menuItems: [
         {
           key: 'dashboard',
-          label: 'Dashboard',
+          label: 'Resumen',
           routeName: 'customer.dashboard',
         },
         {
           key: 'productos',
-          label: 'Productos',
+          label: 'Cobertura',
           routeName: 'customer.products',
         },
         {
           key: 'transacciones',
-          label: 'Transacciones',
+          label: 'Historial pagos',
           routeName: 'customer.transactions',
         },
         {
           key: 'pagos-pendientes',
-          label: 'Pagos pendientes',
+          label: 'Suscripciones',
           routeName: 'customer.payments.pending',
         },
         {
@@ -1147,6 +489,10 @@ export default {
 
     if (this.canViewPaymentHistoryWidget) {
       this.initializePaymentHistoryWidget();
+    }
+
+    if (this.permissionEvaluator.canViewModule('metodo-pago').allowed) {
+      await this.loadPaymentMethodSnapshot();
     }
 
     if (this.canAccessDeathReportFlow) {
@@ -1288,6 +634,12 @@ export default {
 
       return [...timeline].reverse();
     },
+    paymentMethodMaskedDisplay() {
+      return this.paymentMethodSnapshot?.masked || 'Sin metodo';
+    },
+    paymentMethodStatusDisplay() {
+      return this.paymentMethodSnapshot?.status || 'UNKNOWN';
+    },
     displayUserName() {
       return this.userName || 'Cliente';
     },
@@ -1323,11 +675,11 @@ export default {
     activeActions() {
       return (this.activeModule.allowedActions || []).map((action) => {
         const status = this.getActionStatus(action);
-        const actionKey = action.simulateKey || action.routeName || action.label;
-        let label = action.label;
+        const actionKey = action.actionKey || action.simulateKey || action.routeName || action.label;
+        let label = `${action.label || ''}`.replace(/\s*\(simulado\)/gi, '');
 
         if (action.simulateKey === 'retry-payment' && this.paymentRecoveryStage === 'en_reintento') {
-          label = 'Finalizar reintento (simulado)';
+          label = 'Finalizar reintento';
         }
 
         return {
@@ -1695,7 +1047,7 @@ export default {
           actionKey: 'beneficiaries.create',
         }),
         paymentMethodUpdate: this.permissionEvaluator.canExecuteAction({
-          simulateKey: 'update-payment-method',
+          actionKey: 'update-payment-method',
         }),
       };
     },
@@ -1740,7 +1092,7 @@ export default {
         return 'Caso en validacion previa. Revisa datos antes de enviar reporte.';
       }
 
-      return 'Flujo de reporte listo para captura y envio simulado en esta fase.';
+      return 'Flujo de reporte listo para captura y envio.';
     },
     paymentHistoryNormalizedRows() {
       const sourceRows = Array.isArray(this.paymentHistoryMockRows)
@@ -1749,6 +1101,13 @@ export default {
 
       const normalizedRows = sourceRows.map((row, index) => this.normalizePaymentHistoryRow(row, index));
       return this.sortPaymentHistoryRows(normalizedRows, this.paymentHistorySortDirection);
+    },
+    paymentHistoryViewRows() {
+      return this.paymentHistoryNormalizedRows.map((item) => ({
+        ...item,
+        estadoLabel: this.paymentHistoryStatusLabel(item.estado),
+        estadoBadgeClass: this.paymentHistoryStatusBadgeClass(item.estado),
+      }));
     },
     paymentHistoryContractIsReady() {
       if (!this.paymentHistoryContractSummary.requiredFields.length) {
@@ -1892,7 +1251,7 @@ export default {
         },
         {
           key: 'update-payment-method',
-          action: { simulateKey: 'update-payment-method' },
+          action: { actionKey: 'update-payment-method' },
         },
       ];
 
@@ -2013,28 +1372,6 @@ export default {
 
       return 'normal';
     },
-    async initializeModuleCatalogMockData(forceError = false) {
-      if (!forceError && this.isComponentUnmounted) {
-        return false;
-      }
-
-      const response = await fetchModuleCatalogMock({
-        forceError,
-        latencyMs: 220,
-      });
-
-      if (this.isComponentUnmounted) {
-        return false;
-      }
-
-      if (response.status === 'error' || !response.data || typeof response.data !== 'object') {
-        this.moduleCatalog = {};
-        return false;
-      }
-
-      this.moduleCatalog = response.data;
-      return true;
-    },
     async initializeModuleCatalogData() {
       if (this.isComponentUnmounted) {
         return false;
@@ -2088,55 +1425,7 @@ export default {
         return true;
       }
 
-      if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
-        this.moduleCatalog = {};
-        this.moduleCatalogLoadSource = 'error';
-        this.moduleCatalogLoadNotice = apiResponse.error?.message || 'No fue posible cargar catalogo de modulos.';
-        this.trackPortalEvent('customer.portal.dashboard.load', {
-          module: 'dashboard',
-          action: 'load-module-catalog',
-          outcome: 'failure',
-          severity: 'error',
-          widgetState: 'error',
-          operationalState: 'bloqueado',
-          reasonCode: 'API_ERROR',
-          meta: {
-            source: 'api',
-            errorCode: apiResponse.error?.code || '',
-          },
-        }, {
-          dedupeKey: `dashboard-load-error-${apiResponse.error?.code || 'unknown'}`,
-        });
-        return false;
-      }
-
-      const mockLoaded = await this.initializeModuleCatalogMockData(false);
-
-      if (this.isComponentUnmounted) {
-        return false;
-      }
-
-      if (mockLoaded) {
-        this.moduleCatalogLoadSource = 'mock-fallback';
-        this.moduleCatalogLoadNotice = apiResponse.error?.message
-          || 'Catalogo API no disponible. Se usa fallback mock controlado.';
-        this.trackPortalEvent('customer.portal.dashboard.load', {
-          module: 'dashboard',
-          action: 'load-module-catalog',
-          outcome: 'success',
-          severity: 'warn',
-          widgetState: 'ready',
-          operationalState: this.dashboardSummaryStatus?.state || 'normal',
-          meta: {
-            source: 'mock-fallback',
-            errorCode: apiResponse.error?.code || '',
-          },
-        }, {
-          dedupeKey: `dashboard-load-mock-${apiResponse.error?.code || 'unknown'}`,
-        });
-        return true;
-      }
-
+      this.moduleCatalog = {};
       this.moduleCatalogLoadSource = 'error';
       this.moduleCatalogLoadNotice = apiResponse.error?.message || 'No fue posible cargar catalogo de modulos.';
       this.trackPortalEvent('customer.portal.dashboard.load', {
@@ -2148,11 +1437,11 @@ export default {
         operationalState: 'bloqueado',
         reasonCode: 'API_ERROR',
         meta: {
-          source: 'mock-fallback',
+          source: 'api',
           errorCode: apiResponse.error?.code || '',
         },
       }, {
-        dedupeKey: `dashboard-load-final-error-${apiResponse.error?.code || 'unknown'}`,
+        dedupeKey: `dashboard-load-error-${apiResponse.error?.code || 'unknown'}`,
       });
       return false;
     },
@@ -2166,139 +1455,72 @@ export default {
       this.paymentHistoryWidgetMode = 'loading';
       this.syncTransactionsSummaryFromPaymentHistory();
 
-      if (!forceError && !this.paymentHistoryLoadMockFail) {
-        const apiResponse = await fetchPaymentHistoryApi({
-          endpoint: this.paymentHistoryApiEndpoint,
-        });
-
-        if (this.isComponentUnmounted) {
-          return;
-        }
-
-        if (apiResponse.status !== 'error') {
-          const apiRows = Array.isArray(apiResponse.data?.rows)
-            ? apiResponse.data.rows
-            : [];
-          this.paymentHistoryMockRows = await this.trySyncLatestPaymentStatus(apiRows);
-
-          if (this.isComponentUnmounted) {
-            return;
-          }
-
-          if (apiResponse.data?.endpointUsed && apiResponse.data.endpointUsed !== this.paymentHistoryApiEndpoint) {
-            this.paymentHistoryWidgetNotice = 'Se activo endpoint alterno de historial para mantener continuidad operativa.';
-          }
-
-          this.paymentHistoryWidgetMode = 'ready';
-          this.syncTransactionsSummaryFromPaymentHistory();
-          this.trackPortalEvent('customer.portal.payments.history.view', {
-            module: 'payment-history',
-            action: 'view-history',
-            outcome: 'success',
-            widgetState: this.paymentHistoryWidgetState,
-            operationalState: this.dashboardSummaryStatus?.state || 'normal',
-            meta: {
-              source: 'api',
-              rows: this.paymentHistoryMockRows.length,
-            },
-          }, {
-            dedupeKey: `payments-history-api-${this.paymentHistoryMockRows.length}`,
-          });
-
-          if (this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
-            this.schedulePaymentStatusPolling();
-          }
-
-          return;
-        }
-
-        if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
-          this.paymentHistoryMockRows = [];
-          this.paymentHistoryWidgetMode = 'error';
-          this.paymentHistoryWidgetNotice = apiResponse.error?.message || 'No fue posible cargar historial desde API.';
-          this.syncTransactionsSummaryFromPaymentHistory();
-          this.trackPortalEvent('customer.portal.payments.history.view', {
-            module: 'payment-history',
-            action: 'view-history',
-            outcome: 'failure',
-            severity: 'error',
-            widgetState: 'error',
-            operationalState: 'bloqueado',
-            reasonCode: 'API_ERROR',
-            meta: {
-              source: 'api',
-              errorCode: apiResponse.error?.code || '',
-            },
-          }, {
-            dedupeKey: `payments-history-error-${apiResponse.error?.code || 'unknown'}`,
-          });
-          return;
-        }
-      }
-
-      const response = await fetchPaymentHistoryMock({
-        forceError: forceError || this.paymentHistoryLoadMockFail,
-        latencyMs: 350,
+      const apiResponse = await fetchPaymentHistoryApi({
+        endpoint: this.paymentHistoryApiEndpoint,
       });
 
       if (this.isComponentUnmounted) {
         return;
       }
 
-      if (response.status === 'error') {
-        this.resetPaymentStatusPolling(false);
-        this.paymentHistoryMockRows = [];
-        this.paymentHistoryWidgetMode = 'error';
-        this.paymentHistoryWidgetNotice = response.error?.message || 'Modo mock con fallo controlado para validar manejo de error.';
+      if (apiResponse.status !== 'error') {
+        const apiRows = Array.isArray(apiResponse.data?.rows)
+          ? apiResponse.data.rows
+          : [];
+        this.paymentHistoryMockRows = await this.trySyncLatestPaymentStatus(apiRows);
+
+        if (this.isComponentUnmounted) {
+          return;
+        }
+
+        if (apiResponse.data?.endpointUsed && apiResponse.data.endpointUsed !== this.paymentHistoryApiEndpoint) {
+          this.paymentHistoryWidgetNotice = 'Se activo endpoint alterno de historial para mantener continuidad operativa.';
+        }
+
+        this.paymentHistoryWidgetMode = 'ready';
         this.syncTransactionsSummaryFromPaymentHistory();
         this.trackPortalEvent('customer.portal.payments.history.view', {
           module: 'payment-history',
           action: 'view-history',
-          outcome: 'failure',
-          severity: 'error',
-          widgetState: 'error',
-          operationalState: 'bloqueado',
-          reasonCode: 'API_ERROR',
+          outcome: 'success',
+          widgetState: this.paymentHistoryWidgetState,
+          operationalState: this.dashboardSummaryStatus?.state || 'normal',
           meta: {
-            source: 'mock',
+            source: 'api',
+            rows: this.paymentHistoryMockRows.length,
           },
         }, {
-          dedupeKey: 'payments-history-mock-error',
+          dedupeKey: `payments-history-api-${this.paymentHistoryMockRows.length}`,
         });
+
+        if (this.hasTransientPaymentStatuses(this.paymentHistoryMockRows)) {
+          this.schedulePaymentStatusPolling();
+        }
+
         return;
       }
 
-      this.paymentHistoryMockRows = Array.isArray(response.data?.rows)
-        ? response.data.rows
-        : [];
-
-      if (!this.paymentHistoryContractIsReady) {
-        this.resetPaymentStatusPolling(false);
-        this.paymentHistoryWidgetMode = 'error';
-        this.paymentHistoryWidgetNotice = 'Contrato de historial invalido. Revisar payload de origen.';
-      } else {
-        this.paymentHistoryWidgetMode = 'ready';
-      }
-
+      this.paymentHistoryMockRows = [];
+      this.paymentHistoryWidgetMode = 'error';
+      this.paymentHistoryWidgetNotice = apiResponse.error?.message || 'No fue posible cargar historial desde API.';
+      this.syncTransactionsSummaryFromPaymentHistory();
       this.trackPortalEvent('customer.portal.payments.history.view', {
         module: 'payment-history',
         action: 'view-history',
-        outcome: this.paymentHistoryWidgetState === 'error' ? 'failure' : 'success',
-        severity: this.paymentHistoryWidgetState === 'error' ? 'error' : 'info',
-        widgetState: this.paymentHistoryWidgetState,
-        operationalState: this.paymentHistoryOperationalStateByStatus(this.paymentHistoryNormalizedRows[0]?.estado),
+        outcome: 'failure',
+        severity: 'error',
+        widgetState: 'error',
+        operationalState: 'bloqueado',
+        reasonCode: 'API_ERROR',
         meta: {
-          source: 'mock',
-          rows: this.paymentHistoryMockRows.length,
+          source: 'api',
+          errorCode: apiResponse.error?.code || '',
         },
       }, {
-        dedupeKey: `payments-history-mock-${this.paymentHistoryWidgetState}-${this.paymentHistoryMockRows.length}`,
+        dedupeKey: `payments-history-error-${apiResponse.error?.code || 'unknown'}`,
       });
-
-      this.syncTransactionsSummaryFromPaymentHistory();
     },
     retryPaymentHistoryWidget() {
-      this.paymentHistoryLoadMockFail = false;
       this.initializePaymentHistoryWidget();
     },
     setPaymentHistorySortDirection(direction) {
@@ -2410,65 +1632,33 @@ export default {
       this.deathReportWidgetNotice = '';
       this.deathReportWidgetMode = 'loading';
 
-      if (!forceError && !this.deathReportLoadMockFail) {
-        const apiResponse = await fetchDeathReportApi({
-          endpoint: this.deathReportApiEndpoint,
-        });
-
-        if (this.isComponentUnmounted) {
-          return;
-        }
-
-        if (apiResponse.status !== 'error') {
-          this.deathReportMockPayload = apiResponse.data?.payload || {};
-          this.deathReportMockConfirmation = apiResponse.data?.confirmation || {};
-          this.deathReportContextItems = Array.isArray(apiResponse.data?.context) ? apiResponse.data.context : [];
-
-          if (!this.deathReportContractIsReady) {
-            this.deathReportWidgetMode = 'error';
-            this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
-          } else {
-            this.deathReportWidgetMode = 'ready';
-          }
-
-          return;
-        }
-
-        if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
-          this.deathReportWidgetMode = 'error';
-          this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible cargar reporte de fallecimiento desde API.';
-          return;
-        }
-      }
-
-      const response = await fetchDeathReportMock({
-        forceError: forceError || this.deathReportLoadMockFail,
-        latencyMs: 350,
+      const apiResponse = await fetchDeathReportApi({
+        endpoint: this.deathReportApiEndpoint,
       });
 
       if (this.isComponentUnmounted) {
         return;
       }
 
-      if (response.status === 'error') {
-        this.deathReportWidgetMode = 'error';
-        this.deathReportWidgetNotice = response.error?.message || 'Modo mock con fallo controlado para validar manejo de error.';
+      if (apiResponse.status !== 'error') {
+        this.deathReportMockPayload = apiResponse.data?.payload || {};
+        this.deathReportMockConfirmation = apiResponse.data?.confirmation || {};
+        this.deathReportContextItems = Array.isArray(apiResponse.data?.context) ? apiResponse.data.context : [];
+
+        if (!this.deathReportContractIsReady) {
+          this.deathReportWidgetMode = 'error';
+          this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
+        } else {
+          this.deathReportWidgetMode = 'ready';
+        }
+
         return;
       }
 
-      this.deathReportMockPayload = response.data?.payload || {};
-      this.deathReportMockConfirmation = response.data?.confirmation || {};
-      this.deathReportContextItems = Array.isArray(response.data?.context) ? response.data.context : [];
-
-      if (!this.deathReportContractIsReady) {
-        this.deathReportWidgetMode = 'error';
-        this.deathReportWidgetNotice = 'Contrato FE-007 invalido. Revisar payload de origen.';
-      } else {
-        this.deathReportWidgetMode = 'ready';
-      }
+      this.deathReportWidgetMode = 'error';
+      this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible cargar reporte de fallecimiento desde API.';
     },
     retryDeathReportWidget() {
-      this.deathReportLoadMockFail = false;
       this.initializeDeathReportWidget();
     },
     deathReportCaseStatusLabel(status) {
@@ -2606,135 +1796,73 @@ export default {
 
       this.isDeathReportSubmitting = true;
 
-      if (!this.deathReportSubmitMockFail) {
-        const apiResponse = await submitDeathReportApi(payloadToSend, {
-          endpoint: this.deathReportApiEndpoint,
-        });
-
-        if (this.isComponentUnmounted) {
-          return;
-        }
-
-        if (apiResponse.status !== 'error') {
-          const confirmation = apiResponse.data?.confirmation || {};
-
-          this.deathReportMockPayload = apiResponse.data?.payload || payloadToSend;
-          this.deathReportMockConfirmation = confirmation;
-          this.deathReportContextItems = Array.isArray(apiResponse.data?.context)
-            ? apiResponse.data.context
-            : this.deathReportContextItems;
-
-          this.deathReportCaseSequence += 1;
-          this.deathReportHasSubmitted = true;
-          this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
-          this.deathReportSubmitNotice = 'Reporte enviado desde API.';
-          this.trackPortalEvent('customer.portal.death-report.submit', {
-            module: 'death-report',
-            action: 'submit-death-report',
-            outcome: 'success',
-            widgetState: this.deathReportWidgetState,
-            operationalState: this.deathReportOperationalState,
-            permissionDecision: 'allow',
-            reasonCode: 'ACTION_EXECUTED',
-            correlation: {
-              requestId: confirmation.requestId || '',
-            },
-            meta: {
-              source: 'api',
-              caseStatus: confirmation.estadoCaso || '',
-            },
-          }, {
-            dedupeKey: `death-report-submit-api-${confirmation.referenciaCaso || this.deathReportCaseSequence}`,
-          });
-          this.isDeathReportSubmitting = false;
-          return;
-        }
-
-        const validationErrors = apiResponse.error?.validationErrors;
-        const hasValidationErrors = !!validationErrors && Object.keys(validationErrors).length > 0;
-
-        this.applyDeathReportApiValidationErrors(validationErrors);
-        this.deathReportWidgetMode = hasValidationErrors || apiResponse.error?.retriable === true
-          ? 'ready'
-          : 'error';
-        this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible enviar reporte de fallecimiento en API.';
-        this.deathReportSubmitNotice = '';
-        this.trackPortalEvent('customer.portal.death-report.submit', {
-          module: 'death-report',
-          action: 'submit-death-report',
-          outcome: 'failure',
-          severity: 'error',
-          widgetState: this.deathReportWidgetState,
-          operationalState: this.deathReportOperationalState,
-          permissionDecision: 'allow',
-          reasonCode: apiResponse.error?.validationErrors ? 'VALIDATION_ERROR' : 'API_ERROR',
-          meta: {
-            source: 'api',
-            errorCode: apiResponse.error?.code || '',
-          },
-        }, {
-          dedupeKey: `death-report-submit-api-error-${apiResponse.error?.code || 'unknown'}`,
-        });
-        this.isDeathReportSubmitting = false;
-        return;
-      }
-
-      const response = await submitDeathReportMock(payloadToSend, {
-        forceError: this.deathReportSubmitMockFail,
-        latencyMs: 600,
-        caseSequence: this.deathReportCaseSequence,
+      const apiResponse = await submitDeathReportApi(payloadToSend, {
+        endpoint: this.deathReportApiEndpoint,
       });
 
       if (this.isComponentUnmounted) {
         return;
       }
 
-      if (response.status === 'error') {
-        this.deathReportWidgetMode = 'error';
-        this.deathReportWidgetNotice = response.error?.message || 'No fue posible enviar el reporte en modo mock.';
-        this.deathReportSubmitNotice = '';
+      if (apiResponse.status !== 'error') {
+        const confirmation = apiResponse.data?.confirmation || {};
+
+        this.deathReportMockPayload = apiResponse.data?.payload || payloadToSend;
+        this.deathReportMockConfirmation = confirmation;
+        this.deathReportContextItems = Array.isArray(apiResponse.data?.context)
+          ? apiResponse.data.context
+          : this.deathReportContextItems;
+
+        this.deathReportCaseSequence += 1;
+        this.deathReportHasSubmitted = true;
+        this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
+        this.deathReportSubmitNotice = 'Reporte enviado desde API.';
         this.trackPortalEvent('customer.portal.death-report.submit', {
           module: 'death-report',
           action: 'submit-death-report',
-          outcome: 'failure',
-          severity: 'error',
+          outcome: 'success',
           widgetState: this.deathReportWidgetState,
           operationalState: this.deathReportOperationalState,
           permissionDecision: 'allow',
-          reasonCode: 'API_ERROR',
+          reasonCode: 'ACTION_EXECUTED',
+          correlation: {
+            requestId: confirmation.requestId || '',
+          },
           meta: {
-            source: 'mock',
+            source: 'api',
+            caseStatus: confirmation.estadoCaso || '',
           },
         }, {
-          dedupeKey: 'death-report-submit-mock-error',
+          dedupeKey: `death-report-submit-api-${confirmation.referenciaCaso || this.deathReportCaseSequence}`,
         });
         this.isDeathReportSubmitting = false;
         return;
       }
 
-      const confirmation = response.data?.confirmation || {};
-      this.deathReportMockPayload = response.data?.payload || payloadToSend;
-      this.deathReportMockConfirmation = confirmation;
-      this.deathReportContextItems = Array.isArray(response.data?.context) ? response.data.context : this.deathReportContextItems;
+      const validationErrors = apiResponse.error?.validationErrors;
+      const hasValidationErrors = !!validationErrors && Object.keys(validationErrors).length > 0;
 
-      this.deathReportCaseSequence += 1;
-      this.deathReportHasSubmitted = true;
-      this.deathReportLastSubmissionAt = this.formatPaymentHistoryDateLabel(Date.parse(confirmation.fechaReporte || new Date().toISOString()));
-      this.deathReportSubmitNotice = 'Reporte enviado en modo simulado (FE-008C).';
+      this.applyDeathReportApiValidationErrors(validationErrors);
+      this.deathReportWidgetMode = hasValidationErrors || apiResponse.error?.retriable === true
+        ? 'ready'
+        : 'error';
+      this.deathReportWidgetNotice = apiResponse.error?.message || 'No fue posible enviar reporte de fallecimiento en API.';
+      this.deathReportSubmitNotice = '';
       this.trackPortalEvent('customer.portal.death-report.submit', {
         module: 'death-report',
         action: 'submit-death-report',
-        outcome: 'success',
+        outcome: 'failure',
+        severity: 'error',
         widgetState: this.deathReportWidgetState,
         operationalState: this.deathReportOperationalState,
         permissionDecision: 'allow',
-        reasonCode: 'ACTION_EXECUTED',
+        reasonCode: apiResponse.error?.validationErrors ? 'VALIDATION_ERROR' : 'API_ERROR',
         meta: {
-          source: 'mock',
-          caseStatus: confirmation.estadoCaso || '',
+          source: 'api',
+          errorCode: apiResponse.error?.code || '',
         },
       }, {
-        dedupeKey: `death-report-submit-mock-${confirmation.referenciaCaso || this.deathReportCaseSequence}`,
+        dedupeKey: `death-report-submit-api-error-${apiResponse.error?.code || 'unknown'}`,
       });
       this.isDeathReportSubmitting = false;
     },
@@ -2770,6 +1898,15 @@ export default {
           this.deathReportFormErrors[targetField] = firstMessage.trim();
         }
       });
+    },
+    onDeathReportFormFieldUpdate(payload) {
+      const field = `${payload?.field || ''}`.trim();
+
+      if (!field || !Object.prototype.hasOwnProperty.call(this.deathReportForm, field)) {
+        return;
+      }
+
+      this.deathReportForm[field] = `${payload?.value ?? ''}`;
     },
     normalizePaymentHistoryStatus(status) {
       const normalized = `${status || ''}`
@@ -2869,14 +2006,14 @@ export default {
         this.paymentRetryFinalizeTimeoutId = null;
 
         if (this.paymentRecoveryStage !== 'en_reintento') {
-          this.recoverySimulationBusy = false;
+          this.recoveryActionBusy = false;
           this.processingActionKey = null;
           return;
         }
 
         this.persistRetryPendingLock();
         this.paymentHistoryWidgetNotice = 'Reintento en verificacion: no se recibio confirmacion final todavia. Espera sincronizacion antes de intentar de nuevo.';
-        this.recoverySimulationBusy = false;
+        this.recoveryActionBusy = false;
         this.processingActionKey = null;
       }, this.paymentRetryFinalizeTimeoutMs);
     },
@@ -3048,7 +2185,7 @@ export default {
       } else {
         this.clearRetryOutcomeTimeout();
         this.clearRetryPendingLock();
-        this.recoverySimulationBusy = false;
+        this.recoveryActionBusy = false;
         this.processingActionKey = null;
       }
 
@@ -3098,7 +2235,7 @@ export default {
           this.resetPaymentStatusPolling(false);
           this.clearRetryOutcomeTimeout();
           this.clearRetryPendingLock();
-          this.recoverySimulationBusy = false;
+          this.recoveryActionBusy = false;
           this.processingActionKey = null;
           this.paymentHistoryWidgetMode = 'error';
           this.paymentHistoryWidgetNotice = `Servicio de pagos no disponible temporalmente. Se detuvo la sincronizacion automatica tras ${this.paymentStatusConsecutiveNetworkErrors} fallos consecutivos.${requestIdSuffix}`;
@@ -3112,7 +2249,7 @@ export default {
         this.resetPaymentStatusPolling(false);
         this.clearRetryOutcomeTimeout();
         this.clearRetryPendingLock();
-        this.recoverySimulationBusy = false;
+        this.recoveryActionBusy = false;
         this.processingActionKey = null;
         this.paymentHistoryWidgetMode = 'error';
         this.paymentHistoryWidgetNotice = fallbackMessage;
@@ -3121,7 +2258,7 @@ export default {
 
       if (nonRetriableCodes.includes(errorCode)) {
         this.resetPaymentStatusPolling(false);
-        this.recoverySimulationBusy = false;
+        this.recoveryActionBusy = false;
         this.processingActionKey = null;
         this.paymentHistoryWidgetNotice = fallbackMessage;
         return;
@@ -3536,103 +2673,51 @@ export default {
       this.beneficiariesWidgetNotice = '';
       this.beneficiariesWidgetMode = 'loading';
 
-      if (!forceError && !this.beneficiariesLoadMockFail) {
-        const apiResponse = await fetchBeneficiariesApi({
-          endpoint: this.beneficiariesApiEndpoint,
-        });
-
-        if (this.isComponentUnmounted) {
-          return;
-        }
-
-        if (apiResponse.status !== 'error') {
-          this.beneficiariesItems = Array.isArray(apiResponse.data?.items)
-            ? apiResponse.data.items
-            : [];
-          this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
-          this.trackPortalEvent('customer.portal.beneficiaries.view', {
-            module: 'beneficiarios',
-            action: 'view-beneficiaries',
-            outcome: 'success',
-            widgetState: this.beneficiariesWidgetState,
-            operationalState: this.beneficiariesOperationalState,
-            meta: {
-              source: 'api',
-              total: this.beneficiariesItems.length,
-            },
-          }, {
-            dedupeKey: `beneficiaries-view-api-${this.beneficiariesItems.length}`,
-          });
-          return;
-        }
-
-        if (!this.canUseMockFallbackForApiError(apiResponse.error)) {
-          this.beneficiariesWidgetMode = 'error';
-          this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible cargar beneficiarios desde API.';
-          this.trackPortalEvent('customer.portal.beneficiaries.view', {
-            module: 'beneficiarios',
-            action: 'view-beneficiaries',
-            outcome: 'failure',
-            severity: 'error',
-            widgetState: 'error',
-            operationalState: 'bloqueado',
-            reasonCode: 'API_ERROR',
-            meta: {
-              source: 'api',
-              errorCode: apiResponse.error?.code || '',
-            },
-          }, {
-            dedupeKey: `beneficiaries-view-error-${apiResponse.error?.code || 'unknown'}`,
-          });
-          return;
-        }
-      }
-
-      const response = await fetchBeneficiariesMock({
-        forceError: forceError || this.beneficiariesLoadMockFail,
-        latencyMs: 350,
+      const apiResponse = await fetchBeneficiariesApi({
+        endpoint: this.beneficiariesApiEndpoint,
       });
 
       if (this.isComponentUnmounted) {
         return;
       }
 
-      if (response.status === 'error') {
-        this.beneficiariesWidgetMode = 'error';
-        this.beneficiariesWidgetNotice = response.error?.message || 'No fue posible cargar beneficiarios mock.';
+      if (apiResponse.status !== 'error') {
+        this.beneficiariesItems = Array.isArray(apiResponse.data?.items)
+          ? apiResponse.data.items
+          : [];
+        this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
         this.trackPortalEvent('customer.portal.beneficiaries.view', {
           module: 'beneficiarios',
           action: 'view-beneficiaries',
-          outcome: 'failure',
-          severity: 'error',
-          widgetState: 'error',
-          operationalState: 'bloqueado',
-          reasonCode: 'API_ERROR',
+          outcome: 'success',
+          widgetState: this.beneficiariesWidgetState,
+          operationalState: this.beneficiariesOperationalState,
           meta: {
-            source: 'mock',
+            source: 'api',
+            total: this.beneficiariesItems.length,
           },
         }, {
-          dedupeKey: 'beneficiaries-view-mock-error',
+          dedupeKey: `beneficiaries-view-api-${this.beneficiariesItems.length}`,
         });
         return;
       }
 
-      this.beneficiariesItems = Array.isArray(response.data?.items)
-        ? response.data.items
-        : [];
-      this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+      this.beneficiariesWidgetMode = 'error';
+      this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible cargar beneficiarios desde API.';
       this.trackPortalEvent('customer.portal.beneficiaries.view', {
         module: 'beneficiarios',
         action: 'view-beneficiaries',
-        outcome: 'success',
-        widgetState: this.beneficiariesWidgetState,
-        operationalState: this.beneficiariesOperationalState,
+        outcome: 'failure',
+        severity: 'error',
+        widgetState: 'error',
+        operationalState: 'bloqueado',
+        reasonCode: 'API_ERROR',
         meta: {
-          source: 'mock',
-          total: this.beneficiariesItems.length,
+          source: 'api',
+          errorCode: apiResponse.error?.code || '',
         },
       }, {
-        dedupeKey: `beneficiaries-view-mock-${this.beneficiariesItems.length}`,
+        dedupeKey: `beneficiaries-view-error-${apiResponse.error?.code || 'unknown'}`,
       });
     },
     resetBeneficiaryForm() {
@@ -3652,6 +2737,15 @@ export default {
 
       this.showBeneficiaryForm = false;
       this.resetBeneficiaryForm();
+    },
+    onBeneficiaryFormFieldUpdate(payload) {
+      const field = `${payload?.field || ''}`.trim();
+
+      if (!field || !Object.prototype.hasOwnProperty.call(this.beneficiaryForm, field)) {
+        return;
+      }
+
+      this.beneficiaryForm[field] = `${payload?.value ?? ''}`;
     },
     validateBeneficiaryForm() {
       this.beneficiaryFormErrors.nombre = '';
@@ -3744,134 +2838,61 @@ export default {
 
       this.isBeneficiarySubmitting = true;
 
-      if (!this.beneficiarySubmitMockFail) {
-        const apiResponse = await createBeneficiaryApi(newItem, {
-          endpoint: this.beneficiariesApiEndpoint,
-        });
-
-        if (this.isComponentUnmounted) {
-          return;
-        }
-
-        if (apiResponse.status !== 'error') {
-          const createdItem = apiResponse.data?.item;
-
-          if (createdItem) {
-            this.beneficiariesItems = [createdItem, ...this.beneficiariesItems];
-            this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
-            this.showBeneficiaryForm = false;
-            this.resetBeneficiaryForm();
-            this.beneficiariesWidgetNotice = 'Beneficiario agregado desde API.';
-            this.trackPortalEvent('customer.portal.beneficiaries.add', {
-              module: 'beneficiarios',
-              action: 'add-beneficiary',
-              outcome: 'success',
-              widgetState: this.beneficiariesWidgetState,
-              operationalState: this.beneficiariesOperationalState,
-              permissionDecision: 'allow',
-              reasonCode: 'ACTION_EXECUTED',
-              meta: {
-                source: 'api',
-              },
-            }, {
-              dedupeKey: `beneficiary-add-api-${createdItem.id || createdItem.documento || Date.now()}`,
-            });
-            this.isBeneficiarySubmitting = false;
-            return;
-          }
-        }
-
-        this.applyBeneficiaryApiValidationErrors(apiResponse.error?.validationErrors);
-        this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible guardar beneficiario en API.';
-        this.trackPortalEvent('customer.portal.beneficiaries.add', {
-          module: 'beneficiarios',
-          action: 'add-beneficiary',
-          outcome: 'failure',
-          severity: 'error',
-          widgetState: this.beneficiariesWidgetState,
-          operationalState: this.beneficiariesOperationalState,
-          permissionDecision: 'allow',
-          reasonCode: 'API_ERROR',
-          meta: {
-            source: 'api',
-            errorCode: apiResponse.error?.code || '',
-          },
-        }, {
-          dedupeKey: `beneficiary-add-api-error-${apiResponse.error?.code || 'unknown'}`,
-        });
-        this.isBeneficiarySubmitting = false;
-        return;
-      }
-
-      const response = await createBeneficiaryMock(newItem, {
-        forceError: this.beneficiarySubmitMockFail,
-        latencyMs: 500,
-        nextId: this.beneficiaryNextId,
+      const apiResponse = await createBeneficiaryApi(newItem, {
+        endpoint: this.beneficiariesApiEndpoint,
       });
 
-      if (response.status === 'error') {
-        this.beneficiariesWidgetNotice = response.error?.message || 'No fue posible guardar beneficiario mock.';
-        this.trackPortalEvent('customer.portal.beneficiaries.add', {
-          module: 'beneficiarios',
-          action: 'add-beneficiary',
-          outcome: 'failure',
-          severity: 'error',
-          widgetState: this.beneficiariesWidgetState,
-          operationalState: this.beneficiariesOperationalState,
-          permissionDecision: 'allow',
-          reasonCode: 'API_ERROR',
-          meta: {
-            source: 'mock',
-          },
-        }, {
-          dedupeKey: 'beneficiary-add-mock-error',
-        });
-        this.isBeneficiarySubmitting = false;
+      if (this.isComponentUnmounted) {
         return;
       }
 
-      const createdItem = response.data?.item || { ...newItem, id: this.beneficiaryNextId };
-      this.beneficiariesItems = [createdItem, ...this.beneficiariesItems];
-      this.beneficiaryNextId += 1;
-      this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
-      this.showBeneficiaryForm = false;
-      this.resetBeneficiaryForm();
-      this.beneficiariesWidgetNotice = 'Beneficiario agregado en modo simulado (FE-008C).';
+      if (apiResponse.status !== 'error') {
+        const createdItem = apiResponse.data?.item;
+
+        if (createdItem) {
+          this.beneficiariesItems = [createdItem, ...this.beneficiariesItems];
+          this.beneficiariesWidgetMode = this.beneficiariesItems.length ? 'ready' : 'empty';
+          this.showBeneficiaryForm = false;
+          this.resetBeneficiaryForm();
+          this.beneficiariesWidgetNotice = 'Beneficiario agregado desde API.';
+          this.trackPortalEvent('customer.portal.beneficiaries.add', {
+            module: 'beneficiarios',
+            action: 'add-beneficiary',
+            outcome: 'success',
+            widgetState: this.beneficiariesWidgetState,
+            operationalState: this.beneficiariesOperationalState,
+            permissionDecision: 'allow',
+            reasonCode: 'ACTION_EXECUTED',
+            meta: {
+              source: 'api',
+            },
+          }, {
+            dedupeKey: `beneficiary-add-api-${createdItem.id || createdItem.documento || Date.now()}`,
+          });
+          this.isBeneficiarySubmitting = false;
+          return;
+        }
+      }
+
+      this.applyBeneficiaryApiValidationErrors(apiResponse.error?.validationErrors);
+      this.beneficiariesWidgetNotice = apiResponse.error?.message || 'No fue posible guardar beneficiario en API.';
       this.trackPortalEvent('customer.portal.beneficiaries.add', {
         module: 'beneficiarios',
         action: 'add-beneficiary',
-        outcome: 'success',
+        outcome: 'failure',
+        severity: 'error',
         widgetState: this.beneficiariesWidgetState,
         operationalState: this.beneficiariesOperationalState,
         permissionDecision: 'allow',
-        reasonCode: 'ACTION_EXECUTED',
+        reasonCode: 'API_ERROR',
         meta: {
-          source: 'mock',
-          id: createdItem.id || null,
+          source: 'api',
+          errorCode: apiResponse.error?.code || '',
         },
       }, {
-        dedupeKey: `beneficiary-add-mock-${createdItem.id || Date.now()}`,
+        dedupeKey: `beneficiary-add-api-error-${apiResponse.error?.code || 'unknown'}`,
       });
       this.isBeneficiarySubmitting = false;
-    },
-    canUseMockFallbackForApiError(apiError) {
-      if (!apiError || typeof apiError !== 'object') {
-        return false;
-      }
-
-      const blockedCodes = ['API_UNAUTHORIZED', 'API_FORBIDDEN'];
-      const allowedFallbackCodes = ['API_RESOURCE_NOT_FOUND'];
-      const code = `${apiError.code || ''}`.trim().toUpperCase();
-
-      if (blockedCodes.includes(code)) {
-        return false;
-      }
-
-      if (allowedFallbackCodes.includes(code)) {
-        return true;
-      }
-
-      return apiError.retriable === true;
     },
     applyBeneficiaryApiValidationErrors(validationErrors) {
       if (!validationErrors || typeof validationErrors !== 'object') {
@@ -3910,7 +2931,6 @@ export default {
         this.beneficiariesItems = [];
       }
 
-      this.beneficiariesLoadMockFail = false;
       this.initializeBeneficiariesWidget();
     },
     normalizePath(rawPath) {
@@ -4023,6 +3043,7 @@ export default {
     },
     getActionStatus(action) {
       const hasMappedExecution = !!(action && (action.routeName || action.simulateKey || action.actionKey || action.permissionKey));
+      const actionTrigger = `${action?.actionKey || action?.simulateKey || ''}`.trim();
 
       if (hasMappedExecution) {
         const permissionStatus = this.permissionEvaluator.canExecuteAction(action);
@@ -4036,23 +3057,23 @@ export default {
         }
       }
 
-      if (this.recoverySimulationBusy && action.simulateKey) {
+      if (this.recoveryActionBusy && actionTrigger) {
         return {
           disabled: true,
-          disabledReason: 'Simulacion en progreso',
+          disabledReason: 'Accion de recuperacion en progreso',
           isUpcoming: false,
         };
       }
 
-      if (this.recoverySimulationBusy && action.routeName) {
+      if (this.recoveryActionBusy && action.routeName) {
         return {
           disabled: true,
-          disabledReason: 'Navegacion bloqueada mientras termina la simulacion',
+          disabledReason: 'Navegacion bloqueada mientras termina el proceso',
           isUpcoming: false,
         };
       }
 
-      if (action.simulateKey === 'retry-payment') {
+      if (actionTrigger === 'retry-payment') {
         if (this.hasRetryPendingLock()) {
           return {
             disabled: true,
@@ -4084,7 +3105,7 @@ export default {
         };
       }
 
-      if (action.simulateKey === 'update-payment-method') {
+      if (actionTrigger === 'update-payment-method') {
         if (this.paymentRecoveryStage === 'al_dia') {
           return {
             disabled: true,
@@ -4279,9 +3300,9 @@ export default {
 
       this.rehydrateTimelineFromStage();
     },
-    runRecoverySimulation(simulateKey) {
-      if (simulateKey === 'update-payment-method') {
-        this.processingActionKey = simulateKey;
+    executeRecoveryAction(actionKey) {
+      if (actionKey === 'update-payment-method') {
+        this.processingActionKey = actionKey;
         this.paymentRecoveryStage = 'metodo_actualizado';
         this.syncRecoveryStage();
         this.persistRecoveryStage();
@@ -4299,10 +3320,10 @@ export default {
         return;
       }
 
-      if (simulateKey === 'retry-payment'
+      if (actionKey === 'retry-payment'
         && (this.paymentRecoveryStage === 'metodo_actualizado' || this.paymentRecoveryStage === 'en_reintento')) {
-        this.processingActionKey = simulateKey;
-        this.recoverySimulationBusy = true;
+        this.processingActionKey = actionKey;
+        this.recoveryActionBusy = true;
         this.persistRetryPendingLock();
         this.paymentRecoveryStage = 'en_reintento';
         this.syncRecoveryStage();
@@ -4349,8 +3370,10 @@ export default {
         return;
       }
 
-      if (action && action.simulateKey) {
-        this.runRecoverySimulation(action.simulateKey);
+      const actionTrigger = `${action?.actionKey || action?.simulateKey || ''}`.trim();
+
+      if (actionTrigger) {
+        this.executeRecoveryAction(actionTrigger);
       }
     },
     validatePaymentMethodForm() {
@@ -4364,12 +3387,18 @@ export default {
       }
 
       if (!this.paymentMethodForm.confirm) {
-        this.paymentMethodFormErrors.confirm = 'Debes confirmar la simulacion para continuar.';
+        this.paymentMethodFormErrors.confirm = 'Debes confirmar la referencia para continuar.';
       }
 
       return !this.paymentMethodFormErrors.reference && !this.paymentMethodFormErrors.confirm;
     },
-    submitPaymentMethodForm() {
+    onPaymentMethodReferenceInput(value) {
+      this.paymentMethodForm.reference = `${value || ''}`;
+    },
+    onPaymentMethodConfirmInput(value) {
+      this.paymentMethodForm.confirm = !!value;
+    },
+    async submitPaymentMethodForm() {
       if (!this.canExecutePaymentMethodUpdate) {
         this.paymentMethodFormNotice = this.paymentMethodUpdateDeniedReason || 'No tienes permisos para actualizar metodo de pago.';
         return;
@@ -4386,10 +3415,58 @@ export default {
         return;
       }
 
+      this.paymentMethodApiBusy = true;
+      const response = await updatePaymentMethodApi({
+        reference: this.paymentMethodForm.reference,
+        brand: 'CARD',
+      }, {
+        endpoint: this.paymentMethodApiEndpoint,
+      });
+      this.paymentMethodApiBusy = false;
+
+      if (response.status === 'error') {
+        this.paymentMethodFormNotice = response.error?.message || 'No fue posible actualizar metodo de pago.';
+        return;
+      }
+
+      this.paymentMethodSnapshot = response.data?.payment_method || this.paymentMethodSnapshot;
       this.paymentRecoveryStage = 'metodo_actualizado';
       this.syncRecoveryStage();
       this.persistRecoveryStage();
-      this.paymentMethodFormNotice = 'Metodo actualizado en simulacion. Ya puedes ejecutar reintento de cobro.';
+      this.paymentMethodFormNotice = 'Metodo actualizado correctamente. Ya puedes ejecutar reintento de cobro.';
+    },
+    async removePaymentMethod() {
+      if (this.paymentMethodApiBusy) {
+        return;
+      }
+
+      this.paymentMethodApiBusy = true;
+      const response = await deletePaymentMethodApi({
+        endpoint: this.paymentMethodApiEndpoint,
+      });
+      this.paymentMethodApiBusy = false;
+
+      if (response.status === 'error') {
+        this.paymentMethodFormNotice = response.error?.message || 'No fue posible eliminar metodo de pago.';
+        return;
+      }
+
+      this.paymentMethodSnapshot = response.data?.payment_method || this.paymentMethodSnapshot;
+      this.paymentRecoveryStage = 'bloqueado_por_metodo';
+      this.syncRecoveryStage();
+      this.persistRecoveryStage();
+      this.paymentMethodFormNotice = 'Metodo de pago eliminado. Debes registrar uno nuevo para continuar.';
+    },
+    async loadPaymentMethodSnapshot() {
+      const response = await fetchPaymentMethodApi({
+        endpoint: this.paymentMethodApiEndpoint,
+      });
+
+      if (response.status === 'error') {
+        return;
+      }
+
+      this.paymentMethodSnapshot = response.data?.payment_method || this.paymentMethodSnapshot;
     },
     resetPaymentMethodForm() {
       this.paymentMethodForm.reference = '';
@@ -4414,21 +3491,25 @@ export default {
 <style scoped>
 .customer-shell {
   position: relative;
+  padding: 0.55rem;
 }
 
 .customer-shell-theme {
-  --shell-bg: #f4f7fb;
+  --shell-bg: #eef0f5;
   --shell-surface: #ffffff;
-  --shell-border: #dbe5f1;
-  --shell-text: #11203b;
-  --shell-muted: #60708d;
-  --shell-primary: #1d9bf0;
-  --shell-primary-strong: #0c78c0;
-  --shell-primary-soft: #e9f4fd;
-  --shell-shadow: 0 8px 24px rgba(14, 36, 72, 0.08);
+  --shell-border: #d7d8df;
+  --shell-text: #1f2435;
+  --shell-muted: #6f7489;
+  --shell-primary: #6d44f5;
+  --shell-primary-strong: #4d2bd5;
+  --shell-primary-soft: #ece7ff;
+  --shell-success: #33c48d;
+  --shell-shadow: 0 14px 32px rgba(25, 28, 48, 0.08);
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
   background:
-    radial-gradient(1200px 500px at 0% 0%, #edf6ff 0%, transparent 60%),
-    radial-gradient(900px 420px at 100% 100%, #f7fbff 0%, transparent 58%),
+    radial-gradient(1000px 420px at -10% -10%, #c2b4ff 0%, transparent 60%),
+    radial-gradient(940px 500px at 110% 20%, #bee7ff 0%, transparent 58%),
+    linear-gradient(180deg, #f7f7fa 0%, #edf0f6 100%),
     var(--shell-bg);
   color: var(--shell-text);
 }
@@ -4472,25 +3553,27 @@ export default {
 
 .shell-content {
   min-width: 0;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dddeea;
+  border-radius: 26px;
+  margin: 0.25rem;
+  overflow: hidden;
 }
 
 .shell-header {
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom: 1px solid var(--shell-border);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.78);
+  border-bottom: 1px solid rgba(211, 213, 223, 0.88);
+  backdrop-filter: blur(10px);
 }
 
 .shell-main {
   background: transparent;
+  overflow-x: hidden;
 }
 
-.shell-note {
-  border: 1px solid #d4e7fb;
-  background: linear-gradient(180deg, #f3f9ff 0%, #eef7ff 100%);
-  color: #184f83;
-  border-radius: 12px;
-  padding: 0.9rem 1rem;
-  font-weight: 500;
+.portal-stage {
+  display: grid;
+  gap: 1rem;
 }
 
 .shell-panel {
@@ -4502,8 +3585,8 @@ export default {
 
 .shell-state-card,
 .shell-summary-card {
-  border-color: #d9e4f1 !important;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+  border-color: #e5e6ef !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f8fc 100%);
 }
 
 .shell-page-title {
@@ -4533,7 +3616,37 @@ export default {
   font-size: 12px;
 }
 
+.module-metrics-grid .module-metric-card {
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fd 100%);
+}
+
+:deep(.btn) {
+  border-radius: 999px;
+}
+
+:deep(.card) {
+  border-radius: 22px;
+}
+
+@media (max-width: 767.98px) {
+  .shell-main {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+}
+
 @media (max-width: 991.98px) {
+  .customer-shell {
+    padding: 0;
+  }
+
+  .shell-content {
+    border-radius: 0;
+    margin: 0;
+    border: 0;
+  }
+
   .shell-sidebar {
     position: fixed;
     top: 0;

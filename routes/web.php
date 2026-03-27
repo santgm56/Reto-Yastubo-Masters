@@ -51,6 +51,28 @@ Route::middleware('customer')
 	}
 });
 
+// ===== Seller (/seller) =====
+Route::middleware('seller')
+->prefix('seller')
+->name('seller.')
+->group(function ()
+{
+	foreach (glob(__DIR__.'/seller/auth/*.php') as $filename)
+	{
+		require_once $filename;
+	}
+});
+
+Route::middleware('seller_guest')
+->prefix('seller')
+->name('seller.')
+->group(function () {
+	foreach (glob(__DIR__.'/seller/public/*.php') as $filename)
+	{
+		require_once $filename;
+	}
+});
+
 // Invitados (login/registro) — incluye 'web' para $errors
 Route::middleware('customer_guest')
 ->prefix('customer')

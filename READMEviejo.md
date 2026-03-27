@@ -1,5 +1,11 @@
 # Lineamientos de diseño (GFA)
 
+## Aclaracion de objetivo
+
+- El objetivo de ejecucion es una app frontend funcional operable de extremo a extremo.
+- Cuando aparezca la palabra "MVP", se entiende como funcional real, no como demo mockeada.
+- Ningun flujo contractual/financiero/auditable puede quedar en modo demostrativo no funcional.
+
 ## A) Arquitectura Frontend (Vue / AJAX / componentes)
 
 1. **Operaciones por Vue + AJAX; modals con data fresca**\

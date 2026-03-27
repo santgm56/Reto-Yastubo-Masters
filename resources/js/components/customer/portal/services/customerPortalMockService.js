@@ -64,7 +64,7 @@ const moduleCatalogSeed = {
     currentState: 'pago_pendiente',
     allowedActions: [
       { label: 'Actualizar metodo de pago', routeName: 'customer.payment-method' },
-      { label: 'Reintentar cobro (simulado)', simulateKey: 'retry-payment' },
+      { label: 'Reintentar cobro', simulateKey: 'retry-payment' },
     ],
     blockedReason: 'Existe una cuota vencida. Se recomienda actualizar metodo y reintentar cobro.',
     blocks: [
@@ -83,7 +83,7 @@ const moduleCatalogSeed = {
     description: 'Gestion de tarjeta principal y acciones de actualizacion/eliminacion.',
     currentState: 'requiere_actualizacion',
     allowedActions: [
-      { label: 'Actualizar tarjeta (simulado)', simulateKey: 'update-payment-method' },
+      { label: 'Actualizar tarjeta', simulateKey: 'update-payment-method' },
       { label: 'Volver a pagos pendientes', routeName: 'customer.payments.pending' },
     ],
     blockedReason: 'Metodo actual con fallo recurrente en cobro. Requiere actualizacion para continuar.',

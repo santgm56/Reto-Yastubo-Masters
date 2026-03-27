@@ -76,5 +76,10 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ['ziggy-js'],
     },
+    test: {
+      include: ['resources/js/**/*.test.js'],
+      environment: 'node',
+      globals: true,
+    },
   }
 })

@@ -21,6 +21,7 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 return match ($guard) {
                     'admin'    => redirect()->route('admin.home'),
+                    'seller'   => redirect()->route('seller.home'),
                     'customer' => redirect()->route('customer.home'),
                     default    => redirect()->route('home'),
                 };

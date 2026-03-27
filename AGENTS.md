@@ -1,12 +1,18 @@
 # Lineamientos de diseño (GFA)
 
+## Aclaracion de objetivo
+
+- El objetivo de ejecucion es una app frontend funcional operable de extremo a extremo.
+- Cuando aparezca la palabra "MVP", se entiende como funcional real, no como demo mockeada.
+- Ningun flujo contractual/financiero/auditable puede quedar en modo demostrativo no funcional.
+
 ## A) Arquitectura Frontend (Vue / AJAX / componentes)
 
 1. **Operaciones por Vue + AJAX; modals con data fresca**\
    Todo se maneja con Vue y AJAX. Regla general: todo lo de Vue debe cargarse por **AJAX**, salvo casos donde **por seguridad** no sea conveniente.\
    Los modals que levantan datos deben obtener información **fresca** desde BD mediante AJAX: no precargar con Blade; el modal Vue debe pedir por AJAX lo necesario.
 
-2. **Auto-registro de componentes Vue por \*\*\*\***\`\`\
+2. **Auto-registro de componentes Vue por auto-registro en `app.js` (import.meta.glob)**\
    `resources/js/app.js` registra automáticamente componentes en `components`. Ej.: `./components/admin/users/Index.vue` → `AdminUsersIndex` y en Blade `<admin-users-index>`.
 
 3. **Vue: estructura y convenciones de componentes**\
@@ -48,49 +54,49 @@
     - `/resources/js/app.js`
     - `/resources/js/components/admin/plans/Edit.vue`
 
-12. **Tablas con dropdowns: no usar \*\*\*\***\`\`\
+12. **Tablas con dropdowns: no usar `table-responsive`**\
     Si una tabla incluye cualquier **dropdown** (acciones, menús, selects con popover, etc.), **no** envolverla en contenedores con la clase `table-responsive`, porque el overflow recorta el contenido y el dropdown no se visualiza correctamente.
 
 ## D) Persistencia y reglas de dominio (BD / estados / borrados)
 
-12. **Sin JSON nativo en BD**\
+13. **Sin JSON nativo en BD**\
     BD sin columnas `JSON`: usar **TEXT** y manejar casting con `HasTranslatableJson`.
 
-13. **Estados y borrados**\
+14. **Estados y borrados**\
     No redefinir estados/enums si ya hay patrón (p.ej. `DRAFT/ACTIVE/ARCHIVED`). No introducir borrado duro si el proyecto usa desactivar/archivar.
 
 ## E) i18n / Campos traducibles (HasTranslatableJson)
 
-14. **Traducciones en BD: patrón HasTranslatableJson**\
+15. **Traducciones en BD: patrón HasTranslatableJson**\
     Usar `HasTranslatableJson` para guardar/leer campos multi-idioma.
 
-15. **Textos multi-idioma: reglas estrictas**\
+16. **Textos multi-idioma: reglas estrictas**\
     Para textos multi-idioma, seguir el patrón: `HasTranslatableJson` + columna `TEXT` + `$casts` (para que `$item->name` entregue el idioma del usuario). No crear campos simples si deben existir ES/EN.
 
-16. **Prohibido usar columnas JSON en la BD**\
+17. **Prohibido usar columnas JSON en la BD**\
     Todo traducible debe ir en `TEXT` y manejarse a nivel PHP con el trait.
 
-17. **Traducciones en campos de BD solo si se pide explícitamente**\
+18. **Traducciones en campos de BD solo si se pide explícitamente**\
     No decidir crear un campo traducible (ES/EN u otros) si no lo pides **expresamente**.
 
 ## F) Archivos / Uploads
 
-18. **Almacenamiento/subida de archivos: servicio obligatorio**\
-    Para guardar archivos usar \`\`.
+19. **Almacenamiento/subida de archivos: servicio obligatorio**\
+    Para guardar archivos usar el servicio `app/Services/UploadedFileService.php`.
 
-19. **Patrón de subida de archivos y UI: referencia obligatoria**\
+20. **Patrón de subida de archivos y UI: referencia obligatoria**\
     Tomar como referencia: `PlanVersionController`, `UploadedFileService`, `/resources/js/components/admin/plans/Edit.vue`.\
     Replicar el input group: nombre, link, botón subir, botón eliminar.
 
 ## G) Proceso / alcance / supuestos
 
-20. **Respetar código y contexto existente; no inventar estructura**\
+21. **Respetar código y contexto existente; no inventar estructura**\
     Respetar lo existente antes de proponer nuevas estructuras (models/migraciones/vistas). No inventar tablas/columnas ni re-modelar lo ya resuelto.
 
-21. **Alcance de cambios / entregables**\
+22. **Alcance de cambios / entregables**\
     Si se piden “correcciones en los archivos afectados”, entregar solo esos cambios, sin re-generar módulos completos ni cambiar decisiones previas salvo que se pida.
 
-22. **No suponer columnas de BD**\
+23. **No suponer columnas de BD**\
     No suponer nombres de columnas. Si no tienes el modelo o la estructura de la tabla, debes **pedirla**.
 
 ---

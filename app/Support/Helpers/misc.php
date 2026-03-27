@@ -24,6 +24,11 @@ if (! function_exists('realm')) {
 	{
 		return Realm::isCustomer($request);
 	}
+
+	function isRealmSeller(?Request $request = null)
+	{
+		return Realm::isSeller($request);
+	}
 }
 
 if (! function_exists('audit_log')) {

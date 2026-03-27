@@ -1,3 +1,7 @@
+import {
+  extractApiErrorContract,
+} from '../../../../core/http/apiClient';
+
 const CONTRACT_VERSION = 'fe010.v1';
 
 const STRIPE_PAYMENT_STATUS_ENUM = ['REQUIRES_ACTION', 'PROCESSING', 'PAID', 'FAILED', 'PAST_DUE', 'CANCELED'];
@@ -11,6 +15,7 @@ const LEGACY_PAYMENT_STATUS_ALIAS = {
 const PAYMENT_STATUS_ENUM = [...STRIPE_PAYMENT_STATUS_ENUM, 'NO_RECONOCIDO'];
 const DEATH_REPORT_STATUS_ENUM = ['RECIBIDO', 'EN_VALIDACION', 'NO_RECONOCIDO'];
 const BENEFICIARY_STATUS_ENUM = ['activo', 'incompleto', 'bloqueado'];
+const PAYMENT_METHOD_STATUS_ENUM = ['ACTIVE', 'REMOVED', 'REQUIRES_ACTION', 'UNKNOWN'];
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
@@ -39,6 +44,11 @@ function normalizeDeathReportStatus(status) {
 function normalizeBeneficiaryStatus(status) {
   const normalized = safeString(status).toLowerCase();
   return BENEFICIARY_STATUS_ENUM.includes(normalized) ? normalized : 'bloqueado';
+}
+
+function normalizePaymentMethodStatus(status) {
+  const normalized = safeString(status).toUpperCase();
+  return PAYMENT_METHOD_STATUS_ENUM.includes(normalized) ? normalized : 'UNKNOWN';
 }
 
 function normalizeLoadState(value, fallback = 'error') {
@@ -81,16 +91,17 @@ export function buildApiEnvelope({
 
 export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNOWN_ERROR') {
   const status = axiosError?.response?.status;
-  const serverData = axiosError?.response?.data || {};
-  const serverCode = safeString(serverData.code || serverData.errorCode, '');
-  const serverMessage = safeString(serverData.message || serverData.error, '');
-  const requestId = safeString(serverData.request_id || serverData.requestId, '');
-  const details = serverData?.details && typeof serverData.details === 'object' ? serverData.details : null;
+  const contractError = extractApiErrorContract(axiosError, fallbackCode);
+  const requestId = safeString(contractError.requestId, '');
+  const details = contractError?.details && typeof contractError.details === 'object' ? contractError.details : null;
+  const validationErrors = contractError?.validationErrors && typeof contractError.validationErrors === 'object'
+    ? contractError.validationErrors
+    : {};
 
   if (status === 401) {
     return {
-      code: serverCode || 'API_UNAUTHORIZED',
-      message: serverMessage || 'La sesion no es valida para esta operacion.',
+      code: contractError.code || 'API_UNAUTHORIZED',
+      message: contractError.message || 'La sesion no es valida para esta operacion.',
       retriable: false,
       requestId,
       details,
@@ -99,8 +110,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
 
   if (status === 403) {
     return {
-      code: serverCode || 'API_FORBIDDEN',
-      message: serverMessage || 'No tienes permisos para ejecutar esta accion.',
+      code: contractError.code || 'API_FORBIDDEN',
+      message: contractError.message || 'No tienes permisos para ejecutar esta accion.',
       retriable: false,
       requestId,
       details,
@@ -109,8 +120,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
 
   if (status === 404) {
     return {
-      code: serverCode || 'API_RESOURCE_NOT_FOUND',
-      message: serverMessage || 'Recurso no encontrado en API.',
+      code: contractError.code || 'API_RESOURCE_NOT_FOUND',
+      message: contractError.message || 'Recurso no encontrado en API.',
       retriable: false,
       requestId,
       details,
@@ -119,10 +130,10 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
 
   if (status === 422) {
     return {
-      code: serverCode || 'API_VALIDATION_ERROR',
-      message: serverMessage || 'La solicitud no cumple las reglas de validacion.',
+      code: contractError.code || 'API_VALIDATION_ERROR',
+      message: contractError.message || 'La solicitud no cumple las reglas de validacion.',
       retriable: false,
-      validationErrors: serverData?.errors && typeof serverData.errors === 'object' ? serverData.errors : {},
+      validationErrors,
       requestId,
       details,
     };
@@ -130,8 +141,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
 
   if (typeof status === 'number' && status >= 400 && status < 500) {
     return {
-      code: serverCode || 'API_BUSINESS_ERROR',
-      message: serverMessage || 'La solicitud no puede procesarse con los datos enviados.',
+      code: contractError.code || 'API_BUSINESS_ERROR',
+      message: contractError.message || 'La solicitud no puede procesarse con los datos enviados.',
       retriable: false,
       requestId,
       details,
@@ -140,8 +151,8 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
 
   if (typeof status === 'number' && status >= 500) {
     return {
-      code: serverCode || 'API_SERVER_ERROR',
-      message: serverMessage || 'Error interno del servicio. Intenta nuevamente.',
+      code: contractError.code || 'API_SERVER_ERROR',
+      message: contractError.message || 'Error interno del servicio. Intenta nuevamente.',
       retriable: true,
       requestId,
       details,
@@ -159,9 +170,9 @@ export function mapAxiosErrorToPortalError(axiosError, fallbackCode = 'API_UNKNO
   }
 
   return {
-    code: serverCode || fallbackCode,
-    message: serverMessage || 'Error no controlado durante consumo API.',
-    retriable: true,
+    code: contractError.code || fallbackCode,
+    message: contractError.message || 'Error no controlado durante consumo API.',
+    retriable: contractError.retriable === true,
     requestId,
     details,
   };
@@ -290,6 +301,23 @@ export function adaptDeathReportDto(rawData) {
   };
 }
 
+export function adaptPaymentMethodDto(rawData) {
+  const source = rawData && typeof rawData === 'object' ? rawData : {};
+  const method = source.payment_method && typeof source.payment_method === 'object'
+    ? source.payment_method
+    : source;
+
+  return {
+    payment_method: {
+      reference: safeString(method.reference, ''),
+      brand: safeString(method.brand, 'CARD'),
+      masked: safeString(method.masked, 'Sin metodo'),
+      status: normalizePaymentMethodStatus(method.status),
+      updated_at: safeString(method.updated_at || method.updatedAt, ''),
+    },
+  };
+}
+
 export const FE009A_CONTRACT = {
   contractVersion: CONTRACT_VERSION,
   uiStateEnum: ['loading', 'empty', 'error', 'ready'],
@@ -305,4 +333,5 @@ export const FE010A_CONTRACT = {
   operationalStateEnum: ['normal', 'alerta', 'bloqueado'],
   stripePaymentStatusEnum: STRIPE_PAYMENT_STATUS_ENUM,
   paymentStatusEnum: PAYMENT_STATUS_ENUM,
+  paymentMethodStatusEnum: PAYMENT_METHOD_STATUS_ENUM,
 };

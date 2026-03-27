@@ -2,11 +2,13 @@ import {
   adaptBeneficiariesDto,
   adaptDeathReportDto,
   adaptModuleCatalogDto,
+  adaptPaymentMethodDto,
   adaptPaymentHistoryDto,
   adaptStripePaymentStatusDto,
   buildApiEnvelope,
   mapAxiosErrorToPortalError,
 } from './customerPortalApiAdapters';
+import { apiClient } from '../../../../core/http/apiClient';
 import {
   createCustomerPortalTelemetryService,
 } from './customerPortalTelemetryService';
@@ -112,31 +114,8 @@ export async function fetchModuleCatalogApi({
     endpointRole: 'primary',
   });
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.get !== 'function') {
-    trackApiTelemetry('error', {
-      module: 'module-catalog',
-      endpoint,
-      method: 'GET',
-      latencyMs: Date.now() - startTime,
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        retriable: true,
-      },
-    });
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   try {
-    const response = await window.axios.get(endpoint, {
+    const response = await apiClient.get(endpoint, {
       timeout: timeoutMs,
       headers: {
         Accept: 'application/json',
@@ -192,31 +171,8 @@ export async function fetchBeneficiariesApi({
     endpointRole: 'primary',
   });
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.get !== 'function') {
-    trackApiTelemetry('error', {
-      module: 'beneficiaries',
-      endpoint,
-      method: 'GET',
-      latencyMs: Date.now() - startTime,
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        retriable: true,
-      },
-    });
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   try {
-    const response = await window.axios.get(endpoint, {
+    const response = await apiClient.get(endpoint, {
       timeout: timeoutMs,
       headers: {
         Accept: 'application/json',
@@ -271,31 +227,8 @@ export async function createBeneficiaryApi(payload, {
     endpointRole: 'primary',
   });
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.post !== 'function') {
-    trackApiTelemetry('error', {
-      module: 'beneficiaries',
-      endpoint,
-      method: 'POST',
-      latencyMs: Date.now() - startTime,
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        retriable: true,
-      },
-    });
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   try {
-    const response = await window.axios.post(endpoint, payload, {
+    const response = await apiClient.post(endpoint, payload, {
       timeout: timeoutMs,
       headers: {
         Accept: 'application/json',
@@ -360,19 +293,6 @@ export async function fetchPaymentHistoryApi({
 } = {}) {
   const startTime = Date.now();
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.get !== 'function') {
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   const endpointCandidates = [endpoint, ...fallbackEndpoints].filter((item, index, list) => {
     const normalized = `${item || ''}`.trim();
     return normalized.length > 0 && list.indexOf(item) === index;
@@ -392,7 +312,7 @@ export async function fetchPaymentHistoryApi({
     });
 
     try {
-      const response = await window.axios.get(candidate, {
+      const response = await apiClient.get(candidate, {
         timeout: timeoutMs,
         headers: {
           Accept: 'application/json',
@@ -464,31 +384,8 @@ export async function fetchStripePaymentStatusApi({
     endpointRole: 'primary',
   });
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.get !== 'function') {
-    trackApiTelemetry('error', {
-      module: 'payment-status',
-      endpoint,
-      method: 'GET',
-      latencyMs: Date.now() - startTime,
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        retriable: true,
-      },
-    });
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   try {
-    const response = await window.axios.get(endpoint, {
+    const response = await apiClient.get(endpoint, {
       timeout: timeoutMs,
       headers: {
         Accept: 'application/json',
@@ -541,31 +438,8 @@ export async function fetchDeathReportApi({
     endpointRole: 'primary',
   });
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.get !== 'function') {
-    trackApiTelemetry('error', {
-      module: 'death-report',
-      endpoint,
-      method: 'GET',
-      latencyMs: Date.now() - startTime,
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        retriable: true,
-      },
-    });
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   try {
-    const response = await window.axios.get(endpoint, {
+    const response = await apiClient.get(endpoint, {
       timeout: timeoutMs,
       headers: {
         Accept: 'application/json',
@@ -619,31 +493,8 @@ export async function submitDeathReportApi(payload, {
     endpointRole: 'primary',
   });
 
-  if (typeof window === 'undefined' || !window.axios || typeof window.axios.post !== 'function') {
-    trackApiTelemetry('error', {
-      module: 'death-report',
-      endpoint,
-      method: 'POST',
-      latencyMs: Date.now() - startTime,
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        retriable: true,
-      },
-    });
-    return buildApiEnvelope({
-      status: 'error',
-      error: {
-        code: 'API_CLIENT_UNAVAILABLE',
-        message: 'Cliente HTTP no disponible en runtime.',
-        retriable: true,
-      },
-      latencyMs: Date.now() - startTime,
-      source: 'api',
-    });
-  }
-
   try {
-    const response = await window.axios.post(endpoint, payload, {
+    const response = await apiClient.post(endpoint, payload, {
       timeout: timeoutMs,
       headers: {
         Accept: 'application/json',
@@ -687,6 +538,168 @@ export async function submitDeathReportApi(payload, {
       module: 'death-report',
       endpoint,
       method: 'POST',
+      latencyMs: Date.now() - startTime,
+      error: mappedError,
+    });
+    return buildApiEnvelope({
+      status: 'error',
+      error: mappedError,
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  }
+}
+
+export async function fetchPaymentMethodApi({
+  endpoint = '/api/customer/payment-method',
+  timeoutMs = 7000,
+} = {}) {
+  const startTime = Date.now();
+  trackApiTelemetry('call', {
+    module: 'payment-method',
+    endpoint,
+    method: 'GET',
+    endpointRole: 'primary',
+  });
+
+  try {
+    const response = await apiClient.get(endpoint, {
+      timeout: timeoutMs,
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    const rawPayload = resolveApiPayload(response?.data);
+    const adapted = adaptPaymentMethodDto(rawPayload);
+
+    trackApiTelemetry('success', {
+      module: 'payment-method',
+      endpoint,
+      method: 'GET',
+      latencyMs: Date.now() - startTime,
+    });
+
+    return buildApiEnvelope({
+      status: 'ready',
+      data: adapted,
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  } catch (error) {
+    const mappedError = mapAxiosErrorToPortalError(error, 'API_PAYMENT_METHOD_LOAD_ERROR');
+    trackApiTelemetry('error', {
+      module: 'payment-method',
+      endpoint,
+      method: 'GET',
+      latencyMs: Date.now() - startTime,
+      error: mappedError,
+    });
+    return buildApiEnvelope({
+      status: 'error',
+      error: mappedError,
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  }
+}
+
+export async function updatePaymentMethodApi(payload, {
+  endpoint = '/api/customer/payment-method',
+  timeoutMs = 7000,
+} = {}) {
+  const startTime = Date.now();
+  trackApiTelemetry('call', {
+    module: 'payment-method',
+    endpoint,
+    method: 'POST',
+    endpointRole: 'primary',
+  });
+
+  try {
+    const response = await apiClient.post(endpoint, payload, {
+      timeout: timeoutMs,
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    const rawPayload = resolveApiPayload(response?.data);
+    const adapted = adaptPaymentMethodDto(rawPayload);
+
+    trackApiTelemetry('success', {
+      module: 'payment-method',
+      endpoint,
+      method: 'POST',
+      latencyMs: Date.now() - startTime,
+    });
+
+    return buildApiEnvelope({
+      status: 'ready',
+      data: adapted,
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  } catch (error) {
+    const mappedError = mapAxiosErrorToPortalError(error, 'API_PAYMENT_METHOD_UPDATE_ERROR');
+    trackApiTelemetry('error', {
+      module: 'payment-method',
+      endpoint,
+      method: 'POST',
+      latencyMs: Date.now() - startTime,
+      error: mappedError,
+    });
+    return buildApiEnvelope({
+      status: 'error',
+      error: mappedError,
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  }
+}
+
+export async function deletePaymentMethodApi({
+  endpoint = '/api/customer/payment-method',
+  timeoutMs = 7000,
+} = {}) {
+  const startTime = Date.now();
+  trackApiTelemetry('call', {
+    module: 'payment-method',
+    endpoint,
+    method: 'DELETE',
+    endpointRole: 'primary',
+  });
+
+  try {
+    const response = await apiClient.delete(endpoint, {
+      timeout: timeoutMs,
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    const rawPayload = resolveApiPayload(response?.data);
+    const adapted = adaptPaymentMethodDto(rawPayload);
+
+    trackApiTelemetry('success', {
+      module: 'payment-method',
+      endpoint,
+      method: 'DELETE',
+      latencyMs: Date.now() - startTime,
+    });
+
+    return buildApiEnvelope({
+      status: 'ready',
+      data: adapted,
+      latencyMs: Date.now() - startTime,
+      source: 'api',
+    });
+  } catch (error) {
+    const mappedError = mapAxiosErrorToPortalError(error, 'API_PAYMENT_METHOD_DELETE_ERROR');
+    trackApiTelemetry('error', {
+      module: 'payment-method',
+      endpoint,
+      method: 'DELETE',
       latencyMs: Date.now() - startTime,
       error: mappedError,
     });

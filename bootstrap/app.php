@@ -4,6 +4,7 @@ use App\Http\Middleware\AbsoluteSessionTimeout;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\BindSessionToUser;
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\FastApiTokenRealmAuth;
 use App\Http\Middleware\ForcePasswordChange;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\SetRealm;
@@ -27,6 +28,7 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 		$middleware->alias([
 			'active'				   => EnsureAccountActive::class,
 			'bind.session.user'		   => BindSessionToUser::class,
+			'fastapi.token.realm.auth' => FastApiTokenRealmAuth::class,
 			'guest'					   => RedirectIfAuthenticated::class,
 			'force.password.change'	   => ForcePasswordChange::class,
 			'realm'					   => SetRealm::class,
@@ -47,6 +49,7 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 		$middleware->group('admin', [
 			'web',
 			'realm:admin', // para indicar que estamos en el realm admin y tenerlo como variable global en los controladores
+			'fastapi.token.realm.auth',
 			'auth:admin', // para poder manejar a nivel de autenticación el realm
 			'active', // solo permitir usuarios activos
 			'bind.session.user',
@@ -57,12 +60,32 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 		$middleware->group('admin_guest', [
 			'web',
 			'realm:admin',
+			'fastapi.token.realm.auth',
 			'guest:admin',
+		]);
+
+		$middleware->group('seller', [
+			'web',
+			'realm:seller',
+			'fastapi.token.realm.auth',
+			'auth:seller',
+			'active',
+			'bind.session.user',
+			'force.password.change',
+			'absolute.session.timeout',
+		]);
+
+		$middleware->group('seller_guest', [
+			'web',
+			'realm:seller',
+			'fastapi.token.realm.auth',
+			'guest:seller',
 		]);
 
 		$middleware->group('customer', [
 			'web',
 			'realm:customer',
+			'fastapi.token.realm.auth',
 			'auth:customer',
 			'active',
 			'bind.session.user',
@@ -73,6 +96,7 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 		$middleware->group('customer_guest', [
 			'web',
 			'realm:customer',
+			'fastapi.token.realm.auth',
 			'guest:customer',
 		]);
 
@@ -81,6 +105,10 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 			if (Realm::isAdmin($request))
 			{
 				return route('admin.login');
+			}
+			if (Realm::isSeller($request))
+			{
+				return route('seller.login');
 			}
 			if (Realm::isCustomer($request))
 			{

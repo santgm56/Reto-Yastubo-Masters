@@ -13,8 +13,8 @@ class BindSessionToUser
     {
         $response = $next($request);
 
-        // Detectamos el guard activo (admin o customer). Solo uno debería estar logueado.
-        $guards = ['admin', 'customer']; // si quieres, usa array_keys(config('auth.guards'))
+        // Detectamos el guard activo por realm. Solo uno deberia estar logueado.
+        $guards = ['admin', 'seller', 'customer']; // si quieres, usa array_keys(config('auth.guards'))
         $activeGuard = null;
         foreach ($guards as $g) {
             if (auth($g)->check()) { $activeGuard = $g; break; }

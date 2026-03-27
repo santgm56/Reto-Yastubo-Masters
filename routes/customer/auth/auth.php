@@ -1,8 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
+Route::post('/logout', [LoginController::class, 'logout']);
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 

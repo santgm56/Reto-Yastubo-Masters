@@ -281,7 +281,7 @@ class PasswordController extends Controller
 		}
 
 		// Redirigir al dashboard del realm
-		$dashboard = $realm === 'admin' ? 'admin.home' : 'customer.home';
+		$dashboard = $realm === 'admin' ? 'admin.home' : ($realm === 'seller' ? 'seller.home' : 'customer.home');
 		return redirect()->route($dashboard)->with('status', __('Contraseña actualizada.'));
 	}
 

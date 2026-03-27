@@ -4,9 +4,27 @@
 
 	@if($errors->any())
 	<div class="alert alert-danger">{{ $errors->first() }}</div>
+	<script>
+		window.dispatchEvent(new CustomEvent('app-telemetry', {
+			detail: {
+				eventName: 'yastubo.frontend.login_failed',
+				timestamp: new Date().toISOString(),
+				request_id: '',
+				channel: 'admin',
+				role: 'ANON',
+				user_id: '',
+				outcome: 'error',
+				entity_id: '',
+				meta: {
+					module: 'auth',
+					reason: 'invalid_credentials',
+				},
+			},
+		}));
+	</script>
 	@endif
-		<form class="form w-100" method="POST" action="{{ route('admin.login.do') }}">
-		@csrf
+		<form class="form w-100" method="GET" action="{{ route('admin.login') }}" data-fastapi-login="true" data-login-channel="admin" data-login-redirect="/admin">
+		<div data-fastapi-login-error></div>
 		<div class="mb-10">
 			<label class="form-label fs-6 fw-bold text-gray-900">Email</label>
 			<input name="email" type="email" class="form-control form-control-lg form-control-solid" required autofocus>

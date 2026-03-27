@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 final class Realm
 {
     public const ADMIN    = 'admin';
+    public const SELLER   = 'seller';
     public const CUSTOMER = 'customer';
 
     /** Clave del atributo en el Request */
@@ -20,6 +21,7 @@ final class Realm
     {
         return [
             self::ADMIN,
+            self::SELLER,
             self::CUSTOMER,
         ];
     }
@@ -74,5 +76,10 @@ final class Realm
 	{
 		return self::current($request) == Realm::CUSTOMER;
 	}
+
+    public static function isSeller(?Request $request = null): ?bool
+    {
+        return self::current($request) == Realm::SELLER;
+    }
 
 }

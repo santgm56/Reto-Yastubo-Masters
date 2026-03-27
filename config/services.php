@@ -41,4 +41,8 @@ return [
 		'secret_events'    => env('WOMPI_SECRET_EVENTS'),
 		'secret_integrity' => env('WOMPI_SECRET_INTEGRITY'),
 	],
+	'fastapi' => [
+		'base_url' => env('FASTAPI_BASE_URL', ''),
+		'cutover_enabled' => env('FASTAPI_CUTOVER_ENABLED', false),
+	],
 ];

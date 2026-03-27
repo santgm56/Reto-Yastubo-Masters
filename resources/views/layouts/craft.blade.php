@@ -60,34 +60,61 @@
                 $abilities[$permissionName] = true;
             }
         }
+
+        $frontendRole = $user
+            ? ($user->getRoleNames()->first() ?? 'ADMIN')
+            : 'GUEST';
+        $frontendChannel = request()->routeIs('seller.*') ? 'seller' : 'admin';
+
+        $runtimeConfig = [
+            'autosaveDelayMs' => config('gfa.autosave_delay_ms', 800),
+            'perPageShort' => config('per_page.short', 5),
+            'perPageMedium' => config('per_page.medium', 10),
+            'perPageLarge' => config('per_page.large', 15),
+            'apiBaseUrl' => config('services.fastapi.base_url', ''),
+            'apiCutoverEnabled' => (bool) config('services.fastapi.cutover_enabled', false),
+            'abilities' => $abilities,
+        ];
+
+        $frontendAppConfig = [
+            'locale' => $locale,
+            'numberLocale' => $formatConfig['number_locale'],
+            'dateFormat' => $formatConfig['date_format'],
+            'timeFormat' => $formatConfig['time_format'],
+            'dateTimeFormat' => $formatConfig['datetime_format'],
+            'jsDateFormat' => $formatConfig['js_date_format'],
+        ];
+
+        $frontendContext = [
+            'channel' => $frontendChannel,
+            'role' => $frontendRole,
+            'userId' => $user?->id,
+        ];
     @endphp
 
+    <script id="craft-runtime-config" type="application/json">@json($runtimeConfig)</script>
+    <script id="craft-app-config" type="application/json">@json($frontendAppConfig)</script>
+    <script id="craft-frontend-context" type="application/json">@json($frontendContext)</script>
     <script>
-        // Config global de la app (sin fallbacks en los valores definidos aquí)
-        window.__RUNTIME_CONFIG__ = Object.assign({}, window.__RUNTIME_CONFIG__ || {}, {!! json_encode(
-            [
-                // Ejemplo: algo que ya tenías
-                'autosaveDelayMs' => config('gfa.autosave_delay_ms', 800),
-        
-                // Paginación genérica para todo el sistema
-                'perPageShort' => config('per_page.short', 5),
-                'perPageMedium' => config('per_page.medium', 10),
-                'perPageLarge' => config('per_page.large', 15),
-        
-                // Permisos expuestos al frontend (todos los que tiene el usuario)
-                'abilities' => $abilities,
-            ],
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        ) !!});
+        const readJsonScript = function(scriptId) {
+            const node = document.getElementById(scriptId);
+            if (!node || !node.textContent) {
+                return {};
+            }
 
-        window.appConfig = Object.assign(window.appConfig || {}, {
-            locale: @json($locale),
-            numberLocale: @json($formatConfig['number_locale']),
-            dateFormat: @json($formatConfig['date_format']),
-            timeFormat: @json($formatConfig['time_format']),
-            dateTimeFormat: @json($formatConfig['datetime_format']),
-            jsDateFormat: @json($formatConfig['js_date_format']),
-        });
+            try {
+                return JSON.parse(node.textContent);
+            } catch (error) {
+                return {};
+            }
+        };
+
+        // Config global de la app (sin fallbacks en los valores definidos aquí)
+        window.__RUNTIME_CONFIG__ = Object.assign({}, window.__RUNTIME_CONFIG__ || {}, readJsonScript('craft-runtime-config'));
+
+        window.appConfig = Object.assign(window.appConfig || {}, readJsonScript('craft-app-config'));
+
+        window.__FRONTEND_CONTEXT__ = Object.assign({}, window.__FRONTEND_CONTEXT__ || {}, readJsonScript('craft-frontend-context'));
 
         // Helper global para traducir campos JSON {es: "...", en: "..."}
         // Sin fallbacks entre idiomas: si falta el locale actual, devuelve string vacío.

@@ -26,15 +26,17 @@ class ForcePasswordChange
         // Permitir solo: ver/enviar formulario de cambio forzado y logout
         if (
             $request->routeIs('admin.password.force.*') ||
+            $request->routeIs('seller.password.force.*') ||
             $request->routeIs('customer.password.force.*') ||
             $request->routeIs('admin.logout') ||
+            $request->routeIs('seller.logout') ||
             $request->routeIs('customer.logout')
         ) {
             return $next($request);
         }
 
         // Redirigir al formulario de cambio forzado según realm
-        $route = Realm::isAdmin() ? 'admin.password.force.edit' : 'customer.password.force.edit';
+        $route = Realm::isAdmin() ? 'admin.password.force.edit' : (Realm::isSeller() ? 'seller.password.force.edit' : 'customer.password.force.edit');
         return redirect()->route($route)->with('status', __('Debes actualizar tu contraseña antes de continuar.'));
     }
 }

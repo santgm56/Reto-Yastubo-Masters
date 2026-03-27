@@ -1,5 +1,5 @@
 param(
-    [string]$ProjectPath = "D:\SantiiPC\Downloads\craft_html_v1.1.6\gfa-emisiones",
+    [string]$ProjectPath = "D:\SantiiPC\Downloads\craft_html_v1.1.6\frontend-yastubo",
     [string]$DumpPath = "D:\SantiiPC\Downloads\craft_html_v1.1.6\gfa-2025-02-26 (1).sql",
     [string]$DbName = "gfa",
     [string]$DbUser = "gfa",
