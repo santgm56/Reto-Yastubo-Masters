@@ -121,10 +121,7 @@ export default {
 		async load() {
 			this.isLoading = true
 			try {
-				const url = this.route('admin.products.plans.terms-html.show', {
-					product: this.productId,
-					planVersion: this.planVersionId,
-				})
+				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/terms-html`
 
 				const { data } = await axios.get(url)
 				const terms = (data && data.data && data.data.terms_html) ? data.data.terms_html : {}
@@ -159,10 +156,7 @@ export default {
 			this.htmlValue = newHtml || ''
 
 			try {
-				const url = this.route('admin.products.plans.terms-html.update', {
-					product: this.productId,
-					planVersion: this.planVersionId,
-				})
+				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/terms-html`
 
 				const payload = {
 					locale: this.currentLocale,

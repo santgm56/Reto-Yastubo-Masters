@@ -13,7 +13,7 @@
 				</span>
 			</h1>
 			<a
-				:href="route('admin.products.plans.pdf', { product: this.product.id, planVersion: planVersion.id })"
+				:href="planPdfUrl(planVersion.id)"
 				target="_blank"
 				class="btn btn-sm btn-danger"
 			>
@@ -237,7 +237,7 @@
 									<input
 										type="text"
 										class="form-control form-control-sm text-end price_value"
-										
+
 										v-model="countryPriceInputs[country.id]"
 										inputmode="decimal"
 										:disabled="isLoadingPlanCountries"
@@ -279,7 +279,7 @@
 		<!-- Recargos por rango de edad -->
 		<div class="d-flex justify-content-between align-items-center mb-2">
 			<h3 class="h3 mb-0">Recargos por rango de edad</h3>
-			
+
 			<button
 				type="button"
 				class="btn btn-sm btn-light-primary"
@@ -398,8 +398,8 @@
 				</div>
 			</div>
 		</div>
-		
-		
+
+
 		<!-- Recargos por rango de edad -->
 
 		<div class="d-flex justify-content-between align-items-center mb-2">
@@ -443,7 +443,7 @@
 				</div>
 
 				<div v-else class="row">
-					
+
 					<div v-for="country in repatriationCountries" :key="country.id" class="col-xxl-3 col-xl-4 col-lg-6 col-md-6 col-sm-12 mb-3">
 						<div class="input-group input-group-sm">
 							<span style="overflow: hidden; text-wrap: nowrap;" class="form-control form-control-sm country_name" >{{ translate(country.name) }}</span>
@@ -874,11 +874,15 @@ export default {
 
 	computed: {
 		versionsIndexUrl() {
-			return this.route('admin.products.plans.index', { product: this.product.id })
+			return `/admin/products/${this.product.id}/plans`
 		},
 	},
 
 	methods: {
+		planPdfUrl(planVersionId) {
+			return `/admin/products/${this.product.id}/plans/${planVersionId}/pdf`
+		},
+
 		/* =============================================================
 		 *                    Helpers toast
 		 * ============================================================= */
@@ -936,10 +940,7 @@ export default {
 		async loadPlanCountries() {
 			this.isLoadingPlanCountries = true
 			try {
-				const url = this.route('admin.products.plans.countries.index', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/countries`
 
 				const { data } = await axios.get(url)
 
@@ -1122,11 +1123,7 @@ export default {
 			const value = country ? country.price : null
 
 			try {
-				const url = this.route('admin.products.plans.countries.update', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					country: countryId,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/countries/${countryId}`
 
 				const { data } = await axios.patch(url, { price: value })
 
@@ -1218,11 +1215,7 @@ export default {
 			const countryId = country.id
 
 			try {
-				const url = this.route('admin.products.plans.countries.destroy', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					country: countryId,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/countries/${countryId}`
 
 				const { data } = await axios.delete(url)
 				const payload = data || {}
@@ -1265,10 +1258,7 @@ export default {
 			this.isLoadingRepatriationCountries = true
 
 			try {
-				const url = this.route('admin.products.plans.repatriation-countries.index', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/repatriation-countries`
 
 				const { data } = await axios.get(url)
 				const raw = data || {}
@@ -1383,11 +1373,7 @@ export default {
 			if (!country || !country.id) return
 
 			try {
-				const url = this.route('admin.products.plans.repatriation-countries.destroy', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					country: country.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/repatriation-countries/${country.id}`
 
 				const { data } = await axios.delete(url)
 				const raw = data || {}
@@ -1423,10 +1409,7 @@ export default {
 		async loadAgeSurcharges() {
 			this.isLoadingAgeSurcharges = true
 			try {
-				const url = this.route('admin.products.plans.age-surcharges.index', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges`
 
 				const { data } = await axios.get(url)
 				const payload = data && data.data ? data.data : []
@@ -1478,10 +1461,7 @@ export default {
 					surcharge_percent: 0,
 				}
 
-				const url = this.route('admin.products.plans.age-surcharges.store', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges`
 
 				const response = await axios.post(url, payload)
 				const data = response.data
@@ -1678,17 +1658,10 @@ export default {
 
 				let response
 				if (row.id) {
-					const url = this.route('admin.products.plans.age-surcharges.update', {
-						product: this.product.id,
-						planVersion: this.planVersion.id,
-						ageSurcharge: row.id,
-					})
+					const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges/${row.id}`
 					response = await axios.patch(url, payload)
 				} else {
-					const url = this.route('admin.products.plans.age-surcharges.store', {
-						product: this.product.id,
-						planVersion: this.planVersion.id,
-					})
+					const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges`
 					response = await axios.post(url, payload)
 				}
 
@@ -1748,11 +1721,7 @@ export default {
 			}
 
 			try {
-				const url = this.route('admin.products.plans.age-surcharges.destroy', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					ageSurcharge: row.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges/${row.id}`
 
 				const { data } = await axios.delete(url)
 
@@ -1790,10 +1759,7 @@ export default {
 
 		async saveVersionName() {
 			try {
-				const url = this.route('admin.products.plans.update', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}`
 
 				const payload = { name: this.planVersion.name }
 				const { data } = await axios.put(url, payload)
@@ -1816,10 +1782,7 @@ export default {
 
 			this.isTogglingStatus = true
 			try {
-				const url = this.route('admin.products.plans.update', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}`
 
 				const payload = { status: newStatus }
 				const { data } = await axios.put(url, payload)
@@ -1960,11 +1923,7 @@ export default {
 
 		async saveCoverageValue(cov, payload, key) {
 			try {
-				const url = this.route('admin.products.plans.coverages.update', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					coverage: cov.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/${cov.id}`
 
 				const { data } = await axios.patch(url, payload)
 				const updated = data.data
@@ -2005,10 +1964,7 @@ export default {
 
 		async saveVersionFields(payload, key) {
 			try {
-				const url = this.route('admin.products.plans.update', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}`
 
 				const { data } = await axios.put(url, payload)
 				this.planVersion = { ...this.planVersion, ...data.data }
@@ -2075,10 +2031,7 @@ export default {
 			const orderedIds = category.coverages.map(c => c.id)
 
 			try {
-				const url = this.route('admin.products.plans.coverages.reorder', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/reorder`
 				const { data } = await axios.post(url, { coverage_ids: orderedIds })
 				this.notifyFromResponse(data, null, 'success')
 			} catch (e) {
@@ -2101,10 +2054,7 @@ export default {
 
 		async openCoverageSelectorModal() {
 			try {
-				const url = this.route('admin.products.plans.coverages.available', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/available`
 				const { data } = await axios.get(url)
 
 				const categories = data.data || []
@@ -2212,10 +2162,7 @@ export default {
 
 		async attachCoverage(row) {
 			try {
-				const url = this.route('admin.products.plans.coverages.store', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages`
 
 				const { data } = await axios.post(url, { coverage_id: row.id })
 
@@ -2235,11 +2182,7 @@ export default {
 			if (!row.plan_version_coverage_id) return
 
 			try {
-				const url = this.route('admin.products.plans.coverages.destroy', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					coverage: row.plan_version_coverage_id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/${row.plan_version_coverage_id}`
 
 				const { data } = await axios.delete(url)
 
@@ -2261,11 +2204,7 @@ export default {
 			if (!confirmed) return
 
 			try {
-				const url = this.route('admin.products.plans.coverages.destroy', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-					coverage: cov.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/${cov.id}`
 
 				const { data } = await axios.delete(url)
 
@@ -2315,10 +2254,7 @@ export default {
 
 		async loadTermsHtmlSizes() {
 			try {
-				const url = this.route('admin.products.plans.terms-html.show', {
-					product: this.product.id,
-					planVersion: this.planVersion.id,
-				})
+				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/terms-html`
 
 				const { data } = await axios.get(url)
 				const terms = (data && data.data && data.data.terms_html)
@@ -2406,7 +2342,7 @@ export default {
 		left: 0px;
 		height: 1rem;
 	}
-	
+
 	.custom_price .country_name
 	{
 		background-color: #DFF;

@@ -335,10 +335,10 @@ export default {
     },
 
     versionEditUrl(version) {
-      return this.route('admin.products.plans.edit', {
-        product: this.product.id,
-        planVersion: version.id,
-      });
+      const productId = Number(this.product?.id || 0);
+      const planVersionId = Number(version?.id || 0);
+      if (!productId || !planVersionId) return '#';
+      return `/admin/products/${productId}/plans/${planVersionId}/edit`;
     },
 
     canDeleteVersion(version) {
@@ -378,7 +378,7 @@ export default {
       }
 
       try {
-        const url = this.route('admin.products.plans.store', { product: this.product.id });
+        const url = `/api/v1/admin/products/${this.product.id}/plans`;
         const { data } = await axios.post(url, { name });
 
         if (data.redirect_url) {
@@ -425,10 +425,7 @@ export default {
       }
 
       try {
-        const url = this.route('admin.products.plans.clone', {
-          product: this.product.id,
-          planVersion: this.versionToClone.id,
-        });
+        const url = `/api/v1/admin/products/${this.product.id}/plans/${this.versionToClone.id}/clone`;
 
         const { data } = await axios.post(url, { name });
 
@@ -451,10 +448,7 @@ export default {
       if (!confirm('¿Eliminar esta versión de plan? Esta acción no se puede deshacer.')) return;
 
       try {
-        const url = this.route('admin.products.plans.destroy', {
-          product: this.product.id,
-          planVersion: version.id,
-        });
+        const url = `/api/v1/admin/products/${this.product.id}/plans/${version.id}`;
 
         const { data } = await axios.delete(url);
 

@@ -365,10 +365,7 @@ export default {
 			this.errorMessage = null;
 
 			try {
-				const url = this.route('admin.products.plans.countries.index', {
-					product: this.productId,
-					planVersion: this.planVersionId,
-				});
+				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/countries`;
 				const { data } = await axios.get(url);
 
 				// backend: { data: { plan_countries, countries, zones, continents } }
@@ -434,10 +431,7 @@ export default {
 			this.errorMessage = null;
 
 			try {
-				const url = this.route('admin.products.plans.countries.attach-zone', {
-					product: this.productId,
-					planVersion: this.planVersionId,
-				});
+				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/countries/attach-zone`;
 
 				const { data } = await axios.post(url, {
 					zone_id: zone.id,
@@ -489,10 +483,7 @@ export default {
 			this.errorMessage = null;
 
 			try {
-				const url = this.route('admin.products.plans.countries.detach-by-zone', {
-					product: this.productId,
-					planVersion: this.planVersionId,
-				});
+				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/countries/detach-by-zone`;
 
 				const { data } = await axios.post(url, {
 					zone_id: zone.id,
@@ -552,11 +543,7 @@ export default {
 			try {
 				if (previousAttached) {
 					// antes estaba asociado => ahora lo quitamos
-					const url = this.route('admin.products.plans.countries.destroy', {
-						product: this.productId,
-						planVersion: this.planVersionId,
-						country: country.id,
-					});
+					const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/countries/${country.id}`;
 					const { data } = await axios.delete(url);
 
 					const removed = this.parseCountriesFromResponse(data);
@@ -575,10 +562,7 @@ export default {
 					}
 				} else {
 					// antes NO estaba asociado => ahora lo añadimos
-					const url = this.route('admin.products.plans.countries.store', {
-						product: this.productId,
-						planVersion: this.planVersionId,
-					});
+					const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/countries`;
 					const payload = {
 						country_ids: [country.id],
 					};

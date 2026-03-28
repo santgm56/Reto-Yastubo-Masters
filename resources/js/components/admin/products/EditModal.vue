@@ -259,7 +259,7 @@ export default {
       this.isLoading = true;
 
       try {
-        const url = this.route('admin.products.show', { product: productId });
+        const url = `/api/v1/admin/products/${productId}`;
         const { data } = await axios.get(url);
         const product = data.data || data;
 
@@ -349,7 +349,7 @@ export default {
             payload.company_id = this.contextCompanyId;
           }
 
-          const url = this.route('admin.products.store');
+          const url = '/api/v1/admin/products';
           response = await axios.post(url, payload);
 
           const product = response.data.data || response.data;
@@ -362,9 +362,7 @@ export default {
             status: this.form.status,
           };
 
-          const url = this.route('admin.products.update', {
-            product: this.productId,
-          });
+          const url = `/api/v1/admin/products/${this.productId}`;
           response = await axios.put(url, payload);
 
           const product = response.data.data || response.data;

@@ -37,8 +37,8 @@ class Product extends Model
     public const TYPE_PLAN_CAPITADO = 'plan_capitado';
 
     public const EDIT_ROUTES = [
-        self::TYPE_PLAN_REGULAR  => 'admin.products.plans.index',
-        self::TYPE_PLAN_CAPITADO => 'admin.products.plans.index',
+        self::TYPE_PLAN_REGULAR  => null,
+        self::TYPE_PLAN_CAPITADO => null,
     ];
 
     public static function productTypes(): array
@@ -93,7 +93,8 @@ class Product extends Model
 
     public function editRouteName(): string
     {
-        return self::EDIT_ROUTES[$this->product_type] ?? 'admin.products.index';
+        $routeName = self::EDIT_ROUTES[$this->product_type] ?? null;
+        return is_string($routeName) ? $routeName : 'admin.products.index';
     }
 
     public function editRouteParams(): array
@@ -107,6 +108,10 @@ class Product extends Model
 
     public function editUrl(): string
     {
+        if ($this->isPlan()) {
+            return '/admin/products/' . $this->id . '/plans';
+        }
+
         return route($this->editRouteName(), $this->editRouteParams());
     }
 

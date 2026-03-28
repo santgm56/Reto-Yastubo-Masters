@@ -147,7 +147,7 @@ class CapitatedContractController extends Controller
      *
      * Acceso por URL pública interna (no por ID).
      */
-    public function showPdfByUuid(string $uuid, Request $request, \App\Services\PdfService $pdf, PlanVersionController $planVersionController)
+    public function showPdfByUuid(string $uuid, Request $request, \App\Services\PdfService $pdf)
     {
 		/* @var $contract CapitatedContract */
         $contract = CapitatedContract::query()
@@ -158,7 +158,7 @@ class CapitatedContractController extends Controller
         if (!$contract) {
             abort(404, 'Contrato no encontrado.');
         }
-		
+
         $contract->load([
             'person',
             'product',
@@ -171,23 +171,23 @@ class CapitatedContractController extends Controller
 			->orderByDesc('coverage_month')
 			->orderByDesc('id')
 			->first();
-		
+
         if (!$lastMonthlyRecord) {
             abort(404, 'Registros mensuales no encontrado.');
         }
-		
+
 		$company = $lastMonthlyRecord->company;
-		
+
 		$planVersion = $lastMonthlyRecord->planVersion;
 		$planVersion->load([
 			'product',
 			'coverages.coverage.unit',
 			'coverages.coverage.category',
 		]);
-		
+
 		$product = $planVersion->product;
 
-		$coverageCategories = $planVersionController->buildCoverageCategories($planVersion);
+        $coverageCategories = $this->buildCoverageCategories($planVersion);
 
 		$persona = $contract->person;
 		$data = [
@@ -211,7 +211,7 @@ class CapitatedContractController extends Controller
 				'renovacion'	=> $lastMonthlyRecord->id,
 			],
 		];
-		
+
 		$data['branding'] = $company->branding();
 		$data['branding']['logo'] = $data['branding']['logo']->localPath();
 
@@ -222,16 +222,16 @@ class CapitatedContractController extends Controller
 		{
             abort(500);
 		}
-		
+
 		/* @var $templateVersion \App\Models\TemplateVersion */
 		$templateVersion = $template->activeTemplateVersion;
 		if(empty($templateVersion))
 		{
             abort(504);
 		}
-		
+
 		//dd($data['contrato']);
-		
+
 		switch($request->get('debug'))
 		{
 			case 'html': echo $pdf->renderBladeString($templateVersion->content, $data); exit;
@@ -247,6 +247,94 @@ class CapitatedContractController extends Controller
 		$binary = $pdf->makePdfFromTemplateString($templateVersion->content, $data, $options);
 
 		return response($binary)->header('Content-Type', 'application/pdf');
-    }	
+    }
+
+    protected function buildCoverageCategories($planVersion): array
+    {
+        $categories = [];
+
+        $planVersion->loadMissing([
+            'coverages.coverage.unit',
+            'coverages.coverage.category',
+        ]);
+
+        $planVersionCoverages = $planVersion->coverages
+            ->sortBy('sort_order')
+            ->values();
+
+        foreach ($planVersionCoverages as $pivot) {
+            $coverage = $pivot->coverage;
+            if (!$coverage) continue;
+
+            $category = $coverage->category;
+            if (!$category) continue;
+
+            $categoryId = $category->id;
+
+            if (!isset($categories[$categoryId])) {
+                $categories[$categoryId] = [
+                    'id'          => $categoryId,
+                    'sort_order'  => $category->sort_order ?? 0,
+                    'name'        => $category->name,
+                    'description' => $category->description,
+                    'coverages'   => [],
+                ];
+            }
+
+            $unit = $coverage->unit;
+
+            $categories[$categoryId]['coverages'][] = [
+                'id'                   => $pivot->id,
+                'plan_version_id'      => $pivot->plan_version_id,
+                'coverage_id'          => $pivot->coverage_id,
+                'sort_order'           => $pivot->sort_order,
+                'value_int'            => $pivot->value_int,
+                'value_decimal'        => $pivot->value_decimal,
+                'value_text'           => $this->decodeTranslatable($pivot->getRawOriginal('value_text')),
+                'notes'                => $this->decodeTranslatable($pivot->getRawOriginal('notes')),
+                'notes_t'              => $pivot->notes,
+                'display_value'        => $pivot->display_value,
+                'coverage_name'        => $coverage->name,
+                'coverage_description' => $coverage->description,
+                'unit_name'            => $unit ? $unit->name : null,
+                'unit_measure_type'    => $unit ? $unit->measure_type : null,
+                'category_id'          => $categoryId,
+                'category_name'        => $category->name,
+                'category_description' => $category->description,
+            ];
+        }
+
+        $categoriesList = array_values($categories);
+
+        usort($categoriesList, function (array $a, array $b) {
+            $sa = $a['sort_order'] ?? 0;
+            $sb = $b['sort_order'] ?? 0;
+
+            if ($sa === $sb) {
+                return ($a['id'] ?? 0) <=> ($b['id'] ?? 0);
+            }
+
+            return $sa <=> $sb;
+        });
+
+        return $categoriesList;
+    }
+
+    protected function decodeTranslatable($raw): array
+    {
+        if (empty($raw)) {
+            return ['es' => null, 'en' => null];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return [
+                'es' => $decoded['es'] ?? null,
+                'en' => $decoded['en'] ?? null,
+            ];
+        }
+
+        return ['es' => $raw, 'en' => null];
+    }
 
 }

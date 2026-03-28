@@ -143,12 +143,12 @@ export default {
 
   methods: {
     productEditUrl(product) {
-      const routeName = this.editRouteMap[product.product_type];
-      if (!routeName) {
+      const productId = Number(product?.id || 0);
+      if (!productId) {
         console.warn('Sin editRouteMap para product_type', product.product_type);
         return '#';
       }
-      return this.route(routeName, { product: product.id });
+      return `/admin/products/${productId}/plans`;
     },
 
     typeLabel(value) {
