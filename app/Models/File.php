@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\URL;
 use App\Services\UploadedFileService;
 
 class File extends Model
@@ -41,7 +39,7 @@ class File extends Model
      */
     public function url(): ?string
     {
-        return route('files.show', $this->uuid);
+        return '/api/v1/files/' . $this->uuid;
     }
 
     /**
@@ -52,12 +50,12 @@ class File extends Model
     public function temporaryUrl(?int $minutes = null): ?string
     {
         $minutes = $minutes ?? config('uploads.temporary_url_minutes', 1);
+        $expires = now()->addMinutes($minutes)->timestamp;
+        $secret = (string) env('FRONTEND_TEMP_FILE_SECRET', 'change-me-fastapi-file-temp-secret');
+        $payload = $this->id . '|' . $expires;
+        $signature = hash_hmac('sha256', $payload, $secret);
 
-        return URL::temporarySignedRoute(
-            'files.temp',
-            now()->addMinutes($minutes),
-            ['file' => $this->id]
-        );
+        return '/api/v1/files/temp/' . $this->id . '?expires=' . $expires . '&signature=' . $signature;
     }
 
     /**

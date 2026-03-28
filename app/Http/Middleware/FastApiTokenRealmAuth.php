@@ -24,29 +24,40 @@ class FastApiTokenRealmAuth
             Realm::SELLER => 'seller',
             default => 'admin',
         };
-        if (Auth::guard($guard)->check()) {
-            return $next($request);
-        }
+
+        $authGuard = Auth::guard($guard);
 
         $accessToken = trim((string) $request->cookie('yastubo_access_token', ''));
         if ($accessToken === '') {
+            if ($authGuard->check()) {
+                $authGuard->logout();
+            }
+
             return $next($request);
         }
 
         $me = $this->fetchFastApiMe($accessToken);
         if (!$me || !$this->isRoleAllowedForRealm((string) ($me['role'] ?? ''), $realm)) {
+            if ($authGuard->check()) {
+                $authGuard->logout();
+            }
+
             $this->expireAccessTokenCookie();
             return $next($request);
         }
 
         $user = $this->resolveLocalUser($me, $realm);
         if (!$user) {
+            if ($authGuard->check()) {
+                $authGuard->logout();
+            }
+
             $this->expireAccessTokenCookie();
             return $next($request);
         }
 
-        Auth::guard($guard)->login($user);
-        $request->session()->regenerate();
+        // Auth request-scoped: no persistir sesión Laravel como fuente de verdad.
+        $authGuard->setUser($user);
 
         return $next($request);
     }

@@ -1,13 +1,10 @@
 <?php
 
 use App\Http\Middleware\AbsoluteSessionTimeout;
-use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\BindSessionToUser;
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\FastApiTokenRealmAuth;
 use App\Http\Middleware\ForcePasswordChange;
-use App\Http\Middleware\RedirectIfAuthenticated;
-use App\Http\Middleware\SetRealm;
 use App\Support\Realm;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Bootstrap\LoadEnvironmentVariables;
@@ -29,26 +26,19 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 			'active'				   => EnsureAccountActive::class,
 			'bind.session.user'		   => BindSessionToUser::class,
 			'fastapi.token.realm.auth' => FastApiTokenRealmAuth::class,
-			'guest'					   => RedirectIfAuthenticated::class,
 			'force.password.change'	   => ForcePasswordChange::class,
-			'realm'					   => SetRealm::class,
-			'auth'					   => Authenticate::class,
 			'absolute.session.timeout' => AbsoluteSessionTimeout::class,
 		]);
 
 		// Prioridad: lo que esté antes corre antes, sin importar el orden en la ruta.
 		$middleware->priority([
 			// (conserva los que ya tengas priorizados; aquí solo muestro los relevantes)
-			SetRealm::class,           // << debe ir antes
 			\Illuminate\Session\Middleware\StartSession::class,
 			\Illuminate\View\Middleware\ShareErrorsFromSession::class,
-			Authenticate::class,       // << va después
 		]);
 
-		// Grupos reutilizables (incluyen 'web' para manejo de sesión/errores)
+		// Grupos reutilizables por canal.
 		$middleware->group('admin', [
-			'web',
-			'realm:admin', // para indicar que estamos en el realm admin y tenerlo como variable global en los controladores
 			'fastapi.token.realm.auth',
 			'auth:admin', // para poder manejar a nivel de autenticación el realm
 			'active', // solo permitir usuarios activos
@@ -57,16 +47,7 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 			'absolute.session.timeout', // para expirar la sesion del usuario si ha pasado de tiempo
 		]);
 
-		$middleware->group('admin_guest', [
-			'web',
-			'realm:admin',
-			'fastapi.token.realm.auth',
-			'guest:admin',
-		]);
-
 		$middleware->group('seller', [
-			'web',
-			'realm:seller',
 			'fastapi.token.realm.auth',
 			'auth:seller',
 			'active',
@@ -75,16 +56,7 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 			'absolute.session.timeout',
 		]);
 
-		$middleware->group('seller_guest', [
-			'web',
-			'realm:seller',
-			'fastapi.token.realm.auth',
-			'guest:seller',
-		]);
-
 		$middleware->group('customer', [
-			'web',
-			'realm:customer',
 			'fastapi.token.realm.auth',
 			'auth:customer',
 			'active',
@@ -93,29 +65,28 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 			'absolute.session.timeout',
 		]);
 
-		$middleware->group('customer_guest', [
-			'web',
-			'realm:customer',
-			'fastapi.token.realm.auth',
-			'guest:customer',
-		]);
-
 		$middleware->redirectGuestsTo(function (Request $request)
 		{
-			if (Realm::isAdmin($request))
-			{
-				return route('admin.login');
-			}
-			if (Realm::isSeller($request))
-			{
-				return route('seller.login');
-			}
-			if (Realm::isCustomer($request))
-			{
-				return route('customer.login');
-			}
+			$realm = Realm::current($request);
 
-			return route('home'); // o la que prefieras como pública
+			return match ($realm) {
+				Realm::ADMIN => route('admin.login'),
+				Realm::SELLER => route('seller.login'),
+				Realm::CUSTOMER => route('customer.login'),
+				default => route('home'), // o la que prefieras como pública
+			};
+		});
+
+		$middleware->redirectUsersTo(function (Request $request)
+		{
+			$realm = Realm::current($request);
+
+			return match ($realm) {
+				Realm::ADMIN => route('admin.home'),
+				Realm::SELLER => route('seller.home'),
+				Realm::CUSTOMER => route('customer.home'),
+				default => route('home'),
+			};
 		});
 	})
 	->withExceptions(function (Exceptions $exceptions)

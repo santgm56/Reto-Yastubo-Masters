@@ -435,10 +435,7 @@ export default {
       }
 
       try {
-        const url = this.route('admin.companies.capitated.contracts.show', {
-          company: this.companyId,
-          contract: contractId,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/contracts/${contractId}`;
 
         const { data } = await axios.get(url);
 

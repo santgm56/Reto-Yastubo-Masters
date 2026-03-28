@@ -254,8 +254,7 @@ export default {
     },
 
     templateUrl() {
-      // endpoint existente, sin cambiar comportamiento
-      return this.route('admin.companies.capitated.batches.template', { company: this.companyId });
+      return `/api/v1/admin/companies/${this.companyId}/capitated/batches/template`;
     },
 
     // ¿El usuario puede elegir cualquier mes con el datepicker?
@@ -320,10 +319,6 @@ export default {
   },
 
   methods: {
-    route(name, params = {}) {
-      return window.route ? window.route(name, params) : '#';
-    },
-
     // Utilidad defensiva para permisos; ajusta internamente a tu implementación real
     hasPermission(ability) {
       try {
@@ -366,10 +361,7 @@ export default {
       if (!batch || !batch.id) {
         return '#';
       }
-      return this.route('admin.companies.capitated.batches.show', {
-        company: this.companyId,
-        batch: batch.id,
-      });
+      return `/admin/companies/${this.companyId}/capitados/batches/${batch.id}`;
     },
 
     async fetchPage(page = 1) {
@@ -377,11 +369,11 @@ export default {
       this.error = null;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.index', {
-          company: this.companyId,
-          page,
-          per_page: this.perPage,
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(this.perPage),
         });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches?${params.toString()}`;
 
         const { data } = await axios.get(url);
 
@@ -409,11 +401,11 @@ export default {
       this.polling = true;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.index', {
-          company: this.companyId,
-          page: 1,
-          per_page: this.perPage,
+        const params = new URLSearchParams({
+          page: '1',
+          per_page: String(this.perPage),
         });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches?${params.toString()}`;
 
         const { data } = await axios.get(url);
 
@@ -521,9 +513,7 @@ export default {
       this.uploadError = null;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.upload', {
-          company: this.companyId,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/upload`;
 
         const formData = new FormData();
         formData.append('file', this.uploadFile);

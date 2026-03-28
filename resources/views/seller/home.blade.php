@@ -5,8 +5,8 @@
 @section('content')
     <seller-dashboard-index
         section="{{ $section ?? 'dashboard' }}"
-        summary-endpoint="{{ route('seller.api.dashboard-summary') }}"
-        customers-endpoint="{{ route('seller.api.customers') }}"
-        sales-endpoint="{{ route('seller.api.sales') }}"
+        summary-endpoint="/api/v1/seller/dashboard-summary"
+        customers-endpoint="/api/v1/seller/customers"
+        sales-endpoint="/api/v1/seller/sales"
     ></seller-dashboard-index>
 @endsection

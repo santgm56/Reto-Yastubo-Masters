@@ -219,10 +219,7 @@ export default {
 
       try {
         const res = await axios.get(
-          this.route(
-            'admin.regalias.api.beneficiaries.origins.units.available',
-            { beneficiary: this.beneficiaryId }
-          ),
+          `/api/v1/admin/regalias/beneficiaries/${this.beneficiaryId}/origins/units/available`,
           {
             params: {
               page,
@@ -301,7 +298,7 @@ export default {
 
       try {
         const res = await axios.post(
-          this.route('admin.regalias.api.regalias.store'),
+          '/api/v1/admin/regalias/regalias',
           {
             // NOMBRES ALINEADOS CON EL BACKEND
             beneficiary_user_id: this.beneficiaryId,
@@ -357,9 +354,7 @@ export default {
 
       try {
         const res = await axios.delete(
-          this.route('admin.regalias.api.regalias.destroy', {
-            regalia: row.regalia_id,
-          })
+          `/api/v1/admin/regalias/regalias/${row.regalia_id}`
         );
 
         row.is_assigned = false;

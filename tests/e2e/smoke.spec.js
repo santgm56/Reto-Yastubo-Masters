@@ -20,7 +20,7 @@ test('@smoke unauth admin payments redirects to admin login', async ({ page }) =
 test('@smoke unauth seller dashboard redirects to seller login', async ({ page }) => {
   await page.goto('/seller/dashboard');
   await expect(page).toHaveURL(/\/seller\/login/i);
-  await expect(page.locator('body')).toContainText(/email|password|seller|ingresar/i);
+  await expect(page.locator('body')).toContainText(/email|password|seller|vendedor|ingresar|entrar/i);
 });
 
 test('@smoke unauth customer payment method redirects to customer login', async ({ page }) => {

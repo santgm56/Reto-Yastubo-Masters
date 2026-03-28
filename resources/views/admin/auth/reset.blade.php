@@ -54,7 +54,7 @@
     {{-- Script de validación en vivo contra la política expuesta por el backend --}}
     <script>
         (function() {
-            const POLICY_URL = "{{ url('/api/password-policy') }}"; // nombre de ruta opcional: route('api.password.policy')
+            const POLICY_URL = "{{ url('/api/v1/auth/password-policy') }}";
             const pwd = document.getElementById('password');
             const pwd2 = document.getElementById('password_confirmation');
             const emailHidden = document.getElementById('emailHidden');

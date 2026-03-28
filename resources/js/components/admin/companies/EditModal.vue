@@ -160,7 +160,7 @@ export default {
             }
 
             try {
-                const url = this.route('admin.companies.show', { company: companyId });
+                const url = `/api/v1/admin/companies/${companyId}`;
                 const { data } = await axios.get(url);
                 const company = data.data;
 
@@ -204,7 +204,7 @@ export default {
 
         async submitCreate() {
             try {
-                const url = this.route('admin.companies.store');
+                const url = '/api/v1/admin/companies';
 
                 const payload = {
                     name: this.form.name,
@@ -230,7 +230,7 @@ export default {
             }
 
             try {
-                const url = this.route('admin.companies.update', { company: this.companyId });
+                const url = `/api/v1/admin/companies/${this.companyId}`;
 
                 const payload = {
                     name: this.form.name,
@@ -287,7 +287,14 @@ export default {
                     params.ignore_id = this.companyId;
                 }
 
-                const url = this.route('admin.companies.check-short-code', params);
+                const query = new URLSearchParams();
+                Object.entries(params).forEach(([key, rawValue]) => {
+                    if (rawValue !== undefined && rawValue !== null && `${rawValue}`.trim() !== '') {
+                        query.set(key, `${rawValue}`);
+                    }
+                });
+
+                const url = `/api/v1/admin/companies/check-short-code?${query.toString()}`;
                 const { data } = await axios.get(url);
 
                 if (data.is_available) {

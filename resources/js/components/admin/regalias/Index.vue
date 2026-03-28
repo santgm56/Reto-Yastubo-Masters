@@ -399,7 +399,7 @@ export default {
 
       try {
         const res = await axios.get(
-          this.route('admin.regalias.api.beneficiaries.index'),
+          '/api/v1/admin/regalias/beneficiaries',
           {
             params: {
               page,
@@ -622,9 +622,7 @@ export default {
 
       try {
         await axios.patch(
-          this.route('admin.regalias.api.regalias.update', {
-            regalia: regalia.id,
-          }),
+          `/api/v1/admin/regalias/regalias/${regalia.id}`,
           { commission: value },
           {
             headers: { 'Content-Type': 'application/json' },
@@ -670,9 +668,7 @@ export default {
 
       try {
         const res = await axios.delete(
-          this.route('admin.regalias.api.regalias.destroy', {
-            regalia: regalia.id,
-          })
+          `/api/v1/admin/regalias/regalias/${regalia.id}`
         );
 
         card.regalias = card.regalias.filter((r) => r.id !== regalia.id);

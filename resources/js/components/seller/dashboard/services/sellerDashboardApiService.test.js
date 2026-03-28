@@ -28,7 +28,7 @@ describe('sellerDashboardApiService', () => {
       },
     });
 
-    const response = await fetchSellerSummary({ endpoint: '/seller/api/summary' });
+    const response = await fetchSellerSummary({ endpoint: '/api/v1/seller/dashboard-summary' });
 
     expect(response.ok).toBe(true);
     expect(response.data.kpis.customers_total).toBe(3);
@@ -44,7 +44,7 @@ describe('sellerDashboardApiService', () => {
       },
     });
 
-    const response = await fetchSellerCustomers({ endpoint: '/seller/api/customers' });
+    const response = await fetchSellerCustomers({ endpoint: '/api/v1/seller/customers' });
 
     expect(response.ok).toBe(false);
     expect(response.data).toEqual([]);
@@ -60,7 +60,7 @@ describe('sellerDashboardApiService', () => {
       },
     });
 
-    const response = await fetchSellerSales({ endpoint: '/seller/api/sales' });
+    const response = await fetchSellerSales({ endpoint: '/api/v1/seller/sales' });
 
     expect(response.ok).toBe(true);
     expect(response.data).toHaveLength(1);

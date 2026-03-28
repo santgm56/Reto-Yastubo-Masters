@@ -34,7 +34,7 @@ Fuente obligatoria: README.md (raiz), FRONTEND_ARCHITECTURE.md, AGENTS/READMEvie
 - DONE: Baseline de testing frontend con Vitest (`npm run test:unit`) + suites de adapters, guardas y cutover.
 - DONE: Baseline de testing backend para pagos webhook (`tests/Feature/PaymentsWebhookIdempotencyTest.php`) con skip seguro si falta `pdo_sqlite` en entorno local.
 - DONE: Superficie seller formal (`/seller/*`) con dashboard y navegación dedicada.
-- DONE: Seller operativo extendido con data APIs de customers/sales (`/seller/api/customers`, `/seller/api/sales`) y visualización por sección.
+- DONE: Seller operativo consume contratos FastAPI directos de dashboard (`/api/v1/seller/dashboard-summary`, `/api/v1/seller/customers`, `/api/v1/seller/sales`) y se retiraron rutas bridge `/seller/api/*` en Laravel.
 - DONE: Módulo de auditoría admin (`/admin/audit`) con filtros y endpoint AJAX paginado.
 - DONE: Módulo de anulaciones admin (`/admin/cancellations`) con board operativo y endpoints (`/api/v1/cancellations`).
 - DONE: API `/api/v1` para emisión (`quote/store/show`) usando modelos existentes de contratos capitados.
@@ -67,7 +67,7 @@ Fuente obligatoria: README.md (raiz), FRONTEND_ARCHITECTURE.md, AGENTS/READMEvie
 - DONE: Seller dashboard modularizado con servicio dedicado (`resources/js/components/seller/dashboard/services/sellerDashboardApiService.js`) y suite unitaria asociada.
 - DONE: Hard-cutover API frontend: eliminados fallback routes/controllers PHP para `/api/v1` y `/api/customer`; vistas de operaciones consumen paths API directos para resolver en FastAPI via cutover.
 - DONE: Login admin/customer interceptado contra FastAPI (`/api/v1/auth/login`) con token store local y redireccion por rol/canal.
-- DONE: Bridge de sesion Laravel (`admin/session/bridge`, `customer/session/bridge`) validado por FastAPI (`/api/v1/auth/me`) para alinear JWT FastAPI con middlewares server-side existentes.
+- DONE: Sesion protegida server-side alineada por middleware `fastapi.token.realm.auth` validando cookie/token contra FastAPI (`/api/v1/auth/me`) sin rutas `session/bridge` activas.
 - DONE: `apiClient` con refresh automatico de token en 401 (`/api/v1/auth/refresh`) + reintento de request autenticada.
 - DONE: Limpieza de tokens frontend en eventos de logout (`/admin/logout`, `/customer/logout`) para evitar sesion local residual fuera de Laravel.
 - DONE: Suite unitaria para `fastapiLoginBridge` validando secuencia login FastAPI -> session bridge Laravel -> redirect seguro.

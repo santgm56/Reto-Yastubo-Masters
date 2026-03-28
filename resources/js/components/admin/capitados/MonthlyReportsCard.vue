@@ -90,10 +90,6 @@ export default {
   },
 
   methods: {
-    route(name, params = {}) {
-      return window.route ? window.route(name, params) : '#';
-    },
-
     formatMonth(value) {
       return formatMonth(value);
     },
@@ -107,21 +103,15 @@ export default {
     },
 
     downloadUrl(month) {
-      return this.route('admin.companies.capitated.reporte.mensual.download', {
-        company: this.companyId,
-        month,
-      });
+      return `/api/v1/admin/companies/${this.companyId}/capitated/reports/monthly/${month}/download`;
     },
 
     async fetchMonths() {
       this.loading = true;
 
       try {
-        const { data } = await axios.get(
-          this.route('admin.companies.capitated.reporte.mensual.months', {
-            company: this.companyId,
-          }),
-        );
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/reports/monthly/months`;
+        const { data } = await axios.get(url);
 
         this.months = data.months || [];
       } catch (e) {

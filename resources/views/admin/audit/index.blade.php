@@ -4,6 +4,6 @@
 
 @section('content')
     <admin-audit-index
-        endpoint="{{ route('admin.audit.events') }}"
+        endpoint="/api/v1/admin/audit"
     ></admin-audit-index>
 @endsection

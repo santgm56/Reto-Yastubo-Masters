@@ -952,13 +952,8 @@ export default {
       this.isLoading = true
 
       try {
-        const companyUrl = this.route('admin.companies.show', {
-          company: this.companyId,
-        })
-        const commissionUrl = this.route(
-          'admin.companies.commission-users.index',
-          { company: this.companyId },
-        )
+        const companyUrl = `/api/v1/admin/companies/${this.companyId}`
+        const commissionUrl = `/api/v1/admin/companies/${this.companyId}/commission-users`
 
         const [companyResp, commissionResp] = await Promise.all([
           axios.get(companyUrl),
@@ -1206,7 +1201,14 @@ export default {
           params.ignore_id = currentId
         }
 
-        const url = this.route('admin.companies.check-short-code', params)
+        const query = new URLSearchParams()
+        Object.entries(params).forEach(([key, rawValue]) => {
+          if (rawValue !== undefined && rawValue !== null && `${rawValue}`.trim() !== '') {
+            query.set(key, `${rawValue}`)
+          }
+        })
+
+        const url = `/api/v1/admin/companies/check-short-code?${query.toString()}`
         const { data } = await axios.get(url)
 
         if (data.is_available) {
@@ -1256,9 +1258,7 @@ export default {
     },
 
     async submitUpdate(payload, section = null) {
-      const url = this.route('admin.companies.update', {
-        company: this.companyId,
-      })
+      const url = `/api/v1/admin/companies/${this.companyId}`
 
       const { data } = await axios.put(url, payload, {
         headers: {
@@ -1309,16 +1309,13 @@ export default {
 
       this.isUploadingLogo = true
 
-      const url = this.route('admin.companies.update', {
-        company: this.companyId,
-      })
+      const url = `/api/v1/admin/companies/${this.companyId}`
 
       const formData = new FormData()
-      formData.append('_method', 'PUT')
       formData.append('branding_logo', file)
 
       try {
-        const { data } = await axios.post(url, formData, {
+        const { data } = await axios.put(url, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -1362,16 +1359,13 @@ export default {
 
       this.isUploadingLogo = true
 
-      const url = this.route('admin.companies.update', {
-        company: this.companyId,
-      })
+      const url = `/api/v1/admin/companies/${this.companyId}`
 
       const formData = new FormData()
-      formData.append('_method', 'PUT')
       formData.append('branding_logo_remove', '1')
 
       try {
-        const { data } = await axios.post(url, formData, {
+        const { data } = await axios.put(url, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -1444,24 +1438,23 @@ export default {
       this.isLoadingUsers = true
 
       try {
-        const url = this.route('admin.companies.users.search', {
-          company: this.companyId,
-        })
-
-        const { data } = await axios.get(url, {
+        const { data } = await axios.get('/api/v1/admin/users/search', {
           params: {
             page,
             per_page: this.usersPagination.per_page,
-            search: this.usersSearch,
+            q: this.usersSearch,
+            status: 'active',
           },
         })
 
+        const pagination = data?.meta?.pagination || {}
+
         this.usersList = data.data || []
         this.usersPagination = {
-          current_page: data.meta.current_page,
-          last_page: data.meta.last_page,
-          per_page: data.meta.per_page,
-          total: data.meta.total,
+          current_page: pagination.current_page || 1,
+          last_page: pagination.last_page || 1,
+          per_page: pagination.per_page || this.usersPagination.per_page,
+          total: pagination.total || 0,
         }
       } catch (error) {
         this.flashError(
@@ -1492,15 +1485,16 @@ export default {
       if (!this.company || !user) return
 
       try {
-        const url = this.route('admin.companies.users.attach', {
-          company: this.companyId,
-          user: user.id,
-        })
+        const url = `/api/v1/admin/companies/${this.companyId}/users/${user.id}`
 
         const { data } = await axios.post(url)
 
         const response = data || {}
-        const company = response.data || response
+        const companyPayload = response.data || response
+        const company = {
+          ...(this.company || {}),
+          ...(companyPayload || {}),
+        }
 
         this.isReadyForAutosave = false
 
@@ -1532,15 +1526,16 @@ export default {
       if (!this.company || !user) return
 
       try {
-        const url = this.route('admin.companies.users.detach', {
-          company: this.companyId,
-          user: user.id,
-        })
+        const url = `/api/v1/admin/companies/${this.companyId}/users/${user.id}`
 
         const { data } = await axios.delete(url)
 
         const response = data || {}
-        const company = response.data || response
+        const companyPayload = response.data || response
+        const company = {
+          ...(this.company || {}),
+          ...(companyPayload || {}),
+        }
 
         this.isReadyForAutosave = false
 
@@ -1680,13 +1675,7 @@ export default {
         typeof row.commission === 'number' ? row.commission : 0
 
       try {
-        const url = this.route(
-          'admin.companies.commission-users.update',
-          {
-            company: this.companyId,
-            commissionUser: row.id,
-          },
-        )
+        const url = `/api/v1/admin/companies/${this.companyId}/commission-users/${row.id}`
 
         const { data } = await axios.patch(
           url,
@@ -1770,10 +1759,7 @@ export default {
       this.isLoadingCommissionUsers = true
 
       try {
-        const url = this.route(
-          'admin.companies.commission-users.available',
-          { company: this.companyId },
-        )
+        const url = `/api/v1/admin/companies/${this.companyId}/commission-users/available`
 
         const { data } = await axios.get(url, {
           params: {
@@ -1821,10 +1807,7 @@ export default {
       if (!this.company || !user) return
 
       try {
-        const url = this.route(
-          'admin.companies.commission-users.store',
-          { company: this.companyId },
-        )
+        const url = `/api/v1/admin/companies/${this.companyId}/commission-users`
 
         const { data } = await axios.post(url, {
           user_id: user.id,
@@ -1876,13 +1859,7 @@ export default {
       if (!target) return
 
       try {
-        const url = this.route(
-          'admin.companies.commission-users.destroy',
-          {
-            company: this.companyId,
-            commissionUser: target.id,
-          },
-        )
+        const url = `/api/v1/admin/companies/${this.companyId}/commission-users/${target.id}`
 
         const { data } = await axios.delete(url)
 

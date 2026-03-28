@@ -13,9 +13,6 @@ final class Realm
     /** Clave del atributo en el Request */
     public const ATTRIBUTE = '_current_realm';
 
-    /** Valor cacheado (p. ej. útil si alguien lo consulta sin pasar Request) */
-    protected static ?string $current = null;
-
     /** Lista de realms válidos */
     public static function all(): array
     {
@@ -31,55 +28,60 @@ final class Realm
         return in_array($name, self::all(), true);
     }
 
-    /** Setea el valor actual (se usa desde el middleware) */
-    public static function setCurrent(?string $name): void
-    {
-        self::$current = self::isValid($name) ? $name : null;
-    }
-
     /**
      * Obtiene el realm actual desde el Request (si se pasa)
-     * o desde el valor cacheado (si no hay Request).
+     * o desde el request() actual si no se proporciona uno.
      */
     public static function current(?Request $request = null): ?string
     {
-		if(empty(self::$current))
-		{
-			self::$current = null;
+        if (empty($request))
+        {
+            $request = request();
+        }
 
-			if(empty($request))
-			{
-				$request = request();
-			}
+        if ($request instanceof Request)
+        {
+            $val = $request->attributes->get(self::ATTRIBUTE);
 
-			if ($request instanceof Request)
-			{
-				$val = $request->attributes->get(self::ATTRIBUTE);
+            if (self::isValid($val))
+            {
+                return $val;
+            }
 
-				if(!self::isValid($val))
-				{
-					$val = null;
-				}
+            $route = $request->route();
+            if ($route)
+            {
+                $name = (string) ($route->getName() ?? '');
+                if (str_starts_with($name, self::ADMIN . '.'))
+                {
+                    return self::ADMIN;
+                }
+                if (str_starts_with($name, self::SELLER . '.'))
+                {
+                    return self::SELLER;
+                }
+                if (str_starts_with($name, self::CUSTOMER . '.'))
+                {
+                    return self::CUSTOMER;
+                }
+            }
 
-				self::$current = $val;
-			}
-		}
-        return self::$current;
+            if ($request->is('admin') || $request->is('admin/*'))
+            {
+                return self::ADMIN;
+            }
+            if ($request->is('seller') || $request->is('seller/*'))
+            {
+                return self::SELLER;
+            }
+            if ($request->is('customer') || $request->is('customer/*'))
+            {
+                return self::CUSTOMER;
+            }
+
+            return null;
+        }
+
+        return null;
     }
-	
-    public static function isAdmin(?Request $request = null): ?bool
-	{
-		return self::current($request) == Realm::ADMIN;
-	}
-
-    public static function isCustomer(?Request $request = null): ?bool
-	{
-		return self::current($request) == Realm::CUSTOMER;
-	}
-
-    public static function isSeller(?Request $request = null): ?bool
-    {
-        return self::current($request) == Realm::SELLER;
-    }
-
 }

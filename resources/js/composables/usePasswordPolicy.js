@@ -1,5 +1,5 @@
 export async function usePasswordPolicy() {
-  const res = await fetch('/api/password-policy', { credentials: 'same-origin' });
+  const res = await fetch('/api/v1/auth/password-policy', { credentials: 'same-origin' });
   const policy = await res.json();
 
   function test(password, context = {}) {

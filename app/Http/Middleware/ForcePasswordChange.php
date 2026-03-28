@@ -36,7 +36,14 @@ class ForcePasswordChange
         }
 
         // Redirigir al formulario de cambio forzado según realm
-        $route = Realm::isAdmin() ? 'admin.password.force.edit' : (Realm::isSeller() ? 'seller.password.force.edit' : 'customer.password.force.edit');
+        $resolvedRealm = Realm::current($request) ?: (string) ($user->realm ?? '');
+
+        $route = match ($resolvedRealm) {
+            Realm::ADMIN => 'admin.password.force.edit',
+            Realm::SELLER => 'seller.password.force.edit',
+            default => 'customer.password.force.edit',
+        };
+
         return redirect()->route($route)->with('status', __('Debes actualizar tu contraseña antes de continuar.'));
     }
 }

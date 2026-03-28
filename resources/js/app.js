@@ -6,11 +6,12 @@ import { initializeFastApiLoginBridge } from './core/auth/fastapiLoginBridge';
 import { initializeAppTelemetry } from './core/telemetry/appTelemetry';
 import { ensureFrontendBootstrap } from './core/runtime/bootstrapContext';
 
-await ensureFrontendBootstrap({ forceApi: true });
-initializeFastApiLoginBridge();
+async function bootstrapFrontendApp() {
+  await ensureFrontendBootstrap({ forceApi: true });
+  initializeFastApiLoginBridge();
 
-const app = createApp({});
-initializeAppTelemetry();
+  const app = createApp({});
+  initializeAppTelemetry();
 
 function trackLoginSuccessOncePerSession() {
   if (typeof window === 'undefined' || !window.appTelemetry || typeof window.appTelemetry.track !== 'function') {
@@ -47,20 +48,20 @@ function trackLoginSuccessOncePerSession() {
   });
 }
 
-trackLoginSuccessOncePerSession();
+  trackLoginSuccessOncePerSession();
 
-const runtime = window.__RUNTIME_CONFIG__ || {};
-const frontendContext = window.__FRONTEND_CONTEXT__ || {};
-const authz = createAuthorizationContext({
-  role: frontendContext.role,
-  permissions: runtime.abilities,
-});
+  const runtime = window.__RUNTIME_CONFIG__ || {};
+  const frontendContext = window.__FRONTEND_CONTEXT__ || {};
+  const authz = createAuthorizationContext({
+    role: frontendContext.role,
+    permissions: runtime.abilities,
+  });
 
-const guardResult = evaluateFrontendRouteAccess({
-  pathname: typeof window !== 'undefined' ? window.location.pathname : '',
-  isAuthenticated: !!frontendContext.userId,
-  authz,
-});
+  const guardResult = evaluateFrontendRouteAccess({
+    pathname: typeof window !== 'undefined' ? window.location.pathname : '',
+    isAuthenticated: !!frontendContext.userId,
+    authz,
+  });
 
 function resolveSafeHomeByChannel(channel) {
   const normalized = `${channel || ''}`.trim().toLowerCase();
@@ -69,40 +70,40 @@ function resolveSafeHomeByChannel(channel) {
   return '/admin';
 }
 
-let shouldMountApp = true;
+  let shouldMountApp = true;
 
-if (!guardResult.allowed) {
-  if (guardResult.statusCode === 401 && guardResult.redirectTo && typeof window !== 'undefined') {
-    window.location.replace(guardResult.redirectTo);
-    shouldMountApp = false;
-  } else if (guardResult.statusCode === 403 && typeof window !== 'undefined') {
-    window.location.replace(resolveSafeHomeByChannel(frontendContext.channel));
-    shouldMountApp = false;
-  } else {
-    const mountNode = typeof document !== 'undefined' ? document.querySelector('#app') : null;
-    if (mountNode) {
-      mountNode.innerHTML = `<div class="alert alert-danger m-5" role="alert">${guardResult.reason || 'Acceso no autorizado.'}</div>`;
+  if (!guardResult.allowed) {
+    if (guardResult.statusCode === 401 && guardResult.redirectTo && typeof window !== 'undefined') {
+      window.location.replace(guardResult.redirectTo);
+      shouldMountApp = false;
+    } else if (guardResult.statusCode === 403 && typeof window !== 'undefined') {
+      window.location.replace(resolveSafeHomeByChannel(frontendContext.channel));
+      shouldMountApp = false;
+    } else {
+      const mountNode = typeof document !== 'undefined' ? document.querySelector('#app') : null;
+      if (mountNode) {
+        mountNode.innerHTML = `<div class="alert alert-danger m-5" role="alert">${guardResult.reason || 'Acceso no autorizado.'}</div>`;
+      }
+      shouldMountApp = false;
     }
-    shouldMountApp = false;
   }
-}
 
-app.config.globalProperties.translate = window.translate
-app.config.globalProperties.flash = window.flash
-app.config.globalProperties.autosaveDelayMs = runtime.autosaveDelayMs ?? 800;
+  app.config.globalProperties.translate = window.translate
+  app.config.globalProperties.flash = window.flash
+  app.config.globalProperties.autosaveDelayMs = runtime.autosaveDelayMs ?? 800;
 
 // Paginaciones estándar
-app.config.globalProperties.perPageShort  = runtime.perPageShort  ?? 5;
-app.config.globalProperties.perPageMedium = runtime.perPageMedium ?? 10;
-app.config.globalProperties.perPageLarge  = runtime.perPageLarge  ?? 15;
+  app.config.globalProperties.perPageShort  = runtime.perPageShort  ?? 5;
+  app.config.globalProperties.perPageMedium = runtime.perPageMedium ?? 10;
+  app.config.globalProperties.perPageLarge  = runtime.perPageLarge  ?? 15;
 
 // Permisos del usuario expuestos desde RUNTIME_CONFIG
-app.config.globalProperties.abilities = runtime.abilities || {};
-app.config.globalProperties.currentRole = authz.role;
-app.config.globalProperties.hasRole = authz.hasRole;
-app.config.globalProperties.hasAnyRole = authz.hasAnyRole;
-app.config.globalProperties.hasPermission = authz.hasPermission;
-app.config.globalProperties.hasAnyPermission = authz.hasAnyPermission;
+  app.config.globalProperties.abilities = runtime.abilities || {};
+  app.config.globalProperties.currentRole = authz.role;
+  app.config.globalProperties.hasRole = authz.hasRole;
+  app.config.globalProperties.hasAnyRole = authz.hasAnyRole;
+  app.config.globalProperties.hasPermission = authz.hasPermission;
+  app.config.globalProperties.hasAnyPermission = authz.hasAnyPermission;
 
 // Utilidad para PascalCase a partir de rutas/strings
 const toPascal = (s) =>
@@ -114,11 +115,11 @@ const toPascal = (s) =>
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join('')
 
-const modules = import.meta.glob('./components/**/*.vue', { eager: true });
+  const modules = import.meta.glob('./components/**/*.vue', { eager: true });
 
-console.log(modules);
+  console.log(modules);
 
-Object.entries(modules).forEach(([path, mod]) => {
+  Object.entries(modules).forEach(([path, mod]) => {
   // path p.ej.: "./components/ui/Toast.vue"  ó "./components/admin/users/Index.vue"
   const rel = path.replace('./components/', '');
 
@@ -133,14 +134,14 @@ Object.entries(modules).forEach(([path, mod]) => {
   }
 
   // Registro global
-  app.component(name, mod.default)
+    app.component(name, mod.default)
 
   // (Opcional en dev) console.debug('Registrado:', name, '->', path)
-});
+  });
 
 // ---- Mixin global: helper route() (Ziggy) disponible en TODOS los componentes ----
-app.mixin({
-  methods: {
+  app.mixin({
+    methods: {
     /**
      * route(name, params = {}, absolute = true)
      * Proxy a window.route inyectado por @routes (Ziggy)
@@ -174,11 +175,14 @@ app.mixin({
 
       return false;
     },
-  },
-});
+    },
+  });
 
-if (shouldMountApp) {
-  const comps = Object.keys(app._context.components || {})
-  console.log('Vue components registrados:', comps)
-  app.mount('#app')
+  if (shouldMountApp) {
+    const comps = Object.keys(app._context.components || {})
+    console.log('Vue components registrados:', comps)
+    app.mount('#app')
+  }
 }
+
+bootstrapFrontendApp();

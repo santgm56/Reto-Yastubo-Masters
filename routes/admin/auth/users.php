@@ -3,14 +3,21 @@
 // Este archivo esta esta con prefijo /admin para las rutas, prefijo .admin para los nombres, middleware de autenticación/realm heredado
 
 use App\Http\Controllers\Admin\UsersController;
-use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\LocaleController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 
 
-Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
-Route::post('/logout', [LoginController::class, 'logout']);
+Route::match(['get', 'post'], '/logout', function (Request $request) {
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()
+        ->route('admin.login')
+        ->withCookie(Cookie::forget('yastubo_access_token', '/'));
+})->name('logout');
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
@@ -20,13 +27,6 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 Route::get('/users/create', [UsersController::class, 'create'])->name('users.create');
 Route::post('/users', [UsersController::class, 'store'])->name('users.store');
-
-// -------------------------
-// API búsqueda genérica (para UiUserSearchSelector & co.)
-// -------------------------
-Route::get('/users/api/search', [UsersController::class, 'apiSearch'])
-    ->name('users.api.search')
-    ->middleware('can:users.viewAny');
 
 // Importante: definir "show" y "edit" después de "create" para evitar colisiones
 Route::get('/users/{user}', [UsersController::class, 'show'])->name('users.show')->whereNumber('user');

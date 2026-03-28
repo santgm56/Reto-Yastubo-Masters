@@ -28,8 +28,19 @@ function initializeLogoutTokenCleanup() {
     const href = `${anchor?.getAttribute('href') || ''}`.trim();
 
     if (isLogoutHref(href)) {
-      notifyFastApiLogout();
-      clearAuthTokens();
+      event.preventDefault();
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
+
+      const loginRedirect = resolveLoginRedirectByPathname(window.location?.pathname);
+
+      notifyFastApiLogout()
+        .catch(() => {})
+        .finally(() => {
+          clearAuthTokens();
+          window.location.replace(loginRedirect);
+        });
     }
   }, { capture: true });
 }
@@ -65,12 +76,22 @@ function resolveLogoutEndpoint() {
   return '/api/v1/auth/logout';
 }
 
+function resolveLoginRedirectByPathname(pathname) {
+  const normalized = `${pathname || ''}`.trim().toLowerCase();
+
+  if (normalized.startsWith('/seller')) return '/seller/login';
+  if (normalized.startsWith('/customer')) return '/customer/login';
+  if (normalized.startsWith('/admin')) return '/admin/login';
+
+  return '/';
+}
+
 function notifyFastApiLogout() {
   const endpoint = resolveLogoutEndpoint();
   const payload = JSON.stringify({});
 
   if (typeof fetch === 'function') {
-    const request = fetch(endpoint, {
+    return fetch(endpoint, {
       method: 'POST',
       credentials: 'include',
       keepalive: true,
@@ -80,11 +101,9 @@ function notifyFastApiLogout() {
       },
       body: payload,
     });
-
-    if (request && typeof request.catch === 'function') {
-      request.catch(() => {});
-    }
   }
+
+  return Promise.resolve();
 }
 
 function resolveHomeByRole(role) {

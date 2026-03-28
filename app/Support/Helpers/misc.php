@@ -14,21 +14,6 @@ if (! function_exists('realm')) {
 	{
 		return Realm::current($request);
 	}
-
-	function isRealmAdmin(?Request $request = null)
-	{
-		return Realm::isAdmin($request);
-	}
-
-	function isRealmCustomer(?Request $request = null)
-	{
-		return Realm::isCustomer($request);
-	}
-
-	function isRealmSeller(?Request $request = null)
-	{
-		return Realm::isSeller($request);
-	}
 }
 
 if (! function_exists('audit_log')) {

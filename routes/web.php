@@ -4,13 +4,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('home');
 
-Route::middleware('web')->group(function ()
+foreach (glob(__DIR__.'/public/*.php') as $filename)
 {
-	foreach (glob(__DIR__.'/public/*.php') as $filename)
-	{
-		require_once $filename;
-	}
-});
+	require_once $filename;
+}
 
 
 
@@ -28,7 +25,7 @@ Route::middleware('admin')
 });
 
 
-Route::middleware('admin_guest')
+Route::middleware(['fastapi.token.realm.auth', 'guest:admin'])
 ->prefix('admin')
 ->name('admin.')
 ->group(function () {
@@ -63,7 +60,7 @@ Route::middleware('seller')
 	}
 });
 
-Route::middleware('seller_guest')
+Route::middleware(['fastapi.token.realm.auth', 'guest:seller'])
 ->prefix('seller')
 ->name('seller.')
 ->group(function () {
@@ -74,7 +71,7 @@ Route::middleware('seller_guest')
 });
 
 // Invitados (login/registro) — incluye 'web' para $errors
-Route::middleware('customer_guest')
+Route::middleware(['fastapi.token.realm.auth', 'guest:customer'])
 ->prefix('customer')
 ->name('customer.')
 ->group(function () {

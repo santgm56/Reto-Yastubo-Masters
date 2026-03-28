@@ -241,7 +241,7 @@ export default {
 
     async suspendCompany(company) {
       try {
-        const url = this.route('admin.companies.suspend', { company: company.id });
+        const url = `/api/v1/admin/companies/${company.id}/suspend`;
         const { data } = await axios.put(url);
         const updated = data.data || data;
 
@@ -266,7 +266,7 @@ export default {
 
     async activateCompany(company) {
       try {
-        const url = this.route('admin.companies.activate', { company: company.id });
+        const url = `/api/v1/admin/companies/${company.id}/activate`;
         const { data } = await axios.put(url);
         const updated = data.data || data;
 
@@ -291,7 +291,7 @@ export default {
 
     async archiveCompany(company) {
       try {
-        const url = this.route('admin.companies.archive', { company: company.id });
+        const url = `/api/v1/admin/companies/${company.id}/archive`;
         const { data } = await axios.put(url);
         const updated = data.data || data;
 

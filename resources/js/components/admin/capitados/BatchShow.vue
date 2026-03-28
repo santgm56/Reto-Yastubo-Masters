@@ -725,10 +725,7 @@ export default {
       this.headerError = null;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.show', {
-          company: this.companyId,
-          batch: this.batchId,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}`;
 
         const { data } = await axios.get(url);
         this.batch = data.batch || null;
@@ -751,14 +748,13 @@ export default {
       this.itemsError = null;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.items', {
-          company: this.companyId,
-          batch: this.batchId,
-          page,
-          per_page: this.itemsMeta.per_page || 25,
-          result: this.itemsResultFilter || undefined,
-          sheet: this.itemsSheetFilter || undefined,
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(this.itemsMeta.per_page || 25),
         });
+        if (this.itemsResultFilter) params.set('result', String(this.itemsResultFilter));
+        if (this.itemsSheetFilter) params.set('sheet', String(this.itemsSheetFilter));
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/items?${params.toString()}`;
 
         const { data } = await axios.get(url);
 
@@ -807,14 +803,13 @@ export default {
       this.monthlyError = null;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.monthly_records.index', {
-          company: this.companyId,
-          batch: this.batchId,
-          page,
-          per_page: this.monthlyMeta.per_page || 25,
-          status: this.monthlyStatusFilter || undefined,
-          product_id: this.monthlyProductFilter || undefined,
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(this.monthlyMeta.per_page || 25),
         });
+        if (this.monthlyStatusFilter) params.set('status', String(this.monthlyStatusFilter));
+        if (this.monthlyProductFilter) params.set('product_id', String(this.monthlyProductFilter));
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/monthly-records?${params.toString()}`;
 
         const { data } = await axios.get(url);
 
@@ -870,10 +865,7 @@ export default {
       this.rollingBackBatch = true;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.rollback', {
-          company: this.companyId,
-          batch: this.batchId,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/rollback`;
 
         const { data } = await axios.post(url);
 
@@ -909,11 +901,7 @@ export default {
       this.rollingBackRecordId = record.id;
 
       try {
-        const url = this.route('admin.companies.capitated.batches.monthly_records.rollback', {
-          company: this.companyId,
-          batch: this.batchId,
-          record: record.id,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/monthly-records/${record.id}/rollback`;
 
         await axios.post(url);
 

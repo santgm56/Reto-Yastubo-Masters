@@ -181,18 +181,15 @@ export default {
       this.loading = true;
 
       try {
-        const res = await axios.get(
-          this.route('admin.users.api.search'),
-          {
-            params: {
-              page,
-              per_page: this.meta.per_page,
-              q: this.search || '',
-              // Si hay status fijo, siempre se usa el de la prop; si no, el local
-              status: this.hasFixedStatus ? this.status : this.statusLocal,
-            },
-          }
-        );
+        const res = await axios.get('/api/v1/admin/users/search', {
+          params: {
+            page,
+            per_page: this.meta.per_page,
+            q: this.search || '',
+            // Si hay status fijo, siempre se usa el de la prop; si no, el local
+            status: this.hasFixedStatus ? this.status : this.statusLocal,
+          },
+        });
 
         const payload = res?.data || {};
         const list = Array.isArray(payload.data) ? payload.data : [];

@@ -150,7 +150,7 @@
                 <a
                   class="btn btn-sm btn-danger"
 				  target="_blank"
-                  :href="route('capitated.contracts.show_pdf_by_uuid', c.uuid)"
+                  :href="contractPdfUrl(c.uuid)"
                   title="Ver detalle de suscripción"
                 >
                   <i class="bi bi-file-pdf"></i>
@@ -262,8 +262,9 @@ export default {
   },
 
   methods: {
-    route(name, params = {}) {
-      return window.route ? window.route(name, params) : '#';
+    contractPdfUrl(uuid) {
+      if (!uuid) return '#';
+      return `/api/v1/public/capitated/contracts/${uuid}/pdf`;
     },
 
     translate(value) {
@@ -323,16 +324,17 @@ export default {
       this.error = null;
 
       try {
-        const url = this.route('admin.companies.capitated.contracts.index', {
-          company: this.companyId,
-          product_id: this.productId,
-          page,
-          per_page: this.perPageMedium,
-          q: this.searchText,
-          status: this.statusFilter,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/contracts`;
 
-        const { data } = await axios.get(url);
+        const { data } = await axios.get(url, {
+          params: {
+            product_id: this.productId,
+            page,
+            per_page: this.perPageMedium,
+            q: this.searchText,
+            status: this.statusFilter,
+          },
+        });
 
         // Importante: NO vaciamos contracts antes
         this.contracts = data.data || [];
@@ -361,10 +363,7 @@ export default {
       this.lastMonthlyLoadingByContractId[contractId] = true;
 
       try {
-        const url = this.route('admin.companies.capitated.contracts.show', {
-          company: this.companyId,
-          contract: contractId,
-        });
+        const url = `/api/v1/admin/companies/${this.companyId}/capitated/contracts/${contractId}`;
 
         const { data } = await axios.get(url);
 
