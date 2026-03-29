@@ -29,3 +29,23 @@ export function adminCompanyArchiveEndpoint(companyId) {
 export function adminCompanyCheckShortCodeEndpoint() {
   return `${adminCompaniesBaseEndpoint()}/check-short-code`;
 }
+
+export function adminUsersSearchEndpoint() {
+  return '/api/v1/admin/users/search';
+}
+
+export function adminCompanyUserEndpoint(companyId, userId) {
+  return `${adminCompanyEndpoint(companyId)}/users/${userId}`;
+}
+
+export function adminCompanyCommissionUsersEndpoint(companyId) {
+  return `${adminCompanyEndpoint(companyId)}/commission-users`;
+}
+
+export function adminCompanyCommissionUsersAvailableEndpoint(companyId) {
+  return `${adminCompanyCommissionUsersEndpoint(companyId)}/available`;
+}
+
+export function adminCompanyCommissionUserEndpoint(companyId, commissionUserId) {
+  return `${adminCompanyCommissionUsersEndpoint(companyId)}/${commissionUserId}`;
+}

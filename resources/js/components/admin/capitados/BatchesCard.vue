@@ -192,10 +192,15 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import { VueDatePicker } from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import { formatMonth as fmtMonth, formatDatetime as fmtDatetime } from '../../../utils/format';
+import {
+  adminCompanyCapitatedBatchesEndpoint,
+  adminCompanyCapitatedBatchesTemplateEndpoint,
+  adminCompanyCapitatedBatchesUploadEndpoint,
+} from './api';
 
 export default {
   name: 'CapitatedBatchesCard',
@@ -254,7 +259,7 @@ export default {
     },
 
     templateUrl() {
-      return `/api/v1/admin/companies/${this.companyId}/capitated/batches/template`;
+      return adminCompanyCapitatedBatchesTemplateEndpoint(this.companyId);
     },
 
     // ¿El usuario puede elegir cualquier mes con el datepicker?
@@ -369,13 +374,14 @@ export default {
       this.error = null;
 
       try {
-        const params = new URLSearchParams({
-          page: String(page),
-          per_page: String(this.perPage),
-        });
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches?${params.toString()}`;
+        const url = adminCompanyCapitatedBatchesEndpoint(this.companyId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url, {
+          params: {
+            page,
+            per_page: this.perPage,
+          },
+        });
 
         const newBatches = data.data || [];
         this.detectAndEmitAppliedBatch(newBatches);
@@ -401,13 +407,14 @@ export default {
       this.polling = true;
 
       try {
-        const params = new URLSearchParams({
-          page: '1',
-          per_page: String(this.perPage),
-        });
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches?${params.toString()}`;
+        const url = adminCompanyCapitatedBatchesEndpoint(this.companyId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url, {
+          params: {
+            page: 1,
+            per_page: this.perPage,
+          },
+        });
 
         const newBatches = data.data || [];
 
@@ -513,7 +520,7 @@ export default {
       this.uploadError = null;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/upload`;
+        const url = adminCompanyCapitatedBatchesUploadEndpoint(this.companyId);
 
         const formData = new FormData();
         formData.append('file', this.uploadFile);
@@ -523,7 +530,7 @@ export default {
         // - sin permiso: mes actual
         formData.append('coverage_month', this.coverageMonthIso);
 
-        const { data } = await axios.post(url, formData, {
+        const { data } = await apiClient.post(url, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -546,7 +553,8 @@ export default {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
-        const msg = e?.response?.data?.message || 'Error al subir el archivo.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_BATCH_UPLOAD_ERROR');
+        const msg = apiError.message || 'Error al subir el archivo.';
         this.uploadError = msg;
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(msg, 'danger');
@@ -588,7 +596,7 @@ export default {
 		margin: 0px;
 		padding: 0px;
 	}
-	
+
 	.month.form-control input
 	{
 		border: none;

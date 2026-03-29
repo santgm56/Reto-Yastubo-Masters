@@ -380,12 +380,13 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import {
   formatMonth as fmtMonth,
   formatDate as fmtDate,
   formatDatetime as fmtDatetime,
 } from '../../../utils/format';
+import { adminCompanyCapitatedContractEndpoint } from './api';
 
 export default {
   name: 'ContractDashboardModal',
@@ -435,14 +436,15 @@ export default {
       }
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/contracts/${contractId}`;
+        const url = adminCompanyCapitatedContractEndpoint(this.companyId, contractId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url);
 
         this.contract = data.contract || null;
         this.lastMonthlyRecord = data.last_monthly_record || null;
       } catch (e) {
-        this.error = 'No se pudo cargar la información del contrato.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_CONTRACT_DASHBOARD_ERROR');
+        this.error = apiError.message || 'No se pudo cargar la información del contrato.';
       } finally {
         this.loading = false;
       }

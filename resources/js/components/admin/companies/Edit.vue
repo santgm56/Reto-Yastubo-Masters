@@ -716,7 +716,16 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import {
+  adminCompanyCheckShortCodeEndpoint,
+  adminCompanyCommissionUserEndpoint,
+  adminCompanyCommissionUsersAvailableEndpoint,
+  adminCompanyCommissionUsersEndpoint,
+  adminCompanyEndpoint,
+  adminCompanyUserEndpoint,
+  adminUsersSearchEndpoint,
+} from './api'
 import * as format from '@/utils/format'
 
 export default {
@@ -952,12 +961,9 @@ export default {
       this.isLoading = true
 
       try {
-        const companyUrl = `/api/v1/admin/companies/${this.companyId}`
-        const commissionUrl = `/api/v1/admin/companies/${this.companyId}/commission-users`
-
         const [companyResp, commissionResp] = await Promise.all([
-          axios.get(companyUrl),
-          axios.get(commissionUrl),
+          apiClient.get(adminCompanyEndpoint(this.companyId)),
+          apiClient.get(adminCompanyCommissionUsersEndpoint(this.companyId)),
         ])
 
         const companyPayload = companyResp.data || {}
@@ -979,7 +985,7 @@ export default {
         this.pdfTemplates = Array.isArray(companyPayload.pdf_templates)
           ? companyPayload.pdf_templates
           : []
-		  
+
         this.fillFormsFromCompany(company)
 
         this.$nextTick(() => {
@@ -1201,15 +1207,9 @@ export default {
           params.ignore_id = currentId
         }
 
-        const query = new URLSearchParams()
-        Object.entries(params).forEach(([key, rawValue]) => {
-          if (rawValue !== undefined && rawValue !== null && `${rawValue}`.trim() !== '') {
-            query.set(key, `${rawValue}`)
-          }
+        const { data } = await apiClient.get(adminCompanyCheckShortCodeEndpoint(), {
+          params,
         })
-
-        const url = `/api/v1/admin/companies/check-short-code?${query.toString()}`
-        const { data } = await axios.get(url)
 
         if (data.is_available) {
           this.shortCodeStatus = 'available'
@@ -1258,9 +1258,7 @@ export default {
     },
 
     async submitUpdate(payload, section = null) {
-      const url = `/api/v1/admin/companies/${this.companyId}`
-
-      const { data } = await axios.put(url, payload, {
+      const { data } = await apiClient.put(adminCompanyEndpoint(this.companyId), payload, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1309,13 +1307,11 @@ export default {
 
       this.isUploadingLogo = true
 
-      const url = `/api/v1/admin/companies/${this.companyId}`
-
       const formData = new FormData()
       formData.append('branding_logo', file)
 
       try {
-        const { data } = await axios.put(url, formData, {
+        const { data } = await apiClient.put(adminCompanyEndpoint(this.companyId), formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -1359,13 +1355,11 @@ export default {
 
       this.isUploadingLogo = true
 
-      const url = `/api/v1/admin/companies/${this.companyId}`
-
       const formData = new FormData()
       formData.append('branding_logo_remove', '1')
 
       try {
-        const { data } = await axios.put(url, formData, {
+        const { data } = await apiClient.put(adminCompanyEndpoint(this.companyId), formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -1438,7 +1432,7 @@ export default {
       this.isLoadingUsers = true
 
       try {
-        const { data } = await axios.get('/api/v1/admin/users/search', {
+        const { data } = await apiClient.get(adminUsersSearchEndpoint(), {
           params: {
             page,
             per_page: this.usersPagination.per_page,
@@ -1485,9 +1479,9 @@ export default {
       if (!this.company || !user) return
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/users/${user.id}`
-
-        const { data } = await axios.post(url)
+        const { data } = await apiClient.post(
+          adminCompanyUserEndpoint(this.companyId, user.id),
+        )
 
         const response = data || {}
         const companyPayload = response.data || response
@@ -1526,9 +1520,9 @@ export default {
       if (!this.company || !user) return
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/users/${user.id}`
-
-        const { data } = await axios.delete(url)
+        const { data } = await apiClient.delete(
+          adminCompanyUserEndpoint(this.companyId, user.id),
+        )
 
         const response = data || {}
         const companyPayload = response.data || response
@@ -1675,10 +1669,8 @@ export default {
         typeof row.commission === 'number' ? row.commission : 0
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/commission-users/${row.id}`
-
-        const { data } = await axios.patch(
-          url,
+        const { data } = await apiClient.patch(
+          adminCompanyCommissionUserEndpoint(this.companyId, row.id),
           { commission: value },
           {
             headers: { 'Content-Type': 'application/json' },
@@ -1759,15 +1751,16 @@ export default {
       this.isLoadingCommissionUsers = true
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/commission-users/available`
-
-        const { data } = await axios.get(url, {
+        const { data } = await apiClient.get(
+          adminCompanyCommissionUsersAvailableEndpoint(this.companyId),
+          {
           params: {
             page,
             per_page: this.commissionUsersPagination.per_page,
             q: this.commissionUsersSearch,
           },
-        })
+          },
+        )
 
         const payload = data || {}
 
@@ -1807,11 +1800,12 @@ export default {
       if (!this.company || !user) return
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/commission-users`
-
-        const { data } = await axios.post(url, {
+        const { data } = await apiClient.post(
+          adminCompanyCommissionUsersEndpoint(this.companyId),
+          {
           user_id: user.id,
-        })
+          },
+        )
 
         const payload = data || {}
         const rowData = payload.data || payload
@@ -1859,9 +1853,9 @@ export default {
       if (!target) return
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/commission-users/${target.id}`
-
-        const { data } = await axios.delete(url)
+        const { data } = await apiClient.delete(
+          adminCompanyCommissionUserEndpoint(this.companyId, target.id),
+        )
 
         this.commissionUsers = this.commissionUsers.filter(
           (row) => row.id !== target.id,
@@ -1906,8 +1900,10 @@ export default {
       // eslint-disable-next-line no-console
       console.error(error)
 
+      const apiError = extractApiErrorContract(error, 'API_COMPANIES_EDIT_ERROR')
+
       const message =
-        error?.response?.data?.message ||
+        apiError.message ||
         fallbackMessage ||
         'Ocurrió un error inesperado.'
 

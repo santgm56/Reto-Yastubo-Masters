@@ -51,12 +51,16 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient } from '../../../core/http/apiClient';
 import {
   formatMonth,
   formatDecimal,
   formatInteger,
 } from '../../../utils/format';
+import {
+  adminCompanyCapitatedMonthlyDownloadEndpoint,
+  adminCompanyCapitatedMonthlyMonthsEndpoint,
+} from './api';
 
 export default {
   name: 'CapitatedMonthlyReportsCard',
@@ -103,15 +107,15 @@ export default {
     },
 
     downloadUrl(month) {
-      return `/api/v1/admin/companies/${this.companyId}/capitated/reports/monthly/${month}/download`;
+      return adminCompanyCapitatedMonthlyDownloadEndpoint(this.companyId, month);
     },
 
     async fetchMonths() {
       this.loading = true;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/reports/monthly/months`;
-        const { data } = await axios.get(url);
+        const url = adminCompanyCapitatedMonthlyMonthsEndpoint(this.companyId);
+        const { data } = await apiClient.get(url);
 
         this.months = data.months || [];
       } catch (e) {

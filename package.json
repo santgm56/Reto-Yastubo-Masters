@@ -10,8 +10,8 @@
         "test:integration": "vitest run resources/js/core/auth/routeGuards.test.js resources/js/core/http/apiClient.cutover.test.js",
         "test:e2e:smoke": "playwright test --config=playwright.config.js --grep @smoke",
         "test:e2e:functional": "playwright test --config=playwright.config.js --grep @functional",
-        "test:e2e:release:v2": "playwright test --config=playwright.config.js tests/e2e/functional-config.spec.js tests/e2e/functional-countries-zones.spec.js tests/e2e/functional-coverages.spec.js tests/e2e/functional-acl.spec.js tests/e2e/functional-business-units.spec.js tests/e2e/functional-templates.spec.js tests/e2e/functional-products-plans.spec.js",
-        "test:e2e:release:v2:evidence": "playwright test --config=playwright.config.js tests/e2e/functional-config.spec.js tests/e2e/functional-countries-zones.spec.js tests/e2e/functional-coverages.spec.js tests/e2e/functional-acl.spec.js tests/e2e/functional-business-units.spec.js tests/e2e/functional-templates.spec.js tests/e2e/functional-products-plans.spec.js --reporter=list,html"
+        "test:e2e:release:v2": "playwright test --config=playwright.config.js tests/e2e/functional-config.spec.js tests/e2e/functional-countries-zones.spec.js tests/e2e/functional-coverages.spec.js tests/e2e/functional-acl.spec.js tests/e2e/functional-business-units.spec.js tests/e2e/functional-templates.spec.js tests/e2e/functional-products-plans.spec.js tests/e2e/functional-companies.spec.js",
+        "test:e2e:release:v2:evidence": "playwright test --config=playwright.config.js tests/e2e/functional-config.spec.js tests/e2e/functional-countries-zones.spec.js tests/e2e/functional-coverages.spec.js tests/e2e/functional-acl.spec.js tests/e2e/functional-business-units.spec.js tests/e2e/functional-templates.spec.js tests/e2e/functional-products-plans.spec.js tests/e2e/functional-companies.spec.js --reporter=list,html"
     },
     "devDependencies": {
         "@playwright/test": "^1.53.2",

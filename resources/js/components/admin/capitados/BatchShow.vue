@@ -521,11 +521,18 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import {
   formatMonth as fmtMonth,
   formatDatetime as fmtDatetime,
 } from '../../../utils/format';
+import {
+  adminCompanyCapitatedBatchEndpoint,
+  adminCompanyCapitatedBatchItemsEndpoint,
+  adminCompanyCapitatedBatchMonthlyRecordRollbackEndpoint,
+  adminCompanyCapitatedBatchMonthlyRecordsEndpoint,
+  adminCompanyCapitatedBatchRollbackEndpoint,
+} from './api';
 
 export default {
   name: 'CapitatedBatchShow',
@@ -725,14 +732,15 @@ export default {
       this.headerError = null;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}`;
+        const url = adminCompanyCapitatedBatchEndpoint(this.companyId, this.batchId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url);
         this.batch = data.batch || null;
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
-        this.headerError = 'No se pudo cargar el encabezado del batch.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_BATCH_HEADER_ERROR');
+        this.headerError = apiError.message || 'No se pudo cargar el encabezado del batch.';
       } finally {
         this.headerLoading = false;
       }
@@ -748,15 +756,15 @@ export default {
       this.itemsError = null;
 
       try {
-        const params = new URLSearchParams({
-          page: String(page),
-          per_page: String(this.itemsMeta.per_page || 25),
-        });
-        if (this.itemsResultFilter) params.set('result', String(this.itemsResultFilter));
-        if (this.itemsSheetFilter) params.set('sheet', String(this.itemsSheetFilter));
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/items?${params.toString()}`;
+        const params = {
+          page,
+          per_page: this.itemsMeta.per_page || 25,
+        };
+        if (this.itemsResultFilter) params.result = this.itemsResultFilter;
+        if (this.itemsSheetFilter) params.sheet = this.itemsSheetFilter;
+        const url = adminCompanyCapitatedBatchItemsEndpoint(this.companyId, this.batchId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url, { params });
 
         this.items = data.data || [];
         this.itemsMeta = data.meta || this.itemsMeta;
@@ -771,7 +779,8 @@ export default {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
-        this.itemsError = 'No se pudieron cargar los items del batch.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_BATCH_ITEMS_ERROR');
+        this.itemsError = apiError.message || 'No se pudieron cargar los items del batch.';
       } finally {
         this.itemsLoading = false;
       }
@@ -803,15 +812,15 @@ export default {
       this.monthlyError = null;
 
       try {
-        const params = new URLSearchParams({
-          page: String(page),
-          per_page: String(this.monthlyMeta.per_page || 25),
-        });
-        if (this.monthlyStatusFilter) params.set('status', String(this.monthlyStatusFilter));
-        if (this.monthlyProductFilter) params.set('product_id', String(this.monthlyProductFilter));
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/monthly-records?${params.toString()}`;
+        const params = {
+          page,
+          per_page: this.monthlyMeta.per_page || 25,
+        };
+        if (this.monthlyStatusFilter) params.status = this.monthlyStatusFilter;
+        if (this.monthlyProductFilter) params.product_id = this.monthlyProductFilter;
+        const url = adminCompanyCapitatedBatchMonthlyRecordsEndpoint(this.companyId, this.batchId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url, { params });
 
         this.monthlyRecords = data.data || [];
         this.monthlyMeta = data.meta || this.monthlyMeta;
@@ -831,7 +840,8 @@ export default {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
-        this.monthlyError = 'No se pudieron cargar las cargas mensuales del batch.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_BATCH_MONTHLY_ERROR');
+        this.monthlyError = apiError.message || 'No se pudieron cargar las cargas mensuales del batch.';
       } finally {
         this.monthlyLoading = false;
       }
@@ -865,9 +875,9 @@ export default {
       this.rollingBackBatch = true;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/rollback`;
+        const url = adminCompanyCapitatedBatchRollbackEndpoint(this.companyId, this.batchId);
 
-        const { data } = await axios.post(url);
+        const { data } = await apiClient.post(url);
 
         this.batch = data.batch || this.batch;
 
@@ -881,7 +891,8 @@ export default {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
-        const msg = e?.response?.data?.message || 'No se pudo revertir el lote.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_BATCH_ROLLBACK_ERROR');
+        const msg = apiError.message || 'No se pudo revertir el lote.';
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(msg, 'danger');
         }
@@ -901,9 +912,13 @@ export default {
       this.rollingBackRecordId = record.id;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/batches/${this.batchId}/monthly-records/${record.id}/rollback`;
+        const url = adminCompanyCapitatedBatchMonthlyRecordRollbackEndpoint(
+          this.companyId,
+          this.batchId,
+          record.id,
+        );
 
-        await axios.post(url);
+        await apiClient.post(url);
 
         // Refrescar listas
         this.fetchMonthlyRecords(this.monthlyMeta.current_page || 1);
@@ -915,8 +930,8 @@ export default {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
-        const msg =
-          e?.response?.data?.message || 'No se pudo revertir el registro mensual.';
+        const apiError = extractApiErrorContract(e, 'API_CAPITADOS_RECORD_ROLLBACK_ERROR');
+        const msg = apiError.message || 'No se pudo revertir el registro mensual.';
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(msg, 'danger');
         }

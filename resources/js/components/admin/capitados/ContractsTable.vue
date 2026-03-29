@@ -191,9 +191,14 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient } from '../../../core/http/apiClient';
 import ContractDashboardModal from './ContractDashboardModal.vue';
 import { formatDate as fmtDate } from '../../../utils/format';
+import {
+  adminCompanyCapitatedContractEndpoint,
+  adminCompanyCapitatedContractsEndpoint,
+  publicCapitatedContractPdfEndpoint,
+} from './api';
 
 export default {
   name: 'ContractsTable',
@@ -264,7 +269,7 @@ export default {
   methods: {
     contractPdfUrl(uuid) {
       if (!uuid) return '#';
-      return `/api/v1/public/capitated/contracts/${uuid}/pdf`;
+      return publicCapitatedContractPdfEndpoint(uuid);
     },
 
     translate(value) {
@@ -324,9 +329,9 @@ export default {
       this.error = null;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/contracts`;
+        const url = adminCompanyCapitatedContractsEndpoint(this.companyId);
 
-        const { data } = await axios.get(url, {
+        const { data } = await apiClient.get(url, {
           params: {
             product_id: this.productId,
             page,
@@ -363,9 +368,9 @@ export default {
       this.lastMonthlyLoadingByContractId[contractId] = true;
 
       try {
-        const url = `/api/v1/admin/companies/${this.companyId}/capitated/contracts/${contractId}`;
+        const url = adminCompanyCapitatedContractEndpoint(this.companyId, contractId);
 
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(url);
 
         // el backend devuelve last_monthly_record con relaciones residenceCountry/repatriationCountry
         this.lastMonthlyRecordByContractId[contractId] = data?.last_monthly_record || null;
