@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { loginAdminUi, loginFastApi, readAdminCreds } from './support/adminCreds';
 
+function modalByTitle(page, title) {
+  return page
+    .locator('.modal-content')
+    .filter({ has: page.locator('.modal-title', { hasText: title }) })
+    .last();
+}
+
 test('@functional companies-edit admin smoke', async ({ page }) => {
   const creds = readAdminCreds();
 
@@ -65,11 +72,13 @@ test('@functional companies-edit admin smoke', async ({ page }) => {
 
   const usersCard = page.locator('.card').filter({ hasText: 'Usuarios que pueden operar en la empresa' }).first();
   await usersCard.getByRole('button', { name: /\+ Añadir/i }).click();
-  await expect(page.locator('.modal.show')).toContainText(/Usuarios que pueden operar en la empresa/i);
-  await page.locator('.modal.show').getByRole('button', { name: /Cerrar/i }).click();
+  const usersDialog = modalByTitle(page, /Usuarios que pueden operar en la empresa/i);
+  await expect(usersDialog.getByRole('heading', { name: /Usuarios que pueden operar en la empresa/i })).toBeVisible();
+  await usersDialog.getByRole('button', { name: /Cerrar/i }).click();
 
   const commissionCard = page.locator('.card').filter({ hasText: 'Usuarios que reciben comisiones' }).first();
   await commissionCard.getByRole('button', { name: /\+ Añadir/i }).click();
-  await expect(page.locator('.modal.show')).toContainText(/Usuarios que reciben comisiones/i);
-  await page.locator('.modal.show').getByRole('button', { name: /Cerrar/i }).click();
+  const commissionDialog = modalByTitle(page, /Usuarios que reciben comisiones/i);
+  await expect(commissionDialog.getByRole('heading', { name: /Usuarios que reciben comisiones/i })).toBeVisible();
+  await commissionDialog.getByRole('button', { name: /Cerrar/i }).click();
 });

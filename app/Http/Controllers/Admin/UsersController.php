@@ -32,56 +32,7 @@ class UsersController extends Controller
 	{
 		$this->authorize('viewAny', User::class);
 
-		$perPage = (int) ($request->input('per_page', 15));
-		$status	 = $request->input('status');	 // active|suspended|locked|null
-		$role	 = $request->input('role');	   // nombre de rol opcional
-		$q		 = $request->input('q');		  // búsqueda simple
-
-		$query = User::query()
-				->with(['roles', 'staffProfile'])
-				->where('realm', 'admin');
-
-		if ($status)
-		{
-			$query->where('status', $status);
-		}
-
-		if ($q)
-		{
-			$query->where(function ($qq) use ($q)
-			{
-				$qq->where('first_name', 'like', "%{$q}%")
-						->orWhere('last_name', 'like', "%{$q}%")
-						->orWhere('display_name', 'like', "%{$q}%")
-						->orWhere('email', 'like', "%{$q}%");
-			});
-		}
-
-		if ($role)
-		{
-			$query->whereHas('roles', fn($r) => $r->where('name', $role)->where('guard_name', 'admin'));
-		}
-
-		$users = $query->orderBy('id', 'desc')->paginate($perPage)->withQueryString();
-
-		$roles = Role::query()
-				->where('guard_name', 'admin')
-				->orderBy('name')
-				->get(['id', 'name'])
-				->pluck('name')
-				->all();
-
-		return view('admin.users.index', [
-			'title'	  => __('Usuarios'),
-			'users'	  => $users,
-			'roles'	  => $roles,
-			'filters' => [
-				'q'		 => $q,
-				'status' => $status,
-				'role'	 => $role,
-				'per'	 => $perPage,
-			],
-		]);
+		return view('admin.users.index');
 	}
 
 	/**
@@ -91,19 +42,7 @@ class UsersController extends Controller
 	{
 		$this->authorize('create', User::class);
 
-		$allRoles = Role::query()
-				->where('guard_name', 'admin')
-				->orderBy('name')
-				->pluck('name')
-				->all();
-
-		return view('admin.users.create', [
-			'title'	   => __('Crear usuario'),
-			'allRoles' => $allRoles,
-			'defaults' => [
-				'status' => 'active',
-			],
-		]);
+		return view('admin.users.create');
 	}
 
 	/**
@@ -178,10 +117,7 @@ class UsersController extends Controller
 	{
 		$this->authorize('view', $user);
 
-		$user->load(['roles', 'staffProfile']);
-
 		return view('admin.users.show', [
-			'title' => __('Detalle de usuario'),
 			'user'	=> $user,
 		]);
 	}
@@ -190,18 +126,8 @@ class UsersController extends Controller
 	{
 		$this->authorize('update', $user);
 
-		$allRoles = \Spatie\Permission\Models\Role::query()
-				->where('guard_name', $user->realm ?? 'admin')
-				->orderBy('name')
-				->pluck('name')
-				->all();
-
-		$assignedRoles = $user->getRoleNames()->toArray();
-
 		return view('admin.users.edit', [
-			'user'			=> $user,
-			'allRoles'		=> $allRoles,
-			'assignedRoles' => $assignedRoles,
+			'user'	=> $user,
 		]);
 	}
 
@@ -387,7 +313,7 @@ class UsersController extends Controller
 			}
 			catch (Throwable $e)
 			{
-				
+
 			}
 		}
 
@@ -419,11 +345,16 @@ class UsersController extends Controller
 		return redirect()->route('admin.users.edit', $user);
 	}
 
+	public function sendReset(Request $request, User $user)
+	{
+		return $this->sendResetLink($request, $user);
+	}
+
 	/**
 	 * POST /admin/users/{user}/password/reset-link
 	 * Envía link de reset de contraseña al usuario.
 	 */
-	public function sendResetLink(User $user)
+	public function sendResetLink(Request $request, User $user)
 	{
 		$this->authorize('update', $user);
 
@@ -449,11 +380,29 @@ class UsersController extends Controller
 
 		if ($status === Password::RESET_LINK_SENT)
 		{
-			session()->flash('status', __($status));
+			$message = __($status);
+			session()->flash('status', $message);
+
+			if ($this->wantsJsonResponse($request))
+			{
+				return response()->json([
+					'ok'		=> true,
+					'message' => $message,
+				]);
+			}
 		}
 		else
 		{
-			session()->flash('error', __($status));
+			$message = __($status);
+			session()->flash('error', $message);
+
+			if ($this->wantsJsonResponse($request))
+			{
+				return response()->json([
+					'ok'		=> false,
+					'message' => $message,
+				], 422);
+			}
 		}
 
 		return redirect()->route('admin.users.edit', $user);
@@ -549,7 +498,12 @@ class UsersController extends Controller
 		}
 	}
 
-	public function impersonate(Request $request, User $user): RedirectResponse
+	private function wantsJsonResponse(Request $request): bool
+	{
+		return $request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest';
+	}
+
+	public function impersonate(Request $request, User $user)
 	{
 		$actor = Auth::guard('admin')->user();
 		abort_unless($actor, 403, 'No autenticado en guard admin.');
@@ -562,6 +516,14 @@ class UsersController extends Controller
 
 		if ((int) $actor->id === (int) $user->id)
 		{
+			if ($this->wantsJsonResponse($request))
+			{
+				return response()->json([
+					'ok'		=> false,
+					'message' => 'No puedes impersonarte a ti mismo.',
+				], 422);
+			}
+
 			return back()->with('error', 'No puedes impersonarte a ti mismo.');
 		}
 
@@ -572,6 +534,14 @@ class UsersController extends Controller
 
 		if ($user->status !== 'active')
 		{
+			if ($this->wantsJsonResponse($request))
+			{
+				return response()->json([
+					'ok'		=> false,
+					'message' => 'No puedes impersonar a un usuario que no está activo.',
+				], 422);
+			}
+
 			return back()->with('error', 'No puedes impersonar a un usuario que no está activo.');
 		}
 
@@ -613,15 +583,27 @@ class UsersController extends Controller
 			// no-op
 		}
 
+		$message = "Ahora estás impersonando a {$user->email}.";
+		session()->flash('status', $message);
+
+		if ($this->wantsJsonResponse($request))
+		{
+			return response()->json([
+				'ok'		=> true,
+				'message' => $message,
+				'redirect_to' => route('admin.home'),
+			]);
+		}
+
 		return redirect()
 						->route('admin.home')
-						->with('status', "Ahora estás impersonando a {$user->email}.");
+						->with('status', $message);
 	}
 
 	/**
 	 * Finaliza impersonación y regresa a la sesión original.
 	 */
-	public function stopImpersonation(Request $request): RedirectResponse
+	public function stopImpersonation(Request $request)
 	{
 		$impersonatorId = (int) $request->session()->pull('impersonator_id');
 		$request->session()->forget([
@@ -633,6 +615,15 @@ class UsersController extends Controller
 
 		if (!$impersonatorId)
 		{
+			if ($this->wantsJsonResponse($request))
+			{
+				return response()->json([
+					'ok'		=> true,
+					'message' => 'No estabas en impersonación.',
+					'redirect_to' => route('admin.home'),
+				]);
+			}
+
 			// Nada que restaurar
 			return redirect()->route('admin.home')->with('info', 'No estabas en impersonación.');
 		}
@@ -651,6 +642,15 @@ class UsersController extends Controller
 		catch (Throwable $e)
 		{
 			// no-op
+		}
+
+		if ($this->wantsJsonResponse($request))
+		{
+			return response()->json([
+				'ok'		=> true,
+				'message' => 'Has vuelto a tu sesión.',
+				'redirect_to' => route('admin.users.index'),
+			]);
 		}
 
 		return redirect()->route('admin.users.index')->with('status', 'Has vuelto a tu sesión.');

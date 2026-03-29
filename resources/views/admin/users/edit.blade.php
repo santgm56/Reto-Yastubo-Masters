@@ -1,10 +1,6 @@
 @extends('layouts.craft')
-@section('title','Editar usuario')
-
-@section('actions')
-	<a href="{{ route('admin.users.index') }}" class="btn btn-sm btn-light">Volver</a>
-@endsection
+@section('title', 'Editar usuario')
 
 @section('content')
-	@include('admin.users._form', ['user' => $user, 'assignedRoles' => $assignedRoles])
+    <admin-users-form-page mode="edit" :user-id='@json($user->id)'></admin-users-form-page>
 @endsection

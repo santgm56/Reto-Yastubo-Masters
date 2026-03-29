@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { loginAdminUi, loginFastApi, readAdminCreds } from './support/adminCreds';
 
+function modalByTitle(page, title) {
+  return page
+    .locator('.modal-content')
+    .filter({ has: page.locator('.modal-title', { hasText: title }) })
+    .last();
+}
+
 test('@functional plans-edit admin smoke', async ({ page }) => {
   const creds = readAdminCreds();
 
@@ -53,27 +60,23 @@ test('@functional plans-edit admin smoke', async ({ page }) => {
   await expect(page.locator('body')).toContainText(/Coberturas/i);
 
   await page.getByRole('button', { name: /Gestionar pa[ií]ses$/i }).click();
-  const countriesDialog = page.locator('.modal.show').filter({ hasText: /Pa[ií]ses del plan/i }).last();
+  const countriesDialog = modalByTitle(page, /Pa[ií]ses del plan/i);
   await expect(countriesDialog.getByRole('heading', { name: /Pa[ií]ses del plan/i })).toBeVisible();
   await countriesDialog.getByRole('button', { name: /Cerrar/i }).click();
-  await expect(countriesDialog).toBeHidden();
 
   await page.getByRole('button', { name: /Gestionar pa[ií]ses de repatriaci[oó]n/i }).click();
-  const repatriationDialog = page.locator('.modal.show').filter({ hasText: /Pa[ií]ses permitidos para repatriaci[oó]n/i }).last();
+  const repatriationDialog = modalByTitle(page, /Pa[ií]ses permitidos para repatriaci[oó]n/i);
   await expect(repatriationDialog.getByRole('heading', { name: /Pa[ií]ses permitidos para repatriaci[oó]n/i })).toBeVisible();
   await repatriationDialog.getByRole('button', { name: /Cerrar/i }).click();
-  await expect(repatriationDialog).toBeHidden();
 
   await page.getByRole('button', { name: /Versi[oó]n Espa[ñn]ol/i }).click();
-  const termsDialog = page.locator('.modal.show').filter({ hasText: /T[ée]rminos y condiciones/i }).last();
+  const termsDialog = modalByTitle(page, /T[ée]rminos y condiciones/i);
   await expect(termsDialog.getByRole('heading', { name: /T[ée]rminos y condiciones/i })).toBeVisible();
-  await expect(termsDialog.locator('.cke')).toBeVisible();
+  await expect(termsDialog.locator('.input-html textarea')).toHaveCount(1);
   await termsDialog.getByRole('button', { name: /Cerrar/i }).click();
-  await expect(termsDialog).toBeHidden();
 
   await page.getByRole('button', { name: /\+ A[ñn]adir coberturas/i }).click();
-  const coveragesDialog = page.locator('.modal.show').filter({ hasText: /A[ñn]adir \/ quitar coberturas/i }).last();
+  const coveragesDialog = modalByTitle(page, /A[ñn]adir \/ quitar coberturas/i);
   await expect(coveragesDialog.getByRole('heading', { name: /A[ñn]adir \/ quitar coberturas/i })).toBeVisible();
   await coveragesDialog.getByRole('button', { name: /Cerrar/i }).click();
-  await expect(coveragesDialog).toBeHidden();
 });

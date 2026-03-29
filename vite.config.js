@@ -29,6 +29,8 @@ export default defineConfig(({ mode }) => {
 
   // ★ Origen REAL de la página Laravel (lo que debe coincidir en el header CORS)
   const APP_ORIGIN = `${app.protocol}//${app.host}${app.port ? (':' + app.port) : ''}`
+  const SHELL_ORIGIN = `${app.protocol}//${app.host}:8001`
+  const allowedOrigins = new Set([APP_ORIGIN, SHELL_ORIGIN, 'http://127.0.0.1:8000', 'http://127.0.0.1:8001'])
 
   return {
     resolve: {
@@ -44,16 +46,17 @@ export default defineConfig(({ mode }) => {
       https: HTTPS || false,
       origin: ORIGIN, // URLs absolutas que Vite anuncia (HMR, módulos)
       cors: {
-        origin: APP_ORIGIN,
+        origin(origin, callback) {
+          if (!origin || allowedOrigins.has(origin)) {
+            callback(null, true)
+            return
+          }
+
+          callback(new Error(`Origin not allowed by Vite dev CORS: ${origin}`))
+        },
         methods: ['GET', 'HEAD', 'OPTIONS'],
         credentials: false,
         allowedHeaders: ['*'],
-      },
-
-      // ★ Forzar el header por si un proxy agrega otro (nginx/Apache)
-      headers: {
-        'Access-Control-Allow-Origin': APP_ORIGIN,
-        'Vary': 'Origin',
       },
 
       hmr: {

@@ -41,28 +41,25 @@ export async function loginAdminUi(page, creds) {
   }
 
   if (/\/admin\/login/i.test(page.url())) {
-    const response = await page.evaluate(async ({ email, password }) => {
-      const res = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    await page.waitForURL((url) => !/\/admin\/login/i.test(url.toString()), { timeout: 1500 }).catch(() => {});
+  }
 
-      return {
-        status: res.status,
-        body: await res.text(),
-      };
-    }, creds);
+  if (/\/admin\/login/i.test(page.url())) {
+    const response = await page.request.post('http://127.0.0.1:8001/api/v1/auth/login', {
+      data: {
+        email: creds.email,
+        password: creds.password,
+      },
+    });
 
-    if (response.status !== 200) {
-      throw new Error(`Browser FastAPI login failed (${response.status}): ${response.body}`);
+    if (response.status() !== 200) {
+      const body = await response.text();
+      throw new Error(`Playwright FastAPI login failed (${response.status()}): ${body}`);
     }
 
-    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+    if (/\/admin\/login/i.test(page.url())) {
+      await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+    }
   }
 
   await expect(page).not.toHaveURL(/\/admin\/login/i);
