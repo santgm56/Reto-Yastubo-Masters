@@ -1,19 +1,17 @@
 @php
     $branding = \App\Services\Config\Config::getBrandingWeb();
     $initialSection = $section ?? 'dashboard';
-    $user = auth('customer')->user();
-    $displayName = $user?->name ?? $user?->email ?? 'Cliente';
-    $displayEmail = $user?->email ?? '';
-    $displayRole = 'CUSTOMER';
-    $displayStatus = 'Autenticado';
+    $customerShellContext = request()->attributes->get('customer_shell_context', []);
+    $fallbackUser = auth('customer')->user();
+    $displayName = (string) ($customerShellContext['name'] ?? $fallbackUser?->name ?? $fallbackUser?->email ?? 'Cliente');
+    $displayEmail = (string) ($customerShellContext['email'] ?? $fallbackUser?->email ?? '');
+    $displayRole = (string) ($customerShellContext['role'] ?? 'CUSTOMER');
+    $displayStatus = (string) ($customerShellContext['status'] ?? 'Autenticado');
     $supportAddress = config('mail.support_address');
     $supportUrl = $supportAddress ? ('mailto:' . $supportAddress) : '';
-    $userErrorMessage = session('customer_profile_error', '');
-    $hasAclAssignments = $user
-        ? ($user->roles()->exists() || $user->permissions()->exists())
-        : false;
-    $userPermissions = $hasAclAssignments
-        ? $user->getAllPermissions()->pluck('name')->values()->all()
+    $userErrorMessage = (string) ($customerShellContext['error_message'] ?? session('customer_profile_error', ''));
+    $userPermissions = array_key_exists('permissions', $customerShellContext)
+        ? $customerShellContext['permissions']
         : null;
     $abilities = [];
 
@@ -34,7 +32,7 @@
     $frontendContext = [
         'channel' => 'customer',
         'role' => $displayRole,
-        'userId' => $user?->id,
+        'userId' => $customerShellContext['id'] ?? $fallbackUser?->id,
     ];
 @endphp
 <!DOCTYPE html>

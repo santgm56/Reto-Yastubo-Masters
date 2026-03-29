@@ -11,6 +11,11 @@ test('@smoke admin login page renders', async ({ page }) => {
   await expect(page.locator('body')).toContainText(/email|password|admin|ingresar/i);
 });
 
+test('@smoke seller login page renders', async ({ page }) => {
+  await page.goto('/seller/login');
+  await expect(page.locator('body')).toContainText(/email|password|seller|vendedor|ingresar|entrar/i);
+});
+
 test('@smoke unauth admin payments redirects to admin login', async ({ page }) => {
   await page.goto('/admin/payments');
   await expect(page).toHaveURL(/\/admin\/login/i);

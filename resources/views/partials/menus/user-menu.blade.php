@@ -1,10 +1,14 @@
 {{-- resources/views/partials/menus/user-menu.blade.php --}}
 @php
+	$currentRealm = \App\Support\Realm::current(request()) ?? \App\Support\Realm::ADMIN;
+	$isSellerRealm = $currentRealm === \App\Support\Realm::SELLER;
+	$shellContext = $isSellerRealm ? request()->attributes->get('seller_shell_context', []) : [];
     /** @var \App\Models\User|null $authUser */
-    $authUser = auth('admin')->user();
+	$authUser = auth($isSellerRealm ? 'seller' : 'admin')->user();
 
-    $displayName = $authUser?->displayName() ?? 'Usuario';
-    $email       = $authUser?->email ?? '';
+	$displayName = (string) ($shellContext['name'] ?? $authUser?->displayName() ?? $authUser?->name ?? 'Usuario');
+	$email       = (string) ($shellContext['email'] ?? $authUser?->email ?? '');
+	$logoutRoute = route($isSellerRealm ? 'seller.logout' : 'admin.logout');
 
     // Locale actual (lo comparte BaseController, pero por si acaso tomamos app()->getLocale() como fallback)
     $currentLocale = $currentLocale ?? app()->getLocale();
@@ -133,7 +137,7 @@
 			</div>
 
 			<div class="menu-item px-5">
-				<a href="{{ route('admin.logout') }}" class="menu-link px-5">Sign Out</a>
+				<a href="{{ $logoutRoute }}" class="menu-link px-5" data-fastapi-logout="true">Sign Out</a>
 			</div>
 		</div>
 		<!--end::User account menu-->

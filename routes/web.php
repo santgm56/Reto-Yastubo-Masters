@@ -1,85 +1,67 @@
 <?php
 // routes/web.php
+use App\Support\Realm;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('home');
 
-foreach (glob(__DIR__.'/public/*.php') as $filename)
+foreach (glob(__DIR__ . '/public/*.php') as $filename)
 {
 	require_once $filename;
 }
 
-
-
-
-// ===== admin (/admin) =====
-Route::middleware('admin')
-->prefix('admin')
-->name('admin.')
-->group(function ()
+$loadRealmRouteFiles = static function (string $pattern): void
 {
-	foreach (glob(__DIR__.'/admin/auth/*.php') as $filename)
+	foreach (glob($pattern) as $filename)
 	{
 		require_once $filename;
 	}
-});
+};
 
+$realmRouteGroups = [
+	[
+		'prefix' => Realm::ADMIN,
+		'name' => Realm::ADMIN . '.',
+		'auth_middleware' => 'admin',
+		'public_middleware' => ['fastapi.guest.redirect'],
+	],
+	[
+		'prefix' => Realm::SELLER,
+		'name' => Realm::SELLER . '.',
+		'auth_middleware' => 'seller',
+		'public_middleware' => ['fastapi.guest.redirect'],
+	],
+	[
+		'prefix' => Realm::CUSTOMER,
+		'name' => Realm::CUSTOMER . '.',
+		'auth_middleware' => 'customer',
+		'public_middleware' => ['fastapi.guest.redirect'],
+	],
+];
 
-Route::middleware(['fastapi.token.realm.auth', 'guest:admin'])
-->prefix('admin')
-->name('admin.')
-->group(function () {
-	foreach (glob(__DIR__.'/admin/public/*.php') as $filename)
-	{
-		require_once $filename;
-	}
-});
-
-// ===== Customer (/) =====
-// Autenticados (portal cliente)
-Route::middleware('customer')
-->prefix('customer')
-->name('customer.')
-->group(function ()
+foreach ($realmRouteGroups as $group)
 {
-	foreach (glob(__DIR__.'/customer/auth/*.php') as $filename)
-	{
-		require_once $filename;
-	}
-});
+	$prefix = $group['prefix'];
+	$name = $group['name'];
+	$authMiddleware = $group['auth_middleware'];
+	$publicMiddleware = $group['public_middleware'];
 
-// ===== Seller (/seller) =====
-Route::middleware('seller')
-->prefix('seller')
-->name('seller.')
-->group(function ()
-{
-	foreach (glob(__DIR__.'/seller/auth/*.php') as $filename)
-	{
-		require_once $filename;
-	}
-});
+	Route::middleware($authMiddleware)
+		->prefix($prefix)
+		->name($name)
+		->group(function () use ($loadRealmRouteFiles, $prefix)
+		{
+			$loadRealmRouteFiles(__DIR__ . "/{$prefix}/auth/*.php");
+		});
 
-Route::middleware(['fastapi.token.realm.auth', 'guest:seller'])
-->prefix('seller')
-->name('seller.')
-->group(function () {
-	foreach (glob(__DIR__.'/seller/public/*.php') as $filename)
-	{
-		require_once $filename;
-	}
-});
-
-// Invitados (login/registro) — incluye 'web' para $errors
-Route::middleware(['fastapi.token.realm.auth', 'guest:customer'])
-->prefix('customer')
-->name('customer.')
-->group(function () {
-	foreach (glob(__DIR__.'/customer/public/*.php') as $filename)
-	{
-		require_once $filename;
-	}
-});
+	Route::middleware($publicMiddleware)
+		->prefix($prefix)
+		->name($name)
+		->group(function () use ($loadRealmRouteFiles, $prefix)
+		{
+			$loadRealmRouteFiles(__DIR__ . "/{$prefix}/public/*.php");
+		});
+}
 
 // Fallback genérico
 Route::fallback(fn() => abort(404));

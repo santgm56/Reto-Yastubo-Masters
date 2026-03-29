@@ -2,6 +2,10 @@
 {{-- Este es el template principal del REALM "admin" --}}
 @php
     $branding = \App\Services\Config\Config::getBrandingWeb();
+    $currentRealm = \App\Support\Realm::current(request());
+    $sellerShellContext = $currentRealm === \App\Support\Realm::SELLER
+        ? request()->attributes->get('seller_shell_context', [])
+        : [];
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $currentLocale ?? app()->getLocale() }}">
@@ -50,9 +54,18 @@
 
         // Permisos expuestos al frontend: 100% de los que tiene el usuario
         $user = auth()->user();
+        $renderUserId = $sellerShellContext['id'] ?? $user?->id;
+        $renderRole = (string) ($sellerShellContext['role'] ?? '');
+        $renderPermissions = is_array($sellerShellContext['permissions'] ?? null)
+            ? $sellerShellContext['permissions']
+            : null;
         $abilities = [];
 
-        if ($user) {
+        if ($renderPermissions !== null) {
+            foreach ($renderPermissions as $permissionName) {
+                $abilities[(string) $permissionName] = true;
+            }
+        } elseif ($user) {
             // Spatie: devuelve todos los permisos efectivos (directos + por rol)
             $permissionNames = $user->getAllPermissions()->pluck('name')->all();
 
@@ -61,10 +74,10 @@
             }
         }
 
-        $frontendRole = $user
-            ? ($user->getRoleNames()->first() ?? 'ADMIN')
-            : 'GUEST';
-        $frontendChannel = request()->routeIs('seller.*') ? 'seller' : 'admin';
+        $frontendRole = $renderRole !== ''
+            ? $renderRole
+            : ($user ? ($user->getRoleNames()->first() ?? 'ADMIN') : 'GUEST');
+        $frontendChannel = $currentRealm === \App\Support\Realm::SELLER ? 'seller' : 'admin';
 
         $runtimeConfig = [
             'autosaveDelayMs' => config('gfa.autosave_delay_ms', 800),
@@ -88,7 +101,7 @@
         $frontendContext = [
             'channel' => $frontendChannel,
             'role' => $frontendRole,
-            'userId' => $user?->id,
+            'userId' => $renderUserId,
         ];
     @endphp
 

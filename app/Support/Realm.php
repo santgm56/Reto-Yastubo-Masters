@@ -23,6 +23,91 @@ final class Realm
         ];
     }
 
+    public static function guards(): array
+    {
+        return [
+            self::ADMIN => 'admin',
+            self::SELLER => 'seller',
+            self::CUSTOMER => 'customer',
+        ];
+    }
+
+    public static function guardName(?string $realm): ?string
+    {
+        $normalizedRealm = is_string($realm) ? trim($realm) : null;
+
+        return self::guards()[$normalizedRealm] ?? null;
+    }
+
+    public static function loginRouteName(?string $realm): string
+    {
+        return match ($realm) {
+            self::ADMIN => 'admin.login',
+            self::SELLER => 'seller.login',
+            self::CUSTOMER => 'customer.login',
+            default => 'home',
+        };
+    }
+
+    public static function loginPath(?string $realm): string
+    {
+        return match ($realm) {
+            self::ADMIN => '/admin/login',
+            self::SELLER => '/seller/login',
+            self::CUSTOMER => '/customer/login',
+            default => '/',
+        };
+    }
+
+    public static function homePath(?string $realm): string
+    {
+        return match ($realm) {
+            self::ADMIN => '/admin',
+            self::SELLER => '/seller',
+            self::CUSTOMER => '/customer/home',
+            default => '/',
+        };
+    }
+
+    public static function forcePasswordPath(?string $realm): string
+    {
+        return match ($realm) {
+            self::ADMIN => '/admin/password/force',
+            self::SELLER => '/seller/password/force',
+            self::CUSTOMER => '/customer/password/force',
+            default => '/',
+        };
+    }
+
+    public static function logoutPath(?string $realm): string
+    {
+        return match ($realm) {
+            self::ADMIN => '/admin/logout',
+            self::SELLER => '/seller/logout',
+            self::CUSTOMER => '/customer/logout',
+            default => '/logout',
+        };
+    }
+
+    public static function homeRouteName(?string $realm): string
+    {
+        return match ($realm) {
+            self::ADMIN => 'admin.home',
+            self::SELLER => 'seller.home',
+            self::CUSTOMER => 'customer.home',
+            default => 'home',
+        };
+    }
+
+    public static function allowedRoles(?string $realm): array
+    {
+        return match ($realm) {
+            self::CUSTOMER => ['CUSTOMER'],
+            self::ADMIN, self::SELLER => ['ADMIN', 'SELLER'],
+            default => [],
+        };
+    }
+
     public static function isValid(?string $name): bool
     {
         return in_array($name, self::all(), true);

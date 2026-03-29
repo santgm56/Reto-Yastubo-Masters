@@ -1,5 +1,9 @@
 import { clearAuthTokens, storeAuthTokens } from './tokenStore';
 
+function isMarkedLogoutAnchor(anchor) {
+  return `${anchor?.dataset?.fastapiLogout || ''}`.trim() === 'true';
+}
+
 function isLogoutHref(href) {
   const normalized = `${href || ''}`.trim().toLowerCase();
   if (!normalized) {
@@ -27,7 +31,7 @@ function initializeLogoutTokenCleanup() {
     const anchor = target && typeof target.closest === 'function' ? target.closest('a[href]') : null;
     const href = `${anchor?.getAttribute('href') || ''}`.trim();
 
-    if (isLogoutHref(href)) {
+    if (isMarkedLogoutAnchor(anchor) || isLogoutHref(href)) {
       if (typeof event?.preventDefault === 'function') {
         event.preventDefault();
       }

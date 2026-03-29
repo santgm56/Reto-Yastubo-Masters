@@ -2,16 +2,20 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\InteractsWithFastApiAccessToken;
 use App\Support\Realm;
 use Closure;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class FastApiTokenRealmAuth
 {
+	use InteractsWithFastApiAccessToken;
+
     public function handle(Request $request, Closure $next)
     {
         $realm = Realm::current($request);
@@ -19,41 +23,48 @@ class FastApiTokenRealmAuth
             return $next($request);
         }
 
-        $guard = match ($realm) {
-            Realm::CUSTOMER => 'customer',
-            Realm::SELLER => 'seller',
-            default => 'admin',
-        };
+        $guard = Realm::guardName($realm);
+        if (!$guard) {
+            return $next($request);
+        }
 
         $authGuard = Auth::guard($guard);
 
         $accessToken = $this->resolveCookieValue($request, 'yastubo_access_token');
         if ($accessToken === '') {
-            if ($authGuard->check()) {
-                $authGuard->logout();
-            }
-
-            return $next($request);
+            return $this->redirectUnauthenticatedProtectedRequest($authGuard, $realm);
         }
 
         $me = $this->fetchFastApiMe($accessToken);
         if (!$me || !$this->isRoleAllowedForRealm((string) ($me['role'] ?? ''), $realm)) {
-            if ($authGuard->check()) {
-                $authGuard->logout();
-            }
+            return $this->redirectUnauthenticatedProtectedRequest($authGuard, $realm, true);
+        }
 
-            $this->expireAccessTokenCookie();
-            return $next($request);
+        if ($this->shouldHandleActiveStatusInBridge($realm) && $this->isInactiveStatus($me['status'] ?? null)) {
+            return $this->redirectInactiveAccount($request, $authGuard, $realm);
+        }
+
+        if ($this->shouldHandleAbsoluteSessionTimeoutInBridge($realm)) {
+            $timedOutResponse = $this->redirectExpiredSessionIfNeeded($request, $authGuard, $realm);
+            if ($timedOutResponse) {
+                return $timedOutResponse;
+            }
         }
 
         $user = $this->resolveLocalUser($me, $realm);
         if (!$user) {
-            if ($authGuard->check()) {
-                $authGuard->logout();
-            }
+            return $this->redirectUnauthenticatedProtectedRequest($authGuard, $realm, true);
+        }
 
-            $this->expireAccessTokenCookie();
-            return $next($request);
+        if ($this->shouldHandleActiveStatusInBridge($realm) && $this->isInactiveStatus($user->status ?? null)) {
+            return $this->redirectInactiveAccount($request, $authGuard, $realm);
+        }
+
+        if ($this->shouldHandleForcePasswordChangeInBridge($realm)) {
+            $forcePasswordResponse = $this->redirectForcedPasswordChangeIfNeeded($request, $user, $realm);
+            if ($forcePasswordResponse) {
+                return $forcePasswordResponse;
+            }
         }
 
         // Auth request-scoped: no persistir sesión Laravel como fuente de verdad.
@@ -61,65 +72,9 @@ class FastApiTokenRealmAuth
         Auth::shouldUse($guard);
         Auth::setUser($user);
         $request->setUserResolver(static fn () => $user);
+        $this->syncCurrentSessionToUser($request, $user);
 
         return $next($request);
-    }
-
-    protected function resolveCookieValue(Request $request, string $cookieName): string
-    {
-        $fromRequest = trim((string) $request->cookie($cookieName, ''));
-        if ($fromRequest !== '') {
-            return $fromRequest;
-        }
-
-        $rawCookieHeader = trim((string) $request->headers->get('cookie', ''));
-        if ($rawCookieHeader === '') {
-            return '';
-        }
-
-        foreach (explode(';', $rawCookieHeader) as $chunk) {
-            [$name, $value] = array_pad(explode('=', $chunk, 2), 2, '');
-            if (trim($name) !== $cookieName) {
-                continue;
-            }
-
-            return trim(urldecode($value));
-        }
-
-        return '';
-    }
-
-    protected function fetchFastApiMe(string $accessToken): ?array
-    {
-        $baseUrl = trim((string) config('services.fastapi.base_url', ''));
-        if ($baseUrl === '') {
-            return null;
-        }
-
-        $url = rtrim($baseUrl, '/') . '/api/v1/auth/me';
-
-        $response = Http::timeout(8)
-            ->acceptJson()
-            ->withToken($accessToken)
-            ->get($url);
-
-        if (!$response->ok()) {
-            return null;
-        }
-
-        $payload = $response->json('data');
-        return is_array($payload) ? $payload : null;
-    }
-
-    protected function isRoleAllowedForRealm(string $role, string $realm): bool
-    {
-        $normalizedRole = strtoupper(trim($role));
-
-        if ($realm === Realm::CUSTOMER) {
-            return $normalizedRole === 'CUSTOMER';
-        }
-
-        return in_array($normalizedRole, ['ADMIN', 'SELLER'], true);
     }
 
     protected function resolveLocalUser(array $me, string $realm): ?User
@@ -143,8 +98,144 @@ class FastApiTokenRealmAuth
         return $query->first();
     }
 
-    protected function expireAccessTokenCookie(): void
+    protected function isInactiveStatus(mixed $status): bool
     {
-        Cookie::queue(Cookie::forget('yastubo_access_token', '/'));
+        $normalizedStatus = strtoupper(trim((string) $status));
+
+        return $normalizedStatus !== '' && $normalizedStatus !== 'ACTIVE';
+    }
+
+    protected function shouldHandleActiveStatusInBridge(string $realm): bool
+    {
+        return in_array($realm, [Realm::ADMIN, Realm::SELLER, Realm::CUSTOMER], true);
+    }
+
+    protected function shouldHandleAbsoluteSessionTimeoutInBridge(string $realm): bool
+    {
+        return in_array($realm, [Realm::ADMIN, Realm::SELLER, Realm::CUSTOMER], true);
+    }
+
+    protected function shouldHandleForcePasswordChangeInBridge(string $realm): bool
+    {
+        return in_array($realm, [Realm::ADMIN, Realm::SELLER, Realm::CUSTOMER], true);
+    }
+
+    protected function redirectExpiredSessionIfNeeded(Request $request, $authGuard, string $realm)
+    {
+        if (!$request->hasSession()) {
+            return null;
+        }
+
+        $maxMinutes = 600;
+
+        try {
+            $configuredTimeout = SystemSetting::get('auth.session.absolute_timeout_minutes', 600);
+            $maxMinutes = (int) ($configuredTimeout ?? 600);
+        } catch (\Throwable) {
+            $maxMinutes = 600;
+        }
+
+        $started = (int) $request->session()->get('abs_start_ts', 0);
+
+        if ($started <= 0) {
+            $request->session()->put('abs_start_ts', now()->getTimestamp());
+            return null;
+        }
+
+        if ((now()->getTimestamp() - $started) <= max(1, $maxMinutes) * 60) {
+            return null;
+        }
+
+        if ($authGuard->check()) {
+            $authGuard->logout();
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        $this->expireAccessTokenCookie();
+
+        return redirect()
+            ->to(Realm::loginPath($realm))
+            ->with('info', 'Tu sesión expiró por tiempo máximo.');
+    }
+
+    protected function redirectInactiveAccount(Request $request, $authGuard, string $realm)
+    {
+        if ($authGuard->check()) {
+            $authGuard->logout();
+        }
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        $this->expireAccessTokenCookie();
+
+        return redirect()
+            ->to(Realm::loginPath($realm))
+            ->withErrors(['email' => 'Cuenta no activa.']);
+    }
+
+    protected function redirectUnauthenticatedProtectedRequest($authGuard, string $realm, bool $expireCookie = false)
+    {
+        if ($authGuard->check()) {
+            $authGuard->logout();
+        }
+
+        if ($expireCookie) {
+            $this->expireAccessTokenCookie();
+        }
+
+        return redirect()->to(Realm::loginPath($realm));
+    }
+
+    protected function redirectForcedPasswordChangeIfNeeded(Request $request, User $user, string $realm)
+    {
+        if (!$user->forcePasswordChange()) {
+            return null;
+        }
+
+        if ($this->isForcePasswordChangeBypassPath($request, $realm)) {
+            return null;
+        }
+
+        $this->syncCurrentSessionToUser($request, $user);
+
+        return redirect()
+            ->to(Realm::forcePasswordPath($realm))
+            ->with('status', 'Debes actualizar tu contraseña antes de continuar.');
+    }
+
+    protected function isForcePasswordChangeBypassPath(Request $request, string $realm): bool
+    {
+        $currentPath = '/' . ltrim($request->path(), '/');
+
+        return in_array($currentPath, [Realm::forcePasswordPath($realm), Realm::logoutPath($realm)], true);
+    }
+
+    protected function syncCurrentSessionToUser(Request $request, User $user): void
+    {
+        if (!$request->hasSession()) {
+            return;
+        }
+
+        $sessionId = (string) $request->session()->getId();
+        if ($sessionId === '') {
+            return;
+        }
+
+        try {
+            DB::table('sessions')
+                ->where('id', $sessionId)
+                ->update([
+                    'user_id' => $user->id,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => Str::limit($request->userAgent() ?? '', 255),
+                    'last_activity' => time(),
+                ]);
+        } catch (\Throwable) {
+            // No romper la request si la sincronizacion de sessions falla.
+        }
     }
 }

@@ -31,3 +31,11 @@ export function adminUsersRestoreEndpoint(userId) {
 export function adminUsersRevokeSessionsEndpoint(userId) {
   return `${BASE}/${userId}/sessions/revoke`;
 }
+
+export function adminUsersSendResetEndpoint(userId) {
+  return `${BASE}/${userId}/send-reset`;
+}
+
+export function adminUsersImpersonateEndpoint(userId) {
+  return `${BASE}/${userId}/impersonate`;
+}

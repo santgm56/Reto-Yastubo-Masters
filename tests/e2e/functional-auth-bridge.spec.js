@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readAdminCreds } from './support/adminCreds';
 
 function readCreds(prefix) {
   const email = process.env[`${prefix}_EMAIL`] || '';
@@ -41,9 +42,9 @@ test('@functional auth bridge admin login keeps protected session', async ({ pag
     creds,
     loginPath: '/admin/login',
     expectedLandingRegex: '/admin',
-    protectedPath: '/admin/payments',
-    protectedPathRegex: '/admin/payments',
-    protectedTextRegex: /Pagos operativos/i,
+    protectedPath: '/admin/config',
+    protectedPathRegex: '/admin/config',
+    protectedTextRegex: /Configuración/i,
   });
 });
 
@@ -62,5 +63,23 @@ test('@functional auth bridge customer login keeps protected session', async ({ 
     protectedPath: '/customer/metodo-pago',
     protectedPathRegex: '/customer/metodo-pago',
     protectedTextRegex: /Actualizar metodo de pago/i,
+  });
+});
+
+test('@functional auth bridge seller login keeps protected session', async ({ page }) => {
+  const creds = readAdminCreds();
+
+  test.skip(
+    !creds.ready,
+    'Define SMOKE_ADMIN_EMAIL/SMOKE_ADMIN_PASSWORD o E2E_ADMIN_EMAIL/E2E_ADMIN_PASSWORD para validar auth bridge seller.',
+  );
+
+  await assertProtectedNavigationAfterLogin(page, {
+    creds,
+    loginPath: '/seller/login',
+    expectedLandingRegex: '/seller/dashboard',
+    protectedPath: '/seller/customers',
+    protectedPathRegex: '/seller/customers',
+    protectedTextRegex: /Clientes del canal seller/i,
   });
 });

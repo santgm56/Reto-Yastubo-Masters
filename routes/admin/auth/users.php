@@ -5,18 +5,13 @@
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\LocaleController;
+use App\Support\WebLogoutResponder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 
 
 Route::match(['get', 'post'], '/logout', function (Request $request) {
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-
-    return redirect()
-        ->route('admin.login')
-        ->withCookie(Cookie::forget('yastubo_access_token', '/'));
+    return WebLogoutResponder::toLogin($request, 'admin.login');
 })->name('logout');
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
@@ -38,20 +33,14 @@ Route::delete('/users/{user}', [UsersController::class, 'destroy'])->name('users
 // Acciones adicionales
 // -------------------------
 Route::post('/users/{user}/restore', [UsersController::class, 'restore'])->name('users.restore')->whereNumber('user');
-Route::post('/users/{user}/impersonate', [UsersController::class, 'impersonate'])->name('users.impersonate')->whereNumber('user');
 Route::post('/users/{user}/sessions/revoke', [UsersController::class, 'revokeSessions'])
     ->name('users.sessions.revoke')
     ->middleware([
         'can:users.sessions.revoke', // capacidad global
         'can:update,user',           // alcance sobre el usuario destino
     ]);
-Route::post('/users/{user}/send-reset', [UsersController::class, 'sendReset'])->name('users.send-reset')->whereNumber('user');
 Route::post('/users/{user}/lock', [UsersController::class, 'lock'])->name('users.lock')->whereNumber('user');
 Route::post('/users/{user}/unlock', [UsersController::class, 'unlock'])->name('users.unlock')->whereNumber('user');
-
-Route::post('/users/{user}/impersonate', [UsersController::class, 'impersonate'])->name('users.impersonate'); // POST /admin/users/{user}/impersonate
-
-Route::post('/impersonate/stop', [UsersController::class, 'stopImpersonation'])->name('impersonate.stop'); // POST /admin/impersonate/stop
 
 
 Route::get('/password/force',  [PasswordController::class, 'forceEdit'])->name('password.force.edit');

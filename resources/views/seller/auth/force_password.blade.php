@@ -37,7 +37,7 @@
         </form>
 
         <div class="text-center mt-3">
-          <a href="{{ route('seller.logout') }}" class="text-muted">Cerrar sesion</a>
+          <a href="{{ route('seller.logout') }}" class="text-muted" data-fastapi-logout="true">Cerrar sesion</a>
         </div>
       </div>
     </div>

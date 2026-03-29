@@ -220,7 +220,9 @@
 import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import {
   adminUsersDeleteEndpoint,
+  adminUsersImpersonateEndpoint,
   adminUsersRestoreEndpoint,
+  adminUsersSendResetEndpoint,
   adminUsersRevokeSessionsEndpoint,
   adminUsersShowEndpoint,
 } from './api';
@@ -383,7 +385,7 @@ export default {
 
       this.isBusy = true;
       try {
-        const { data } = await apiClient.post(this.route('admin.users.send-reset', { user: this.userId }), {});
+        const { data } = await apiClient.post(adminUsersSendResetEndpoint(this.userId), {});
         this.flash(data?.message || 'Correo de reset enviado.', 'success');
       } catch (error) {
         const apiError = extractApiErrorContract(error, 'API_ADMIN_USERS_SEND_RESET_ERROR');
@@ -403,7 +405,7 @@ export default {
 
       this.isBusy = true;
       try {
-        const { data } = await apiClient.post(this.route('admin.users.impersonate', { user: this.userId }), {});
+        const { data } = await apiClient.post(adminUsersImpersonateEndpoint(this.userId), {});
         window.location.assign(data?.redirect_to || this.route('admin.home'));
       } catch (error) {
         const apiError = extractApiErrorContract(error, 'API_ADMIN_USERS_IMPERSONATE_ERROR');

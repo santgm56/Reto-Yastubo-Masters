@@ -168,4 +168,59 @@ describe('fastapiLoginBridge', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch.mock.calls[0][0]).toBe('/api/v1/auth/logout');
   });
+
+  it('redirects logout to the matching realm login when anchor is explicitly marked', async () => {
+    const form = createFastApiLoginForm();
+    const documentListeners = {};
+    const locationReplace = vi.fn();
+
+    const documentMock = {
+      body: { dataset: {} },
+      querySelectorAll() {
+        return [form];
+      },
+      addEventListener(type, handler) {
+        documentListeners[type] = handler;
+      },
+    };
+
+    global.window = {
+      __RUNTIME_CONFIG__: {},
+      location: {
+        pathname: '/seller/dashboard',
+        replace: locationReplace,
+      },
+      localStorage: createStorageMock(),
+    };
+
+    global.document = documentMock;
+    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+
+    const { initializeFastApiLoginBridge } = await import('./fastapiLoginBridge');
+
+    initializeFastApiLoginBridge();
+
+    documentListeners.click({
+      preventDefault() {},
+      stopImmediatePropagation() {},
+      target: {
+        closest() {
+          return {
+            dataset: {
+              fastapiLogout: 'true',
+            },
+            getAttribute() {
+              return '/custom/logout-path';
+            },
+          };
+        },
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(locationReplace).toHaveBeenCalledWith('/seller/login');
+  });
 });

@@ -2,17 +2,12 @@
 
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\LocaleController;
+use App\Support\WebLogoutResponder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 
 Route::match(['get', 'post'], '/logout', function (Request $request) {
-	$request->session()->invalidate();
-	$request->session()->regenerateToken();
-
-	return redirect()
-		->route('customer.login')
-		->withCookie(Cookie::forget('yastubo_access_token', '/'));
+	return WebLogoutResponder::toLogin($request, 'customer.login');
 })->name('logout');
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
