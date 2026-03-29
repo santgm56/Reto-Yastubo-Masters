@@ -619,7 +619,6 @@ class CompanyController extends Controller
 			'company'	   => $companyPayload,
 			'products'	   => $products,
 			'productTypes' => $productTypes,
-			'editRouteMap' => Product::EDIT_ROUTES,
 		]);
 	}
 }

@@ -42,7 +42,7 @@
 
         <div class="mt-4 mt-lg-0">
           <a
-            :href="route('admin.companies.edit', { company: company.id })"
+            :href="companyEditUrl(company.id)"
             class="btn btn-light-primary btn-sm"
           >
             <i class="bi bi-pencil-square me-2"></i>
@@ -150,6 +150,8 @@
 </template>
 
 <script>
+import { adminCompanyEditPagePath, adminProductPlansPagePath } from './api';
+
 export default {
   name: 'AdminCompaniesCapitatedProducts',
 
@@ -161,10 +163,6 @@ export default {
     initialProducts: {
       type: Array,
       default: () => [],
-    },
-    editRouteMap: {
-      type: Object,
-      default: () => ({}),
     },
   },
 
@@ -179,6 +177,10 @@ export default {
   },
 
   methods: {
+    companyEditUrl(companyId) {
+      return adminCompanyEditPagePath(companyId);
+    },
+
     onBatchApplied(batch) {
       // Se emite desde BatchesCard SOLO cuando:
       // - terminó en processed (no failed)
@@ -226,13 +228,7 @@ export default {
     },
 
     productEditUrl(product) {
-      const routeName = this.editRouteMap[product.product_type];
-      if (!routeName) {
-        // eslint-disable-next-line no-console
-        console.warn('Sin editRouteMap para product_type', product.product_type);
-        return '#';
-      }
-      return this.route(routeName, { product: product.id });
+      return adminProductPlansPagePath(product.id);
     },
 
     openCreateProductModal() {

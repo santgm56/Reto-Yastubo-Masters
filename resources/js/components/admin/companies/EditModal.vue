@@ -101,6 +101,10 @@ export default {
             companyId: null,
             isSubmitting: false,
             formError: null,
+            autosaveDelayMs:
+                (window.__RUNTIME_CONFIG__ &&
+                    window.__RUNTIME_CONFIG__.autosaveDelayMs) ||
+                700,
 
             form: this.emptyForm(),
 
@@ -200,9 +204,9 @@ export default {
                 } else {
                     await this.submitUpdate();
                 }
-            } catch (e) {
-                console.error(e);
-                this.formError = 'Ha ocurrido un error al guardar la empresa.';
+            } catch (error) {
+                const apiError = extractApiErrorContract(error, 'API_COMPANIES_SUBMIT_ERROR');
+                this.formError = apiError.message || 'Ha ocurrido un error al guardar la empresa.';
             } finally {
                 this.isSubmitting = false;
             }

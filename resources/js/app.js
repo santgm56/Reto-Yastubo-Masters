@@ -10,7 +10,14 @@ async function bootstrapFrontendApp() {
   initializeFastApiLoginBridge();
   await ensureFrontendBootstrap({ forceApi: true });
 
-  const app = createApp({});
+  const mountNode = typeof document !== 'undefined'
+    ? document.querySelector('#app')
+    : null
+  const rootTemplate = `${mountNode?.innerHTML || ''}`.trim()
+
+  const app = createApp({
+    template: rootTemplate || '<div></div>',
+  });
   initializeAppTelemetry();
 
 function trackLoginSuccessOncePerSession() {
@@ -179,6 +186,17 @@ const toPascal = (s) =>
   });
 
   if (shouldMountApp) {
+    const staticLoginForm = typeof document !== 'undefined'
+      ? document.querySelector('#app form[data-fastapi-login="true"]')
+      : null
+    const staticShell = typeof document !== 'undefined'
+      ? document.querySelector('#app [data-static-shell="true"]')
+      : null
+
+    if (staticLoginForm || staticShell) {
+      return
+    }
+
     const comps = Object.keys(app._context.components || {})
     console.log('Vue components registrados:', comps)
     app.mount('#app')

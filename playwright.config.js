@@ -13,13 +13,13 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   webServer: {
-    command: 'php artisan serve --host=127.0.0.1 --port=8000',
-    url: 'http://127.0.0.1:8000',
+    command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+    url: 'http://127.0.0.1:5173/resources/js/app.js',
     reuseExistingServer: true,
     timeout: 120_000,
   },
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:8000',
+    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:8001',
     headless: true,
     trace: 'retain-on-failure',
   },

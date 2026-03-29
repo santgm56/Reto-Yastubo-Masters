@@ -49,3 +49,15 @@ export function adminCompanyCommissionUsersAvailableEndpoint(companyId) {
 export function adminCompanyCommissionUserEndpoint(companyId, commissionUserId) {
   return `${adminCompanyCommissionUsersEndpoint(companyId)}/${commissionUserId}`;
 }
+
+export function adminCompanyEditPagePath(companyId) {
+  return `/admin/companies/${companyId}/edit`;
+}
+
+export function adminCompanyCapitatedPagePath(companyId) {
+  return `/admin/companies/${companyId}/capitados`;
+}
+
+export function adminProductPlansPagePath(productId) {
+  return `/admin/products/${productId}/plans`;
+}

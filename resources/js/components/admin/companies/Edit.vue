@@ -1224,11 +1224,10 @@ export default {
           this.shortCodeStatus = 'taken'
           this.shortCodeMessage = 'El código ya está en uso.'
         }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e)
+      } catch (error) {
+        const apiError = extractApiErrorContract(error, 'API_COMPANIES_CHECK_SHORT_CODE_ERROR')
         this.shortCodeStatus = null
-        this.shortCodeMessage = 'No se pudo verificar el código.'
+        this.shortCodeMessage = apiError.message || 'No se pudo verificar el código.'
       } finally {
         this.shortCodeChecking = false
       }
@@ -1897,8 +1896,15 @@ export default {
     },
 
     flashError(error, fallbackMessage) {
-      // eslint-disable-next-line no-console
-      console.error(error)
+      if (
+        typeof window !== 'undefined' &&
+        window.__RUNTIME_CONFIG__ &&
+        window.__RUNTIME_CONFIG__.enableVerboseLogging &&
+        typeof console !== 'undefined' &&
+        typeof console.error === 'function'
+      ) {
+        console.error(error)
+      }
 
       const apiError = extractApiErrorContract(error, 'API_COMPANIES_EDIT_ERROR')
 

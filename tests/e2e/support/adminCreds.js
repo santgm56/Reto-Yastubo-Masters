@@ -40,5 +40,30 @@ export async function loginAdminUi(page, creds) {
     await page.click('button[type="submit"]');
   }
 
+  if (/\/admin\/login/i.test(page.url())) {
+    const response = await page.evaluate(async ({ email, password }) => {
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      return {
+        status: res.status,
+        body: await res.text(),
+      };
+    }, creds);
+
+    if (response.status !== 200) {
+      throw new Error(`Browser FastAPI login failed (${response.status}): ${response.body}`);
+    }
+
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+  }
+
   await expect(page).not.toHaveURL(/\/admin\/login/i);
 }

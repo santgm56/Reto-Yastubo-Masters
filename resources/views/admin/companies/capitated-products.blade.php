@@ -7,6 +7,5 @@
         :company='@json($company)'
         :initial-products='@json($products)'
         :product-types='@json($productTypes)'
-        :edit-route-map='@json($editRouteMap)'
     ></admin-companies-capitated-products>
 @endsection

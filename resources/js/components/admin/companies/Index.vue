@@ -97,7 +97,7 @@
                   <div class="btn-group">
                     <!-- Administrar: va a la vista de administración sin modal -->
                     <a
-                      :href="route('admin.companies.capitated-products.index', { company: company.id })"
+                      :href="companyCapitatedUrl(company.id)"
                       class="btn btn-sm btn-light-primary"
                     >
                       <i class="bi bi-gear"></i>
@@ -163,6 +163,7 @@ import AdminCompaniesEditModal from './EditModal.vue';
 import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import {
   adminCompaniesIndexEndpoint,
+  adminCompanyCapitatedPagePath,
   adminCompanyActivateEndpoint,
   adminCompanyArchiveEndpoint,
   adminCompanySuspendEndpoint,
@@ -191,6 +192,10 @@ export default {
   },
 
   methods: {
+    companyCapitatedUrl(companyId) {
+      return adminCompanyCapitatedPagePath(companyId);
+    },
+
     async fetchCompanies() {
       this.isLoading = true;
 
