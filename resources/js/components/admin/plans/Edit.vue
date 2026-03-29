@@ -778,7 +778,7 @@
 		<!-- Modal edición de producto -->
 		<admin-products-edit-modal
 			ref="productModal"
-			:product-types="productTypes"
+			:product-types="productTypeOptions"
 			@updated="onProductUpdated"
 		/>
 	</div>
@@ -805,19 +805,12 @@ import {
 export default {
 	name: 'AdminPlansVersionEdit',
 
-	props: {
-		initialProduct: { type: Object, default: () => ({}) },
-		initialPlanVersion: { type: Object, default: () => ({}) },
-		initialCoverageCategories: { type: Array, default: () => [] },
-		productTypes: { type: Array, default: () => [] },
-	},
-
 	data() {
 		return {
-			product: JSON.parse(JSON.stringify(this.initialProduct || {})),
-			planVersion: JSON.parse(JSON.stringify(this.initialPlanVersion || {})),
-			coverageCategories: JSON.parse(JSON.stringify(this.initialCoverageCategories || [])),
-			productTypeOptions: JSON.parse(JSON.stringify(this.productTypes || [])),
+			product: {},
+			planVersion: {},
+			coverageCategories: [],
+			productTypeOptions: [],
 			isBootstrapping: false,
 			loadBootstrapError: '',
 
@@ -895,19 +888,55 @@ export default {
 		}
 	},
 
-	computed: {
-		versionsIndexUrl() {
-			return `/admin/products/${this.product.id}/plans`
-		},
-	},
-
 	methods: {
+		resolveProductId() {
+			const explicitId = Number(this.product?.id || 0)
+			if (explicitId > 0) {
+				return explicitId
+			}
+
+			if (typeof window === 'undefined') {
+				return 0
+			}
+
+			const match = window.location.pathname.match(/\/admin\/products\/(\d+)\/plans(?:\/|$)/)
+			return match ? Number(match[1] || 0) : 0
+		},
+
+		resolvePlanVersionId() {
+			const explicitId = Number(this.planVersion?.id || 0)
+			if (explicitId > 0) {
+				return explicitId
+			}
+
+			if (typeof window === 'undefined') {
+				return 0
+			}
+
+			const match = window.location.pathname.match(/\/admin\/products\/\d+\/plans\/(\d+)\/edit(?:\/|$)/)
+			return match ? Number(match[1] || 0) : 0
+		},
+
 		async loadPlanBootstrap() {
-			const productId = Number(this.product?.id || 0)
-			const planVersionId = Number(this.planVersion?.id || 0)
+			const productId = this.resolveProductId()
+			const planVersionId = this.resolvePlanVersionId()
 
 			if (!productId || !planVersionId) {
 				return
+			}
+
+			if (!this.product?.id) {
+				this.product = {
+					...(this.product || {}),
+					id: productId,
+				}
+			}
+
+			if (!this.planVersion?.id) {
+				this.planVersion = {
+					...(this.planVersion || {}),
+					id: planVersionId,
+				}
 			}
 
 			this.isBootstrapping = true
@@ -968,35 +997,12 @@ export default {
 		},
 
 		notifyFromError(e, fallbackMessage) {
-
-			const toast = e?.response?.data?.toast
-			if (toast?.message) {
-				flash(toast.message, toast.type || 'danger')
-				return
-			}
-
-			const msg = e?.response?.data?.message
-			if (msg) {
-				flash(msg, 'danger')
-				return
-			}
-
-			const errors = e?.response?.data?.errors
-			if (errors && typeof errors === 'object') {
-				const firstKey = Object.keys(errors)[0]
-				const firstVal = firstKey ? errors[firstKey] : null
-				if (Array.isArray(firstVal) && firstVal[0]) {
-					flash(firstVal[0], 'danger')
-					return
-				}
-			}
-
-			if (fallbackMessage) {
-				flash(fallbackMessage, 'danger')
-				return
-			}
-
-			flash(e?.message || 'Error inesperado.', 'danger')
+			const apiError = extractApiErrorContract(e, 'API_PLAN_VERSION_EDIT_ERROR')
+			const details = Array.isArray(apiError.details) ? apiError.details.filter(Boolean) : []
+			const msg = details.length > 0
+				? details.join(' ')
+				: (apiError.message || fallbackMessage || 'Error inesperado.')
+			flash(msg, 'danger')
 		},
 
 		/* =============================================================
@@ -1813,12 +1819,6 @@ export default {
 		/* =============================================================
 		 *                    Producto / versión
 		 * ============================================================= */
-
-		openProductModal() {
-			if (this.$refs.productModal) {
-				this.$refs.productModal.openForEdit(this.product.id)
-			}
-		},
 
 		onProductUpdated(updated) {
 			this.product = { ...this.product, ...updated }

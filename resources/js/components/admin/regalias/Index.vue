@@ -272,22 +272,25 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import * as format from '@/utils/format';
+import {
+  adminRegaliaEndpoint,
+  adminRegaliasBeneficiariesEndpoint,
+  adminRegaliasEndpoint,
+} from './api';
 
 /**
- * Construye un mensaje de error legible a partir de una respuesta de error de axios.
- * - Si hay data.errors (objeto de arrays), concatena todos los mensajes en líneas separadas.
- * - Si no, usa data.message si existe.
- * - Si nada de lo anterior existe, usa el fallback.
+ * Construye un mensaje de error legible usando el contrato del apiClient.
  */
-function buildErrorMessage(e, fallbackMessage) {
-  const data = e && e.response ? e.response.data : null;
+function buildErrorMessage(apiError, fallbackMessage) {
+  const validationErrors = apiError?.validationErrors;
 
-  if (data && data.errors && typeof data.errors === 'object') {
+  if (validationErrors && typeof validationErrors === 'object') {
     const lines = [];
 
-    Object.keys(data.errors).forEach((field) => {
-      const fieldErrors = data.errors[field];
+    Object.keys(validationErrors).forEach((field) => {
+      const fieldErrors = validationErrors[field];
 
       if (Array.isArray(fieldErrors)) {
         fieldErrors.forEach((msg) => {
@@ -305,8 +308,8 @@ function buildErrorMessage(e, fallbackMessage) {
     }
   }
 
-  if (data && data.message) {
-    return String(data.message);
+  if (apiError && apiError.message) {
+    return String(apiError.message);
   }
 
   return fallbackMessage;
@@ -398,16 +401,13 @@ export default {
       this.loading = true;
 
       try {
-        const res = await axios.get(
-          '/api/v1/admin/regalias/beneficiaries',
-          {
-            params: {
-              page,
-              per_page: this.filters.per_page,
-              q: this.filters.search || '',
-            },
+        const res = await apiClient.get(adminRegaliasBeneficiariesEndpoint(), {
+          params: {
+            page,
+            per_page: this.filters.per_page,
+            q: this.filters.search || '',
           }
-        );
+        });
 
         const payload = res?.data || {};
         const list = Array.isArray(payload.data) ? payload.data : [];
@@ -479,9 +479,13 @@ export default {
         });
       } catch (e) {
         this.beneficiaries = [];
+        const apiError = extractApiErrorContract(
+          e,
+          'API_REGALIAS_BENEFICIARIES_INDEX_ERROR',
+        );
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(
-            buildErrorMessage(e, 'Error al cargar beneficiarios de regalías.'),
+            buildErrorMessage(apiError, 'Error al cargar beneficiarios de regalías.'),
             'danger'
           );
         }
@@ -621,8 +625,8 @@ export default {
       regalia._saving = true;
 
       try {
-        await axios.patch(
-          `/api/v1/admin/regalias/regalias/${regalia.id}`,
+        await apiClient.patch(
+          adminRegaliaEndpoint(regalia.id),
           { commission: value },
           {
             headers: { 'Content-Type': 'application/json' },
@@ -639,10 +643,11 @@ export default {
         regalia.commission = prevNumeric;
         regalia._commissionInput = prevInput ?? 'error';
         regalia._lastValidCommissionInput = regalia._commissionInput;
+        const apiError = extractApiErrorContract(e, 'API_REGALIAS_SAVE_COMMISSION_ERROR');
 
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(
-            buildErrorMessage(e, 'Error al guardar comisión.'),
+            buildErrorMessage(apiError, 'Error al guardar comisión.'),
             'danger'
           );
         }
@@ -667,9 +672,7 @@ export default {
       regalia._saving = true;
 
       try {
-        const res = await axios.delete(
-          `/api/v1/admin/regalias/regalias/${regalia.id}`
-        );
+        const res = await apiClient.delete(adminRegaliaEndpoint(regalia.id));
 
         card.regalias = card.regalias.filter((r) => r.id !== regalia.id);
 
@@ -680,9 +683,10 @@ export default {
           );
         }
       } catch (e) {
+        const apiError = extractApiErrorContract(e, 'API_REGALIAS_DELETE_ERROR');
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(
-            buildErrorMessage(e, 'Error al eliminar regalía.'),
+            buildErrorMessage(apiError, 'Error al eliminar regalía.'),
             'danger'
           );
         }

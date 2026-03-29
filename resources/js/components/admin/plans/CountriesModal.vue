@@ -230,7 +230,7 @@
 </template>
 
 <script>
-import { apiClient } from '../../../core/http/apiClient';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
 import {
 	adminPlanCountriesAttachZoneEndpoint,
 	adminPlanCountriesDetachZoneEndpoint,
@@ -340,6 +340,15 @@ export default {
 	},
 
 	methods: {
+		notifyError(error, fallbackMessage, fallbackCode = 'API_PLAN_COUNTRIES_MODAL_ERROR') {
+			const apiError = extractApiErrorContract(error, fallbackCode);
+			const message = apiError.message || fallbackMessage;
+			this.errorMessage = message;
+			if (typeof window !== 'undefined' && typeof window.flash === 'function') {
+				window.flash(message, 'danger');
+			}
+		},
+
 		ensureModalInstance() {
 			if (!this.modalInstance && this.$refs.modal && window.bootstrap?.Modal) {
 				this.modalInstance = window.bootstrap.Modal.getOrCreateInstance(this.$refs.modal);
@@ -387,13 +396,7 @@ export default {
 					attached: !!country.attached,
 				}));
 			} catch (e) {
-				console.log('[AdminPlansCountriesModal] loadData error', e);
-				this.errorMessage =
-					e?.response?.data?.message ||
-					'No se pudo cargar la información de países.';
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(this.errorMessage, 'danger');
-				}
+				this.notifyError(e, 'No se pudo cargar la información de países.', 'API_PLAN_COUNTRIES_LOAD_ERROR');
 			} finally {
 				this.isLoading = false;
 				this.isLoadingZones = false;
@@ -470,15 +473,7 @@ export default {
 					window.flash(msg, type);
 				}
 			} catch (e) {
-				console.log('[AdminPlansCountriesModal] attachZone error', e);
-				const backendMsg = e?.response?.data?.message || null;
-				const msg = backendMsg || 'No se pudo añadir la zona al plan.';
-
-				this.errorMessage = backendMsg || msg;
-
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(msg, 'danger');
-				}
+				this.notifyError(e, 'No se pudo añadir la zona al plan.', 'API_PLAN_COUNTRIES_ATTACH_ZONE_ERROR');
 			} finally {
 				this.processingZoneId = null;
 			}
@@ -523,15 +518,7 @@ export default {
 					window.flash(msg, type);
 				}
 			} catch (e) {
-				console.log('[AdminPlansCountriesModal] detachZone error', e);
-				const backendMsg = e?.response?.data?.message || null;
-				const msg = backendMsg || 'No se pudo quitar la zona del plan.';
-
-				this.errorMessage = backendMsg || msg;
-
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(msg, 'danger');
-				}
+				this.notifyError(e, 'No se pudo quitar la zona del plan.', 'API_PLAN_COUNTRIES_DETACH_ZONE_ERROR');
 			} finally {
 				this.processingZoneId = null;
 			}
@@ -596,20 +583,9 @@ export default {
 					}
 				}
 			} catch (e) {
-				console.log('[AdminPlansCountriesModal] toggleAttachCountry error', e);
 				// revertir estado en caso de error
 				country.attached = previousAttached;
-
-				const backendMsg = e?.response?.data?.message || null;
-				const msg =
-					backendMsg ||
-					'No se pudo actualizar la asignación del país.';
-
-				this.errorMessage = backendMsg || msg;
-
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(msg, 'danger');
-				}
+				this.notifyError(e, 'No se pudo actualizar la asignación del país.', 'API_PLAN_COUNTRIES_TOGGLE_ATTACH_ERROR');
 			} finally {
 				this.savingCountryId = null;
 			}

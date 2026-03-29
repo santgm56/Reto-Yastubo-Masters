@@ -60,8 +60,22 @@ test('@functional products-plans admin smoke', async ({ page }) => {
   const versionId = Number(versions[0]?.id || 0);
   expect(versionId).toBeGreaterThan(0);
 
+  const planEditBootstrapResponse = await page.request.get(
+    `http://127.0.0.1:8001/api/v1/admin/products/${productId}/plans/${versionId}`,
+    { headers },
+  );
+  expect(planEditBootstrapResponse.status()).toBe(200);
+
   await page.goto(`/admin/products/${productId}/plans/${versionId}/edit`);
   await expect(page).toHaveURL(new RegExp(`/admin/products/${productId}/plans/${versionId}/edit`, 'i'));
+  await expect(page.locator('body')).toContainText(/Versi[oó]n:/i);
   await expect(page.locator('body')).toContainText(/Coberturas/i);
   await expect(page.locator('body')).toContainText(/Recargos por rango de edad/i);
+
+  const editProductButton = page.getByRole('button', { name: /Editar datos b[aá]sicos/i }).first();
+  if (await editProductButton.isVisible().catch(() => false)) {
+    await editProductButton.click();
+    await expect(page.getByRole('heading', { name: /Editar producto/i })).toBeVisible();
+    await page.getByRole('button', { name: /Cancelar/i }).click();
+  }
 });

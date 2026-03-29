@@ -172,7 +172,6 @@ export default {
     productEditUrl(product) {
       const productId = Number(product?.id || 0);
       if (!productId) {
-        console.warn('Sin editRouteMap para product_type', product.product_type);
         return '#';
       }
       return `/admin/products/${productId}/plans`;
@@ -186,16 +185,12 @@ export default {
     openCreateProductModal() {
       if (this.$refs.productModal && this.$refs.productModal.openForCreate) {
         this.$refs.productModal.openForCreate();
-      } else {
-        console.error('productModal o openForCreate no definido');
       }
     },
 
     openEditProductModal(product) {
       if (this.$refs.productModal && this.$refs.productModal.openForEdit) {
         this.$refs.productModal.openForEdit(product.id);
-      } else {
-        console.error('productModal o openForEdit no definido');
       }
     },
 

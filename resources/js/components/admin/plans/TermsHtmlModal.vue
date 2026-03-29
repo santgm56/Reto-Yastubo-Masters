@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { apiClient } from '../../../core/http/apiClient'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
 import InputHtml from '@/components/ui/InputHtml.vue'
 import { adminPlanTermsHtmlEndpoint } from './api'
 
@@ -140,12 +140,8 @@ export default {
 				})
 			} catch (e) {
 				if (typeof flash === 'function') {
-					const msg =
-						e?.response?.data?.toast?.message ||
-						e?.response?.data?.message ||
-						'No se pudieron cargar los términos y condiciones.'
-					const type = e?.response?.data?.toast?.type || 'danger'
-					flash(msg, type)
+					const apiError = extractApiErrorContract(e, 'API_PLAN_TERMS_HTML_LOAD_ERROR')
+					flash(apiError.message || 'No se pudieron cargar los términos y condiciones.', 'danger')
 				}
 			} finally {
 				this.isLoading = false
@@ -179,13 +175,8 @@ export default {
 				})
 			} catch (e) {
 				if (typeof flash === 'function') {
-					const toast = e?.response?.data?.toast
-					const msg =
-						toast?.message ||
-						e?.response?.data?.message ||
-						'No se pudo guardar los términos y condiciones.'
-					const type = toast?.type || 'danger'
-					flash(msg, type)
+					const apiError = extractApiErrorContract(e, 'API_PLAN_TERMS_HTML_SAVE_ERROR')
+					flash(apiError.message || 'No se pudo guardar los términos y condiciones.', 'danger')
 				}
 			}
 		},

@@ -238,11 +238,6 @@ import {
 export default {
   name: 'AdminPlansVersionsIndex',
 
-  props: {
-    initialProduct: { type: Object, default: () => ({}) },
-    initialVersions: { type: Array, default: () => [] },
-  },
-
   data() {
     return {
       product: {},
@@ -260,11 +255,6 @@ export default {
       cloneVersionError: null,
       cloneVersionModalInstance: null,
     };
-  },
-
-  created() {
-    this.product = JSON.parse(JSON.stringify(this.initialProduct || {}));
-    this.versions = JSON.parse(JSON.stringify(this.initialVersions || []));
   },
 
   async mounted() {
@@ -308,6 +298,13 @@ export default {
       const productId = this.resolveProductId();
       if (!productId) {
         return;
+      }
+
+      if (!this.product?.id) {
+        this.product = {
+          ...(this.product || {}),
+          id: productId,
+        };
       }
 
       this.isLoading = true;
@@ -357,34 +354,12 @@ export default {
     },
 
     notifyFromError(e, fallbackMessage) {
-      const toast = e?.response?.data?.toast
-      if (toast?.message) {
-        flash(toast.message, toast.type || 'danger')
-        return
-      }
-
-      const msg = e?.response?.data?.message
-      if (msg) {
-        flash(msg, 'danger')
-        return
-      }
-
-      const errors = e?.response?.data?.errors
-      if (errors && typeof errors === 'object') {
-        const firstKey = Object.keys(errors)[0]
-        const firstVal = firstKey ? errors[firstKey] : null
-        if (Array.isArray(firstVal) && firstVal[0]) {
-          flash(firstVal[0], 'danger')
-          return
-        }
-      }
-
-      if (fallbackMessage) {
-        flash(fallbackMessage, 'danger')
-        return
-      }
-
-      flash(e?.message || 'Error inesperado.', 'danger')
+      const apiError = extractApiErrorContract(e, 'API_PLANS_ACTION_ERROR')
+      const details = Array.isArray(apiError.details) ? apiError.details.filter(Boolean) : []
+      const msg = details.length > 0
+        ? details.join(' ')
+        : (apiError.message || fallbackMessage || 'Error inesperado.')
+      flash(msg, 'danger')
     },
 
     hasAnyTranslation(obj) {
@@ -409,7 +384,7 @@ export default {
     },
 
     versionEditUrl(version) {
-      const productId = Number(this.product?.id || 0);
+      const productId = this.resolveProductId();
       const planVersionId = Number(version?.id || 0);
       if (!productId || !planVersionId) return '#';
       return `/admin/products/${productId}/plans/${planVersionId}/edit`;
@@ -420,8 +395,9 @@ export default {
     },
 
     openProductEditModal() {
-      if (this.$refs.productModal && this.product && this.product.id) {
-        this.$refs.productModal.openForEdit(this.product.id);
+      const productId = this.resolveProductId();
+      if (this.$refs.productModal && productId) {
+        this.$refs.productModal.openForEdit(productId);
       }
     },
 
@@ -444,15 +420,20 @@ export default {
 
     async submitCreateVersion() {
       this.createVersionError = null;
+      const productId = this.resolveProductId();
 
       const name = (this.createVersionName || '').trim();
       if (!name) {
         this.createVersionError = 'Debes indicar un nombre interno para la versión.';
         return;
       }
+      if (!productId) {
+        this.createVersionError = 'No se pudo resolver el producto del contexto.';
+        return;
+      }
 
       try {
-        const { data } = await apiClient.post(adminPlansStoreEndpoint(this.product.id), { name });
+        const { data } = await apiClient.post(adminPlansStoreEndpoint(productId), { name });
 
         if (data.redirect_url) {
           window.location.href = data.redirect_url;
@@ -463,7 +444,8 @@ export default {
         this.notifyFromResponse(data, null, 'success');
         this.closeCreateVersionModal();
       } catch (e) {
-        this.createVersionError = e.response?.data?.message || 'No se pudo crear la versión.';
+        const apiError = extractApiErrorContract(e, 'API_PLANS_VERSION_CREATE_ERROR');
+        this.createVersionError = apiError.message || 'No se pudo crear la versión.';
         this.notifyFromError(e, this.createVersionError);
       }
     },
@@ -485,6 +467,7 @@ export default {
 
     async submitCloneVersion() {
       this.cloneVersionError = null;
+      const productId = this.resolveProductId();
 
       if (!this.versionToClone) {
         this.cloneVersionError = 'No se ha seleccionado versión a clonar.';
@@ -496,10 +479,14 @@ export default {
         this.cloneVersionError = 'Debes indicar un nombre interno para el clon.';
         return;
       }
+      if (!productId) {
+        this.cloneVersionError = 'No se pudo resolver el producto del contexto.';
+        return;
+      }
 
       try {
         const { data } = await apiClient.post(
-          adminPlansCloneEndpoint(this.product.id, this.versionToClone.id),
+          adminPlansCloneEndpoint(productId, this.versionToClone.id),
           { name },
         );
 
@@ -513,17 +500,23 @@ export default {
         this.notifyFromResponse(data, null, 'success');
         this.closeCloneVersionModal();
       } catch (e) {
-        this.cloneVersionError = e.response?.data?.message || 'No se pudo clonar la versión.';
+        const apiError = extractApiErrorContract(e, 'API_PLANS_VERSION_CLONE_ERROR');
+        this.cloneVersionError = apiError.message || 'No se pudo clonar la versión.';
         this.notifyFromError(e, this.cloneVersionError);
       }
     },
 
     async deleteVersion(version) {
       if (!confirm('¿Eliminar esta versión de plan? Esta acción no se puede deshacer.')) return;
+      const productId = this.resolveProductId();
+      if (!productId) {
+        this.notifyFromError(null, 'No se pudo resolver el producto del contexto.');
+        return;
+      }
 
       try {
         const { data } = await apiClient.delete(
-          adminPlansDestroyEndpoint(this.product.id, version.id),
+          adminPlansDestroyEndpoint(productId, version.id),
         );
 
         this.versions = this.versions.filter(v => v.id !== version.id);

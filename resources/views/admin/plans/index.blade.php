@@ -1,6 +1,6 @@
 @extends('layouts.craft')
 
-@section('title', 'Plan ' . $product->name)
+@section('title', 'Planes')
 
 @section('content')
 	<admin-plans-index />

@@ -400,9 +400,9 @@
 						>
 							Sin habilidades cargadas.
 						</div>
-						
-						
-						
+
+
+
 
 								<h6 class="fw-bold mb-2">Permisos efectivos</h6>
 
@@ -441,7 +441,7 @@
 										</tbody>
 									</table>
 								</div>
-						
+
 					</div>
 
 					<div class="modal-footer">
@@ -460,7 +460,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
 
 const apiRoutes = {
 	usersIndex: 'admin.debug.user-units.index',
@@ -536,7 +536,7 @@ export default {
 
 			try {
 				const url = this.apiUrl('usersIndex')
-				const { data } = await axios.get(url, {
+				const { data } = await apiClient.get(url, {
 					params: {
 						page,
 						per_page: 25,
@@ -651,14 +651,14 @@ export default {
 
 			try {
 				const url = this.apiUrl('userUnitAbilities')
-				const { data } = await axios.get(url, {
+				const { data } = await apiClient.get(url, {
 					params: {
 						user_id: userId,
 						unit_id: unitId,
 					},
 				})
 
-				this.modalDetails = data.data				
+				this.modalDetails = data.data
 				this.modalRefreshCount += 1
 			} catch (e) {
 				this.modalError = this.humanError(e) || 'Error cargando permisos.'
@@ -694,20 +694,12 @@ export default {
 		},
 
 		humanError(e) {
-			if (!e) return 'Error'
-			const r = e.response
-			if (r && r.data) {
-				if (r.data.message) return r.data.message
-				if (r.data.errors) {
-					try {
-						const all = Object.values(r.data.errors).flat()
-						if (all.length) return all.join(' ')
-					} catch (_) {
-						// ignore
-					}
-				}
+			const apiError = extractApiErrorContract(e, 'API_ADMIN_DEBUG_USER_UNITS_ERROR')
+			const details = Array.isArray(apiError.details) ? apiError.details.filter(Boolean) : []
+			if (details.length > 0) {
+				return details.join(' ')
 			}
-			return e.message || 'Error'
+			return apiError.message || 'Error'
 		},
 	},
 }
