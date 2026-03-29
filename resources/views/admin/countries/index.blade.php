@@ -3,7 +3,5 @@
 @section('title', 'Países')
 
 @section('content')
-	<admin-countries-index
-		:initial-continents='@json($continents)'
-	></admin-countries-index>
+	<admin-countries-index></admin-countries-index>
 @endsection

@@ -1,4 +1,12 @@
 import { defineConfig } from '@playwright/test';
+import { config as loadDotenv } from 'dotenv';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const e2eEnvPath = path.resolve(process.cwd(), '.env.e2e.local');
+if (fs.existsSync(e2eEnvPath)) {
+  loadDotenv({ path: e2eEnvPath });
+}
 
 export default defineConfig({
   testDir: './tests/e2e',

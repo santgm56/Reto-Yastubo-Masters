@@ -164,6 +164,13 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminZonesAttachCountryEndpoint,
+  adminZonesAvailableCountriesEndpoint,
+  adminZonesDetachCountryEndpoint,
+} from './api';
+
 export default {
   name: 'AdminZonesCountriesModal',
 
@@ -229,10 +236,7 @@ export default {
       };
 
       try {
-        const url = this.route('admin.zones.countries.available', {
-          zone: this.zoneId,
-        });
-        const { data } = await axios.get(url, { params });
+        const { data } = await apiClient.get(adminZonesAvailableCountriesEndpoint(this.zoneId), { params });
 
         this.countries = data.countries || [];
 
@@ -243,8 +247,8 @@ export default {
           this.filters.status = data.filters.status ?? this.filters.status;
         }
       } catch (e) {
-        this.errorMessage =
-          e.response?.data?.message || 'No se pudo cargar la lista de países.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_AVAILABLE_COUNTRIES_ERROR');
+        this.errorMessage = apiError.message || 'No se pudo cargar la lista de países.';
       } finally {
         this.isLoading = false;
       }
@@ -268,28 +272,19 @@ export default {
 
       try {
         if (attached) {
-          const url = this.route('admin.zones.countries.detach', {
-            zone: this.zoneId,
-            country: country.id,
-          });
-          const { data } = await axios.delete(url);
+          const { data } = await apiClient.delete(adminZonesDetachCountryEndpoint(this.zoneId, country.id));
           this.flash(data.message || 'País quitado de la zona.', 'success');
           country.attached = false;
         } else {
-          const url = this.route('admin.zones.countries.attach', {
-            zone: this.zoneId,
-            country: country.id,
-          });
-          const { data } = await axios.post(url);
+          const { data } = await apiClient.post(adminZonesAttachCountryEndpoint(this.zoneId, country.id));
           this.flash(data.message || 'País añadido a la zona.', 'success');
           country.attached = true;
         }
 
         this.$emit('updated');
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo actualizar la asignación del país.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_TOGGLE_COUNTRY_ERROR');
+        const msg = apiError.message || 'No se pudo actualizar la asignación del país.';
         this.flash(msg, 'danger');
       }
     },

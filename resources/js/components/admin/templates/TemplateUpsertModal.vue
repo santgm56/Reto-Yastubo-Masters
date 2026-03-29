@@ -48,7 +48,8 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import templatesApi from './api'
 
 export default {
 	name: 'AdminTemplatesTemplateUpsertModal',
@@ -65,6 +66,7 @@ export default {
 			isSaving: false,
 			error: null,
 			timer: null,
+			autosaveDelayMs: 900,
 
 			form: {
 				name: '',
@@ -100,7 +102,7 @@ export default {
 			if (this.modalInstance) this.modalInstance.show()
 
 			try {
-				const { data } = await axios.get(this.route('admin.templates.show', { template: templateId }))
+				const { data } = await apiClient.get(templatesApi.show(templateId))
 				const t = data?.data?.template
 				if (t) {
 					this.form.name = t.name || ''
@@ -131,7 +133,7 @@ export default {
 			try {
 				if (this.mode === 'create') {
 					const payload = { name: this.form.name, slug: this.form.slug, type: this.form.type }
-					const { data } = await axios.post(this.route('admin.templates.store'), payload)
+					const { data } = await apiClient.post(templatesApi.store(), payload)
 
 					if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
 						window.flash(data.toast.message, data.toast.type || 'success')
@@ -144,10 +146,7 @@ export default {
 				}
 
 				const payload = { name: this.form.name, slug: this.form.slug }
-				const { data } = await axios.patch(
-					this.route('admin.templates.basic.update', { template: this.editId }),
-					payload
-				)
+				const { data } = await apiClient.patch(templatesApi.updateBasic(this.editId), payload)
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
 					window.flash(data.toast.message, data.toast.type || 'success')
@@ -156,7 +155,11 @@ export default {
 				// Regla: NO reemplazar con respuesta del backend (y backend ya no devuelve modelo)
 				this.$emit('updated', { id: this.editId })
 			} catch (e) {
-				this.error = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo guardar.'
+				const apiError = extractApiErrorContract(
+					e,
+					this.mode === 'create' ? 'API_TEMPLATES_STORE_ERROR' : 'API_TEMPLATES_UPDATE_ERROR'
+				)
+				this.error = e?.response?.data?.toast?.message || apiError.message || 'No se pudo guardar.'
 
 				// Regla: NO pisar lo que el usuario tiene con valores del backend.
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {

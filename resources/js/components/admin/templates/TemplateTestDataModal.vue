@@ -5,7 +5,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">Editar JSON de datos de prueba (Plantilla)</h5>
-					<button type="button" class="btn-close"></button>
+					<button type="button" class="btn-close" @click="close" :disabled="isSaving || isLoading"></button>
 				</div>
 
 				<div class="modal-body">
@@ -32,7 +32,8 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import templatesApi from './api';
 
 export default {
 	name: 'AdminTemplatesTemplateTestDataModal',
@@ -46,6 +47,7 @@ export default {
 			isLoading: false,
 			isSaving: false,
 			error: null,
+			autosaveDelayMs: 900,
 
 			rawJson: '',
 
@@ -72,7 +74,7 @@ export default {
 			if (this.modalInstance) this.modalInstance.show();
 
 			try {
-				const { data } = await axios.get(this.route('admin.templates.show', { template: templateId }));
+				const { data } = await apiClient.get(templatesApi.show(templateId));
 				const t = data?.data?.template;
 				this.rawJson = t?.test_data_json || '';
 				this.lastSavedValue = this.rawJson;
@@ -104,10 +106,7 @@ export default {
 
 			try {
 				const payload = { test_data_json: this.rawJson };
-				const { data } = await axios.patch(
-					this.route('admin.templates.test-data.update', { template: this.templateId }),
-					payload,
-				);
+				const { data } = await apiClient.patch(templatesApi.templateTestData(this.templateId), payload);
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
 					window.flash(data.toast.message, data.toast.type || 'success');
@@ -118,7 +117,8 @@ export default {
 				this.lastSavedValue = this.rawJson;
 				this.$emit('updated', { id: this.templateId });
 			} catch (e) {
-				this.error = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo guardar el JSON.';
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_TEST_DATA_UPDATE_ERROR');
+				this.error = e?.response?.data?.toast?.message || apiError.message || 'No se pudo guardar el JSON.';
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
 					window.flash(this.error, 'danger');

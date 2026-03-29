@@ -28,7 +28,9 @@ function initializeLogoutTokenCleanup() {
     const href = `${anchor?.getAttribute('href') || ''}`.trim();
 
     if (isLogoutHref(href)) {
-      event.preventDefault();
+      if (typeof event?.preventDefault === 'function') {
+        event.preventDefault();
+      }
       if (typeof event.stopImmediatePropagation === 'function') {
         event.stopImmediatePropagation();
       }

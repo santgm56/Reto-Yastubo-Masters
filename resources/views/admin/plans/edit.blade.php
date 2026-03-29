@@ -5,9 +5,7 @@
 
 @section('content')
 	<admin-plans-edit
-		:initial-product='@json($product)'
-		:initial-plan-version='@json($planVersion)'
-		:initial-coverage-categories='@json($coverageCategories)'
-		:product-types='@json($productTypes ?? [])'
+		:initial-product='@json(['id' => $product->id])'
+		:initial-plan-version='@json(['id' => $planVersion->id])'
 	/>
 @endsection

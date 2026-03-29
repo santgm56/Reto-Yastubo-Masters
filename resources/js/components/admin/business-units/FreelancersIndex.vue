@@ -214,10 +214,11 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import { buApi } from './api'
 
 const unitsApi = {
-  list: (params) => axios.get(route('admin.business-units.api.units'), { params }),
+  list: (params) => apiClient.get(buApi.units(), { params }),
 }
 
 export default {
@@ -299,11 +300,7 @@ export default {
     },
 
     baseUnitsApiUrl() {
-      try {
-        return route('admin.business-units.api.units')
-      } catch (e) {
-        return '/admin/business-units/api/units'
-      }
+      return buApi.units()
     },
 
     toggleStatusUrl(u) {
@@ -371,7 +368,7 @@ export default {
         const url = this.toggleStatusUrl(u)
 
         // Enviamos el estado destino al endpoint RESTful de status
-        await axios.patch(url, { status: nextStatus })
+        await apiClient.patch(url, { status: nextStatus })
 
         // UI optimista: solo actualizamos el objeto en memoria, sin refrescar por AJAX
         u.status = nextStatus
@@ -383,7 +380,8 @@ export default {
           )
         }
       } catch (e) {
-        const msg = this.humanError(e) || 'No se pudo actualizar el estado.'
+        const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_FREELANCE_STATUS_ERROR')
+        const msg = apiError.message || this.humanError(e) || 'No se pudo actualizar el estado.'
         if (typeof window.flash === 'function') {
           window.flash(msg, 'danger')
         }
@@ -422,7 +420,7 @@ export default {
 
     async onConfirmPickUser(payload) {
       try {
-        await axios.post(this.route('admin.business-units.api.units.store'), {
+        await apiClient.post(buApi.units(), {
           type: 'freelance',
           mode: 'existing_user',
           existing_user_id: payload.user_id,
@@ -432,7 +430,8 @@ export default {
         }
         await this.fetchUnits(1)
       } catch (e) {
-        const msg = this.humanError(e)
+        const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_FREELANCE_LINK_EXISTING_ERROR')
+        const msg = apiError.message || this.humanError(e)
         if (typeof window.flash === 'function') {
           window.flash(msg, 'danger')
         }
@@ -441,7 +440,7 @@ export default {
 
     async onConfirmEmailExact(payload) {
       try {
-        await axios.post(this.route('admin.business-units.api.units.store'), {
+        await apiClient.post(buApi.units(), {
           type: 'freelance',
           mode: 'email_exact',
           email: payload.email,
@@ -451,7 +450,8 @@ export default {
         }
         await this.fetchUnits(1)
       } catch (e) {
-        const msg = this.humanError(e)
+        const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_FREELANCE_LINK_EMAIL_ERROR')
+        const msg = apiError.message || this.humanError(e)
         if (typeof window.flash === 'function') {
           window.flash(msg, 'danger')
         }

@@ -160,6 +160,13 @@
 
 <script>
 import AdminCompaniesEditModal from './EditModal.vue';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminCompaniesIndexEndpoint,
+  adminCompanyActivateEndpoint,
+  adminCompanyArchiveEndpoint,
+  adminCompanySuspendEndpoint,
+} from './api';
 
 export default {
   name: 'AdminCompaniesIndex',
@@ -188,8 +195,7 @@ export default {
       this.isLoading = true;
 
       try {
-        const url = this.route('admin.companies.index');
-        const { data } = await axios.get(url, {
+        const { data } = await apiClient.get(adminCompaniesIndexEndpoint(), {
           params: {
             search: this.filters.search,
             status: this.filters.status,
@@ -199,9 +205,9 @@ export default {
         this.companies = data.companies || [];
         this.filters = data.filters || this.filters;
       } catch (error) {
-        console.error(error);
+        const apiError = extractApiErrorContract(error, 'API_COMPANIES_INDEX_ERROR');
         this.flash(
-          error.response?.data?.message || 'No se pudo cargar la lista de empresas.',
+          apiError.message || 'No se pudo cargar la lista de empresas.',
           'danger'
         );
       } finally {
@@ -241,8 +247,7 @@ export default {
 
     async suspendCompany(company) {
       try {
-        const url = `/api/v1/admin/companies/${company.id}/suspend`;
-        const { data } = await axios.put(url);
+        const { data } = await apiClient.put(adminCompanySuspendEndpoint(company.id));
         const updated = data.data || data;
 
         const idx = this.companies.findIndex((c) => c.id === updated.id);
@@ -256,9 +261,9 @@ export default {
           this.flash('Empresa suspendida correctamente.', 'success');
         }
       } catch (error) {
-        console.error(error);
+        const apiError = extractApiErrorContract(error, 'API_COMPANIES_SUSPEND_ERROR');
         this.flash(
-          error.response?.data?.message || 'No se pudo suspender la empresa.',
+          apiError.message || 'No se pudo suspender la empresa.',
           'danger'
         );
       }
@@ -266,8 +271,7 @@ export default {
 
     async activateCompany(company) {
       try {
-        const url = `/api/v1/admin/companies/${company.id}/activate`;
-        const { data } = await axios.put(url);
+        const { data } = await apiClient.put(adminCompanyActivateEndpoint(company.id));
         const updated = data.data || data;
 
         const idx = this.companies.findIndex((c) => c.id === updated.id);
@@ -281,9 +285,9 @@ export default {
           this.flash('Empresa activada correctamente.', 'success');
         }
       } catch (error) {
-        console.error(error);
+        const apiError = extractApiErrorContract(error, 'API_COMPANIES_ACTIVATE_ERROR');
         this.flash(
-          error.response?.data?.message || 'No se pudo activar la empresa.',
+          apiError.message || 'No se pudo activar la empresa.',
           'danger'
         );
       }
@@ -291,8 +295,7 @@ export default {
 
     async archiveCompany(company) {
       try {
-        const url = `/api/v1/admin/companies/${company.id}/archive`;
-        const { data } = await axios.put(url);
+        const { data } = await apiClient.put(adminCompanyArchiveEndpoint(company.id));
         const updated = data.data || data;
 
         const idx = this.companies.findIndex((c) => c.id === updated.id);
@@ -306,9 +309,9 @@ export default {
           this.flash('Empresa archivada correctamente.', 'success');
         }
       } catch (error) {
-        console.error(error);
+        const apiError = extractApiErrorContract(error, 'API_COMPANIES_ARCHIVE_ERROR');
         this.flash(
-          error.response?.data?.message || 'No se pudo archivar la empresa.',
+          apiError.message || 'No se pudo archivar la empresa.',
           'danger'
         );
       }

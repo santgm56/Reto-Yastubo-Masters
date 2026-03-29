@@ -785,15 +785,29 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
 import * as format from '@/utils/format'
+import {
+	adminPlanAgeSurchargeEndpoint,
+	adminPlanAgeSurchargesEndpoint,
+	adminPlanCountriesEndpoint,
+	adminPlanCountryEndpoint,
+	adminPlanCoverageEndpoint,
+	adminPlanCoveragesAvailableEndpoint,
+	adminPlanCoveragesEndpoint,
+	adminPlanCoveragesReorderEndpoint,
+	adminPlanRepatriationCountriesEndpoint,
+	adminPlanRepatriationCountryEndpoint,
+	adminPlanTermsHtmlEndpoint,
+	adminPlansShowEndpoint,
+} from './api'
 
 export default {
 	name: 'AdminPlansVersionEdit',
 
 	props: {
-		initialProduct: { type: Object, required: true },
-		initialPlanVersion: { type: Object, required: true },
+		initialProduct: { type: Object, default: () => ({}) },
+		initialPlanVersion: { type: Object, default: () => ({}) },
 		initialCoverageCategories: { type: Array, default: () => [] },
 		productTypes: { type: Array, default: () => [] },
 	},
@@ -803,6 +817,9 @@ export default {
 			product: JSON.parse(JSON.stringify(this.initialProduct || {})),
 			planVersion: JSON.parse(JSON.stringify(this.initialPlanVersion || {})),
 			coverageCategories: JSON.parse(JSON.stringify(this.initialCoverageCategories || [])),
+			productTypeOptions: JSON.parse(JSON.stringify(this.productTypes || [])),
+			isBootstrapping: false,
+			loadBootstrapError: '',
 
 			autosaveTimers: {},
 			autosaveDelay: window.__RUNTIME_CONFIG__.autosaveDelayMs,
@@ -855,6 +872,12 @@ export default {
 	},
 
 	async mounted() {
+		await this.loadPlanBootstrap()
+
+		if (!this.product?.id || !this.planVersion?.id) {
+			return
+		}
+
 		this.initFormattedNumericFields()
 		this.initVersionNumericFields()
 
@@ -879,6 +902,49 @@ export default {
 	},
 
 	methods: {
+		async loadPlanBootstrap() {
+			const productId = Number(this.product?.id || 0)
+			const planVersionId = Number(this.planVersion?.id || 0)
+
+			if (!productId || !planVersionId) {
+				return
+			}
+
+			this.isBootstrapping = true
+			this.loadBootstrapError = ''
+
+			try {
+				const response = await apiClient.get(adminPlansShowEndpoint(productId, planVersionId))
+				const payload = response?.data || {}
+				const data = payload?.data || {}
+
+				if (data.product) {
+					this.product = JSON.parse(JSON.stringify(data.product))
+				}
+
+				if (data.plan_version) {
+					this.planVersion = JSON.parse(JSON.stringify(data.plan_version))
+				}
+
+				if (Array.isArray(data.coverage_categories)) {
+					this.coverageCategories = JSON.parse(JSON.stringify(data.coverage_categories))
+				}
+
+				if (Array.isArray(payload?.meta?.product_types)) {
+					this.productTypeOptions = JSON.parse(JSON.stringify(payload.meta.product_types))
+				}
+			} catch (error) {
+				const apiError = extractApiErrorContract(error, 'API_PLAN_BOOTSTRAP_ERROR')
+				this.loadBootstrapError = apiError.message || 'No se pudo cargar la versión del plan.'
+
+				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
+					window.flash(this.loadBootstrapError, 'danger')
+				}
+			} finally {
+				this.isBootstrapping = false
+			}
+		},
+
 		planPdfUrl(planVersionId) {
 			return `/admin/products/${this.product.id}/plans/${planVersionId}/pdf`
 		},
@@ -940,9 +1006,9 @@ export default {
 		async loadPlanCountries() {
 			this.isLoadingPlanCountries = true
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/countries`
-
-				const { data } = await axios.get(url)
+				const { data } = await apiClient.get(
+					adminPlanCountriesEndpoint(this.product.id, this.planVersion.id),
+				)
 
 				// Soportar respuesta plana y anidada en data.data.plan_countries
 				const raw = data || {}
@@ -1123,9 +1189,10 @@ export default {
 			const value = country ? country.price : null
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/countries/${countryId}`
-
-				const { data } = await axios.patch(url, { price: value })
+				const { data } = await apiClient.patch(
+					adminPlanCountryEndpoint(this.product.id, this.planVersion.id, countryId),
+					{ price: value },
+				)
 
 				let serverPrice = value
 				if (data && data.data && typeof data.data.price !== 'undefined') {
@@ -1215,9 +1282,9 @@ export default {
 			const countryId = country.id
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/countries/${countryId}`
-
-				const { data } = await axios.delete(url)
+				const { data } = await apiClient.delete(
+					adminPlanCountryEndpoint(this.product.id, this.planVersion.id, countryId),
+				)
 				const payload = data || {}
 				const removed = payload.data || payload.countries || [country]
 
@@ -1258,9 +1325,9 @@ export default {
 			this.isLoadingRepatriationCountries = true
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/repatriation-countries`
-
-				const { data } = await axios.get(url)
+				const { data } = await apiClient.get(
+					adminPlanRepatriationCountriesEndpoint(this.product.id, this.planVersion.id),
+				)
 				const raw = data || {}
 				const payload = raw && raw.data ? raw.data : raw
 
@@ -1373,9 +1440,13 @@ export default {
 			if (!country || !country.id) return
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/repatriation-countries/${country.id}`
-
-				const { data } = await axios.delete(url)
+				const { data } = await apiClient.delete(
+					adminPlanRepatriationCountryEndpoint(
+						this.product.id,
+						this.planVersion.id,
+						country.id,
+					),
+				)
 				const raw = data || {}
 				const payload = raw && raw.data ? raw.data : raw
 				const countries = Array.isArray(payload.countries)
@@ -1409,9 +1480,9 @@ export default {
 		async loadAgeSurcharges() {
 			this.isLoadingAgeSurcharges = true
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges`
-
-				const { data } = await axios.get(url)
+				const { data } = await apiClient.get(
+					adminPlanAgeSurchargesEndpoint(this.product.id, this.planVersion.id),
+				)
 				const payload = data && data.data ? data.data : []
 
 				this.ageSurcharges = (payload || []).map(item => {
@@ -1461,9 +1532,10 @@ export default {
 					surcharge_percent: 0,
 				}
 
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges`
-
-				const response = await axios.post(url, payload)
+				const response = await apiClient.post(
+					adminPlanAgeSurchargesEndpoint(this.product.id, this.planVersion.id),
+					payload,
+				)
 				const data = response.data
 				const item = data && data.data ? data.data : null
 
@@ -1658,11 +1730,15 @@ export default {
 
 				let response
 				if (row.id) {
-					const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges/${row.id}`
-					response = await axios.patch(url, payload)
+					response = await apiClient.patch(
+						adminPlanAgeSurchargeEndpoint(this.product.id, this.planVersion.id, row.id),
+						payload,
+					)
 				} else {
-					const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges`
-					response = await axios.post(url, payload)
+					response = await apiClient.post(
+						adminPlanAgeSurchargesEndpoint(this.product.id, this.planVersion.id),
+						payload,
+					)
 				}
 
 				const { data } = response
@@ -1721,9 +1797,9 @@ export default {
 			}
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/age-surcharges/${row.id}`
-
-				const { data } = await axios.delete(url)
+				const { data } = await apiClient.delete(
+					adminPlanAgeSurchargeEndpoint(this.product.id, this.planVersion.id, row.id),
+				)
 
 				this.ageSurcharges = this.ageSurcharges.filter(r => r.id !== row.id)
 				this.recomputeAgeSurchargesValidation()
@@ -1759,10 +1835,11 @@ export default {
 
 		async saveVersionName() {
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}`
-
 				const payload = { name: this.planVersion.name }
-				const { data } = await axios.put(url, payload)
+				const { data } = await apiClient.put(
+					adminPlansShowEndpoint(this.product.id, this.planVersion.id),
+					payload,
+				)
 
 				this.planVersion = { ...this.planVersion, ...data.data }
 				this.notifyFromResponse(data)
@@ -1782,10 +1859,11 @@ export default {
 
 			this.isTogglingStatus = true
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}`
-
 				const payload = { status: newStatus }
-				const { data } = await axios.put(url, payload)
+				const { data } = await apiClient.put(
+					adminPlansShowEndpoint(this.product.id, this.planVersion.id),
+					payload,
+				)
 
 				this.planVersion = { ...this.planVersion, ...data.data }
 				this.notifyFromResponse(data)
@@ -1923,9 +2001,10 @@ export default {
 
 		async saveCoverageValue(cov, payload, key) {
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/${cov.id}`
-
-				const { data } = await axios.patch(url, payload)
+				const { data } = await apiClient.patch(
+					adminPlanCoverageEndpoint(this.product.id, this.planVersion.id, cov.id),
+					payload,
+				)
 				const updated = data.data
 
 				cov.value_int = updated.value_int
@@ -1964,9 +2043,10 @@ export default {
 
 		async saveVersionFields(payload, key) {
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}`
-
-				const { data } = await axios.put(url, payload)
+				const { data } = await apiClient.put(
+					adminPlansShowEndpoint(this.product.id, this.planVersion.id),
+					payload,
+				)
 				this.planVersion = { ...this.planVersion, ...data.data }
 
 				this.notifyFromResponse(data)
@@ -2031,8 +2111,10 @@ export default {
 			const orderedIds = category.coverages.map(c => c.id)
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/reorder`
-				const { data } = await axios.post(url, { coverage_ids: orderedIds })
+				const { data } = await apiClient.post(
+					adminPlanCoveragesReorderEndpoint(this.product.id, this.planVersion.id),
+					{ coverage_ids: orderedIds },
+				)
 				this.notifyFromResponse(data, null, 'success')
 			} catch (e) {
 				this.notifyFromError(e, 'No se pudo guardar el nuevo orden.')
@@ -2054,8 +2136,9 @@ export default {
 
 		async openCoverageSelectorModal() {
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/available`
-				const { data } = await axios.get(url)
+				const { data } = await apiClient.get(
+					adminPlanCoveragesAvailableEndpoint(this.product.id, this.planVersion.id),
+				)
 
 				const categories = data.data || []
 				const rows = []
@@ -2162,9 +2245,10 @@ export default {
 
 		async attachCoverage(row) {
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages`
-
-				const { data } = await axios.post(url, { coverage_id: row.id })
+				const { data } = await apiClient.post(
+					adminPlanCoveragesEndpoint(this.product.id, this.planVersion.id),
+					{ coverage_id: row.id },
+				)
 
 				const newCov = data.data
 				this.insertCoverageIntoCategories(newCov)
@@ -2182,9 +2266,13 @@ export default {
 			if (!row.plan_version_coverage_id) return
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/${row.plan_version_coverage_id}`
-
-				const { data } = await axios.delete(url)
+				const { data } = await apiClient.delete(
+					adminPlanCoverageEndpoint(
+						this.product.id,
+						this.planVersion.id,
+						row.plan_version_coverage_id,
+					),
+				)
 
 				this.removeCoverageLocally(row.plan_version_coverage_id)
 				row.attached = false
@@ -2204,9 +2292,9 @@ export default {
 			if (!confirmed) return
 
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/coverages/${cov.id}`
-
-				const { data } = await axios.delete(url)
+				const { data } = await apiClient.delete(
+					adminPlanCoverageEndpoint(this.product.id, this.planVersion.id, cov.id),
+				)
 
 				this.removeCoverageLocally(cov.id)
 
@@ -2254,9 +2342,9 @@ export default {
 
 		async loadTermsHtmlSizes() {
 			try {
-				const url = `/api/v1/admin/products/${this.product.id}/plans/${this.planVersion.id}/terms-html`
-
-				const { data } = await axios.get(url)
+				const { data } = await apiClient.get(
+					adminPlanTermsHtmlEndpoint(this.product.id, this.planVersion.id),
+				)
 				const terms = (data && data.data && data.data.terms_html)
 					? data.data.terms_html
 					: {}

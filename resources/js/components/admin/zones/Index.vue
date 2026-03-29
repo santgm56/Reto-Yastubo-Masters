@@ -25,7 +25,7 @@
 	  </div>
   </div>
 
-	
+
     <div class="pt-3">
       <div v-if="isLoading" class="text-center py-5">
         <div class="spinner-border spinner-border-sm" role="status"></div>
@@ -48,7 +48,7 @@
                 <h5 class="mb-1">
                   {{ zone.name }}  <span class="small text-muted">({{ zone.countries_count }} país)</span>
                 </h5>
-                
+
               </div>
               <div class="d-flex align-items-center gap-2">
                 <span
@@ -155,6 +155,12 @@
 <script>
 import AdminZonesEditModal from './EditModal.vue';
 import AdminZonesCountriesModal from './CountriesModal.vue';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminZonesDetachCountryEndpoint,
+  adminZonesIndexEndpoint,
+  adminZonesToggleActiveEndpoint,
+} from './api';
 
 export default {
   name: 'AdminZonesIndex',
@@ -167,7 +173,7 @@ export default {
   props: {
     initialContinents: {
       type: Object,
-      required: true,
+      default: () => ({}),
     },
   },
 
@@ -195,8 +201,7 @@ export default {
       };
 
       try {
-        const url = this.route('admin.zones.index');
-        const { data } = await axios.get(url, { params });
+        const { data } = await apiClient.get(adminZonesIndexEndpoint(), { params });
 
         this.zones = data.zones || [];
         if (data.filters) {
@@ -206,9 +211,8 @@ export default {
           this.continents = data.continents;
         }
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo cargar la lista de zonas.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_INDEX_ERROR');
+        const msg = apiError.message || 'No se pudo cargar la lista de zonas.';
         this.flash(msg, 'danger');
       } finally {
         this.isLoading = false;
@@ -262,10 +266,7 @@ export default {
       }
 
       try {
-        const url = this.route('admin.zones.toggle-active', {
-          zone: zone.id,
-        });
-        const { data } = await axios.put(url);
+        const { data } = await apiClient.put(adminZonesToggleActiveEndpoint(zone.id));
 
         const updated = data.data || data;
         this.zones = this.zones.map((z) =>
@@ -279,9 +280,8 @@ export default {
           } correctamente.`;
         this.flash(msg, 'success');
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo cambiar el estado de la zona.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_TOGGLE_ERROR');
+        const msg = apiError.message || 'No se pudo cambiar el estado de la zona.';
         this.flash(msg, 'danger');
       }
     },
@@ -296,18 +296,13 @@ export default {
       }
 
       try {
-        const url = this.route('admin.zones.countries.detach', {
-          zone: zone.id,
-          country: country.id,
-        });
-        const { data } = await axios.delete(url);
+        const { data } = await apiClient.delete(adminZonesDetachCountryEndpoint(zone.id, country.id));
 
         this.flash(data.message || 'País quitado de la zona.', 'success');
         this.fetchZones();
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo quitar el país de la zona.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_DETACH_COUNTRY_ERROR');
+        const msg = apiError.message || 'No se pudo quitar el país de la zona.';
         this.flash(msg, 'danger');
       }
     },

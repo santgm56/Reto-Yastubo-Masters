@@ -74,6 +74,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	data() {
 		return {
@@ -109,13 +112,14 @@ export default {
 		async fetchUsers(page) {
 			this.loading = true;
 			try {
-				const res = await axios.get(this.route('admin.business-units.api.users.active'), {
+				const res = await apiClient.get(buApi.usersActive(), {
 					params: { q: this.q || undefined, page, per_page: 15 },
 				});
 				this.users = res.data.data || [];
 				this.pagination = res.data.meta?.pagination || this.pagination;
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_ACTIVE_USERS_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			} finally {
 				this.loading = false;
 			}

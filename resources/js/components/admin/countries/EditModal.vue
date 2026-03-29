@@ -149,6 +149,13 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminCountriesShowEndpoint,
+  adminCountriesStoreEndpoint,
+  adminCountriesUpdateEndpoint,
+} from './api';
+
 export default {
   name: 'AdminCountriesEditModal',
 
@@ -221,8 +228,7 @@ export default {
       this.form = this.emptyForm();
 
       try {
-        const url = this.route('admin.countries.show', { country: countryId });
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(adminCountriesShowEndpoint(countryId));
         const country = data.data || data;
 
         this.form.name.es = country.name?.es || '';
@@ -232,8 +238,8 @@ export default {
         this.form.continent_code = country.continent_code || '';
         this.form.phone_code = country.phone_code || '';
       } catch (e) {
-        this.errorMessage =
-          e.response?.data?.message || 'No se pudo cargar el país.';
+        const apiError = extractApiErrorContract(e, 'API_COUNTRIES_SHOW_ERROR');
+        this.errorMessage = apiError.message || 'No se pudo cargar el país.';
       } finally {
         this.isLoading = false;
       }
@@ -266,21 +272,17 @@ export default {
 
       try {
         if (this.isCreateMode) {
-          const url = this.route('admin.countries.store');
-          await axios.post(url, payload);
+          await apiClient.post(adminCountriesStoreEndpoint(), payload);
           this.$emit('created');
         } else {
-          const url = this.route('admin.countries.update', {
-            country: this.countryId,
-          });
-          await axios.put(url, payload);
+          await apiClient.put(adminCountriesUpdateEndpoint(this.countryId), payload);
           this.$emit('updated');
         }
 
         this.close();
       } catch (e) {
-        this.errorMessage =
-          e.response?.data?.message || 'Error al guardar el país.';
+        const apiError = extractApiErrorContract(e, 'API_COUNTRIES_SAVE_ERROR');
+        this.errorMessage = apiError.message || 'Error al guardar el país.';
       } finally {
         this.isSubmitting = false;
       }

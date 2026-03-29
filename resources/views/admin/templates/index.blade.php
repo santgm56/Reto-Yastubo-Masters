@@ -3,8 +3,6 @@
 
 @section('content')
 	<div class="container-fluid">
-		<admin-templates-index
-			:initial-templates='@json($templates)'
-		/>
+		<admin-templates-index />
 	</div>
 @endsection

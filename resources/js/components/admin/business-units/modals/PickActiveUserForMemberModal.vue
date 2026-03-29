@@ -101,6 +101,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: {
 		unitId: { type: [String, Number], required: true },
@@ -168,7 +171,7 @@ export default {
 		async fetchUsers(page) {
 			this.loading = true;
 			try {
-				const res = await axios.get(this.route('admin.business-units.api.users.active'), {
+				const res = await apiClient.get(buApi.usersActive(), {
 					params: {
 						q: this.q || undefined,
 						page,
@@ -179,7 +182,8 @@ export default {
 				this.pagination = res.data.meta?.pagination || this.pagination;
 				this.syncSelectedFromMembers();
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_MEMBER_PICK_USERS_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			} finally {
 				this.loading = false;
 			}
@@ -226,11 +230,8 @@ export default {
 						return;
 					}
 
-					const res = await axios.delete(
-						this.route('admin.business-units.api.units.members.remove', {
-							unit: this.unitId,
-							membership: membership.id,
-						})
+					const res = await apiClient.delete(
+						buApi.unitMember(this.unitId, membership.id)
 					);
 
 					window.flash(res.data?.message || 'Membresía eliminada.', 'success');
@@ -248,11 +249,8 @@ export default {
 
 				if (membership) {
 					// actualizar rol existente
-					const res = await axios.patch(
-						this.route('admin.business-units.api.units.members.update_role', {
-							unit: this.unitId,
-							membership: membership.id,
-						}),
+					const res = await apiClient.patch(
+						buApi.unitMember(this.unitId, membership.id),
 						{
 							role_id: roleIdNum,
 						}
@@ -266,10 +264,8 @@ export default {
 					});
 				} else {
 					// crear nueva membresía
-					const res = await axios.post(
-						this.route('admin.business-units.api.units.members.link', {
-							unit: this.unitId,
-						}),
+					const res = await apiClient.post(
+						buApi.unitMembers(this.unitId),
 						{
 							mode: 'user_id',
 							user_id: userId,
@@ -286,9 +282,10 @@ export default {
 				}
 				// el padre recargará members; watcher actualizará los selects
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_MEMBER_ROLE_PICK_ERROR')
 				// revertimos el valor en caso de error
 				this.selected[userId] = prevRoleId;
-				window.flash(this.humanError(e) || 'Error al guardar.', 'danger');
+				window.flash(apiError.message || this.humanError(e) || 'Error al guardar.', 'danger');
 			} finally {
 				this.$set ? this.$set(this.saving, userId, false) : (this.saving[userId] = false);
 			}

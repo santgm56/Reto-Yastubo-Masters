@@ -34,6 +34,22 @@ function mergeConfig(currentValue, fallbackValue) {
   };
 }
 
+function normalizeRuntimeSource(runtimeSource, fallbackRuntime) {
+  if (!runtimeSource || typeof runtimeSource !== 'object') {
+    return runtimeSource;
+  }
+
+  const nextRuntime = {
+    ...runtimeSource,
+  };
+
+  if (`${nextRuntime.apiBaseUrl || ''}`.trim() === '' && `${fallbackRuntime?.apiBaseUrl || ''}`.trim() !== '') {
+    delete nextRuntime.apiBaseUrl;
+  }
+
+  return nextRuntime;
+}
+
 function ensureGlobalHelpers() {
   if (typeof window === 'undefined') {
     return;
@@ -132,6 +148,35 @@ function mapRoleToChannel(role) {
   return 'web';
 }
 
+function buildBootstrapHeaders() {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (typeof window === 'undefined') {
+    return headers;
+  }
+
+  const context = window.__FRONTEND_CONTEXT__ || DEFAULT_FRONTEND_CONTEXT;
+  const channel = `${context.channel || ''}`.trim();
+  const role = `${context.role || ''}`.trim();
+  const userId = `${context.userId || ''}`.trim();
+
+  if (channel) {
+    headers['X-Frontend-Channel'] = channel;
+  }
+
+  if (role) {
+    headers['X-Frontend-Role'] = role;
+  }
+
+  if (userId) {
+    headers['X-Frontend-User-Id'] = userId;
+  }
+
+  return headers;
+}
+
 async function loadAuthContextFromApi() {
   try {
     const response = await fetch(resolveAuthMeEndpoint(), {
@@ -190,9 +235,7 @@ async function loadBootstrapFromApi() {
   }
 
   const endpoint = resolveBootstrapEndpoint();
-  const headers = {
-    Accept: 'application/json',
-  };
+  const headers = buildBootstrapHeaders();
 
   try {
     const response = await fetch(endpoint, {
@@ -228,31 +271,32 @@ export async function ensureFrontendBootstrap({ forceApi = false } = {}) {
 
   const authContextData = await loadAuthContextFromApi();
 
-  const runtimeSource = apiData?.runtimeConfig;
+  const runtimeSource = normalizeRuntimeSource(apiData?.runtimeConfig, window.__RUNTIME_CONFIG__);
   const appConfigSource = apiData?.appConfig;
   const contextSource = apiData?.frontendContext;
 
   const runtimeFromAuth = authContextData?.runtimeConfig;
   const contextFromAuth = authContextData?.frontendContext;
 
-  window.__RUNTIME_CONFIG__ = mergeConfig(
-    hasValue(runtimeSource) ? runtimeSource : window.__RUNTIME_CONFIG__,
-    DEFAULT_RUNTIME_CONFIG,
-  );
+  const currentRuntime = mergeConfig(window.__RUNTIME_CONFIG__, DEFAULT_RUNTIME_CONFIG);
+  const currentAppConfig = mergeConfig(window.appConfig, DEFAULT_APP_CONFIG);
+  const currentFrontendContext = mergeConfig(window.__FRONTEND_CONTEXT__, DEFAULT_FRONTEND_CONTEXT);
+
+  window.__RUNTIME_CONFIG__ = hasValue(runtimeSource)
+    ? mergeConfig(runtimeSource, currentRuntime)
+    : currentRuntime;
 
   if (hasValue(runtimeFromAuth)) {
     window.__RUNTIME_CONFIG__ = mergeConfig(runtimeFromAuth, window.__RUNTIME_CONFIG__);
   }
 
-  window.appConfig = mergeConfig(
-    hasValue(appConfigSource) ? appConfigSource : window.appConfig,
-    DEFAULT_APP_CONFIG,
-  );
+  window.appConfig = hasValue(appConfigSource)
+    ? mergeConfig(appConfigSource, currentAppConfig)
+    : currentAppConfig;
 
-  window.__FRONTEND_CONTEXT__ = mergeConfig(
-    hasValue(contextSource) ? contextSource : window.__FRONTEND_CONTEXT__,
-    DEFAULT_FRONTEND_CONTEXT,
-  );
+  window.__FRONTEND_CONTEXT__ = hasValue(contextSource)
+    ? mergeConfig(contextSource, currentFrontendContext)
+    : currentFrontendContext;
 
   if (hasValue(contextFromAuth)) {
     window.__FRONTEND_CONTEXT__ = mergeConfig(contextFromAuth, window.__FRONTEND_CONTEXT__);

@@ -80,6 +80,13 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminZonesShowEndpoint,
+  adminZonesStoreEndpoint,
+  adminZonesUpdateEndpoint,
+} from './api';
+
 export default {
   name: 'AdminZonesEditModal',
 
@@ -139,15 +146,14 @@ export default {
       this.form = this.emptyForm();
 
       try {
-        const url = this.route('admin.zones.show', { zone: zoneId });
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(adminZonesShowEndpoint(zoneId));
         const zone = data.data || data;
 
         this.form.name = zone.name || '';
         this.form.description = zone.description || '';
       } catch (e) {
-        this.errorMessage =
-          e.response?.data?.message || 'No se pudo cargar la zona.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_SHOW_ERROR');
+        this.errorMessage = apiError.message || 'No se pudo cargar la zona.';
       } finally {
         this.isLoading = false;
       }
@@ -174,21 +180,17 @@ export default {
 
       try {
         if (this.isCreateMode) {
-          const url = this.route('admin.zones.store');
-          await axios.post(url, payload);
+          await apiClient.post(adminZonesStoreEndpoint(), payload);
           this.$emit('created');
         } else {
-          const url = this.route('admin.zones.update', {
-            zone: this.zoneId,
-          });
-          await axios.put(url, payload);
+          await apiClient.put(adminZonesUpdateEndpoint(this.zoneId), payload);
           this.$emit('updated');
         }
 
         this.close();
       } catch (e) {
-        this.errorMessage =
-          e.response?.data?.message || 'Error al guardar la zona.';
+        const apiError = extractApiErrorContract(e, 'API_ZONES_SAVE_ERROR');
+        this.errorMessage = apiError.message || 'Error al guardar la zona.';
       } finally {
         this.isSubmitting = false;
       }

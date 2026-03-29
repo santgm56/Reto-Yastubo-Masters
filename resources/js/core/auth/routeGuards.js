@@ -31,12 +31,12 @@ const GUARDED_ROUTE_RULES = [
   { prefix: '/admin', requiresAuth: true, allowedRoles: ['ADMIN'] },
   { prefix: '/seller', requiresAuth: true, allowedRoles: ['SELLER', 'ADMIN'] },
   { prefix: '/customer', requiresAuth: true, allowedRoles: ['CUSTOMER'] },
-  { prefix: '/admin/issuance/new', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['issuance.create'] },
-  { prefix: '/admin/payments', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['payments.read.all'] },
-  { prefix: '/admin/cancellations', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['cancellations.execute'] },
+  { prefix: '/admin/issuance/new', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['sales.create'] },
+  { prefix: '/admin/payments', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['payments.view'] },
+  { prefix: '/admin/cancellations', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['sales.cancel'] },
   { prefix: '/admin/audit', requiresAuth: true, allowedRoles: ['ADMIN'], requiredPermissions: ['audit.read'] },
-  { prefix: '/seller/issuance/new', requiresAuth: true, allowedRoles: ['SELLER', 'ADMIN'], requiredPermissions: ['issuance.create'] },
-  { prefix: '/seller/payments', requiresAuth: true, allowedRoles: ['SELLER', 'ADMIN'], requiredPermissions: ['payments.collect', 'payments.read.all'] },
+  { prefix: '/seller/issuance/new', requiresAuth: true, allowedRoles: ['SELLER', 'ADMIN'], requiredPermissions: ['sales.create'] },
+  { prefix: '/seller/payments', requiresAuth: true, allowedRoles: ['SELLER', 'ADMIN'], requiredPermissions: ['payments.view'] },
 ];
 
 const PUBLIC_PATH_PREFIXES = [

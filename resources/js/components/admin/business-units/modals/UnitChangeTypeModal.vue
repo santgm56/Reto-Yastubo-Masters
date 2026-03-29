@@ -32,6 +32,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: { unitId: { type: [String, Number], required: true } },
 	data() {
@@ -116,7 +119,7 @@ export default {
 
 			this.saving = true;
 			try {
-				const res = await axios.post(route('admin.business-units.api.units.change_type', { unit: this.unitId }), {
+				const res = await apiClient.post(buApi.unitChangeType(this.unitId), {
 					target_type: this.selectedOption.target_type,
 					detach_parent: this.selectedOption.detach_parent ? 1 : 0,
 				});
@@ -124,7 +127,8 @@ export default {
 				this.hide();
 				this.$emit('saved');
 			} catch (e) {
-				window.flash(e?.response?.data?.message || 'Error', 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CHANGE_TYPE_ERROR')
+				window.flash(apiError.message || 'Error', 'danger');
 			} finally {
 				this.saving = false;
 			}

@@ -70,7 +70,8 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import templatesApi from './api';
 
 export default {
 	name: 'AdminTemplatesPreviewHtmlModal',
@@ -150,7 +151,7 @@ export default {
 		async ensureTemplateMeta(force = false) {
 			if (!force && this.templateMeta) return this.templateMeta;
 
-			const { data } = await axios.get(this.route('admin.templates.show', { template: this.templateId }));
+			const { data } = await apiClient.get(templatesApi.show(this.templateId));
 			this.templateMeta = data?.data?.template || null;
 			return this.templateMeta;
 		},
@@ -176,9 +177,7 @@ export default {
 
 				let name = meta?.name ?? null;
 				if (!name) {
-					const { data } = await axios.get(
-						this.route('admin.templates.versions.show', { template: this.templateId, templateVersion: versionId }),
-					);
+					const { data } = await apiClient.get(templatesApi.versionsShow(this.templateId, versionId));
 					name = data?.data?.version?.name ?? null;
 				}
 
@@ -188,16 +187,12 @@ export default {
 					name,
 				};
 
-				await this.fetchHtml(
-					this.route('admin.templates.versions.preview.raw', {
-						template: this.templateId,
-						templateVersion: versionId,
-					}),
-				);
+				await this.fetchHtml(templatesApi.versionsPreviewRaw(this.templateId, versionId));
 
 				this.show();
 			} catch (e) {
-				this.error = 'No se pudo cargar la versión.';
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_PREVIEW_LOAD_ERROR');
+				this.error = apiError.message || 'No se pudo cargar la versión.';
 				this.show();
 			} finally {
 				this.isLoading = false;
@@ -208,13 +203,7 @@ export default {
 			if (!this.isTypePdf) return;
 			if (!this.context.versionId) return;
 
-			window.open(
-				this.route('admin.templates.versions.preview.pdf', {
-					template: this.templateId,
-					templateVersion: this.context.versionId,
-				}),
-				'_blank',
-			);
+			window.open(templatesApi.versionsPreviewPdf(this.templateId, this.context.versionId), '_blank');
 		},
 
 		async fetchHtml(url) {
@@ -222,11 +211,12 @@ export default {
 			this.html = '';
 
 			try {
-				const res = await axios.get(url, { responseType: 'text' });
+				const res = await apiClient.get(url, { responseType: 'text' });
 				this.html = typeof res?.data === 'string' ? res.data : '';
 				if (!this.html) this.error = 'No se recibió contenido HTML.';
 			} catch (e) {
-				this.error = 'No se pudo cargar el HTML.';
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_PREVIEW_HTML_ERROR');
+				this.error = apiError.message || 'No se pudo cargar el HTML.';
 			}
 		},
 	},

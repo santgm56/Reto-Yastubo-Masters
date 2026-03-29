@@ -2,6 +2,15 @@
 <template>
   <!-- RESUMEN DEL PRODUCTO + BOTÓN EDITAR -->
   <div class="card mb-6">
+    <div v-if="isLoading" class="px-6 py-4 text-muted small d-flex align-items-center gap-2">
+      <span class="spinner-border spinner-border-sm" role="status"></span>
+      Cargando datos del plan...
+    </div>
+
+    <div v-else-if="loadError" class="alert alert-warning mx-6 mt-4 mb-0" role="alert">
+      {{ loadError }}
+    </div>
+
     <div
       class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-4"
     >
@@ -210,11 +219,21 @@
     </div>
   </div>
 
-  <admin-products-edit-modal ref="productModal" @updated="onProductUpdated"></admin-products-edit-modal>
+  <admin-products-edit-modal
+    ref="productModal"
+    :product-types="productTypeOptions"
+    @updated="onProductUpdated"
+  ></admin-products-edit-modal>
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminPlansCloneEndpoint,
+  adminPlansDestroyEndpoint,
+  adminPlansIndexEndpoint,
+  adminPlansStoreEndpoint,
+} from './api';
 
 export default {
   name: 'AdminPlansVersionsIndex',
@@ -228,6 +247,9 @@ export default {
     return {
       product: {},
       versions: [],
+      productTypeOptions: [],
+      isLoading: false,
+      loadError: '',
 
       createVersionName: '',
       createVersionError: null,
@@ -245,7 +267,9 @@ export default {
     this.versions = JSON.parse(JSON.stringify(this.initialVersions || []));
   },
 
-  mounted() {
+  async mounted() {
+    await this.loadPlansBootstrap();
+
     if (typeof window !== 'undefined' && window.bootstrap) {
       const { Modal } = window.bootstrap;
 
@@ -266,6 +290,59 @@ export default {
   },
 
   methods: {
+    resolveProductId() {
+      const explicitId = Number(this.product?.id || 0);
+      if (explicitId > 0) {
+        return explicitId;
+      }
+
+      if (typeof window === 'undefined') {
+        return 0;
+      }
+
+      const match = window.location.pathname.match(/\/admin\/products\/(\d+)\/plans(?:\/|$)/);
+      return match ? Number(match[1] || 0) : 0;
+    },
+
+    async loadPlansBootstrap() {
+      const productId = this.resolveProductId();
+      if (!productId) {
+        return;
+      }
+
+      this.isLoading = true;
+      this.loadError = '';
+
+      try {
+        const response = await apiClient.get(adminPlansIndexEndpoint(productId));
+        const payload = response?.data || {};
+        const versions = Array.isArray(payload?.data) ? payload.data : [];
+        const product = payload?.meta?.product || null;
+        const productTypes = Array.isArray(payload?.meta?.product_types)
+          ? payload.meta.product_types
+          : [];
+
+        this.versions = JSON.parse(JSON.stringify(versions));
+
+        if (product) {
+          this.product = JSON.parse(JSON.stringify(product));
+        }
+
+        if (productTypes.length > 0) {
+          this.productTypeOptions = JSON.parse(JSON.stringify(productTypes));
+        }
+      } catch (error) {
+        const apiError = extractApiErrorContract(error, 'API_PLANS_INDEX_ERROR');
+        this.loadError = apiError.message || 'No se pudo cargar la información del plan.';
+
+        if (typeof window !== 'undefined' && typeof window.flash === 'function') {
+          window.flash(this.loadError, 'danger');
+        }
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     notifyFromResponse(data, fallbackMessage = null, fallbackType = 'success') {
       const toast = data?.toast
       const msg = toast?.message || data?.message || null
@@ -327,11 +404,8 @@ export default {
     },
 
     typeLabel(value) {
-      const map = {
-        plan_regular: 'Plan regular',
-        plan_capitado: 'Plan capitado',
-      };
-      return map[value] || value;
+      const match = this.productTypeOptions.find(option => option.value === value);
+      return match?.label || value;
     },
 
     versionEditUrl(version) {
@@ -378,8 +452,7 @@ export default {
       }
 
       try {
-        const url = `/api/v1/admin/products/${this.product.id}/plans`;
-        const { data } = await axios.post(url, { name });
+        const { data } = await apiClient.post(adminPlansStoreEndpoint(this.product.id), { name });
 
         if (data.redirect_url) {
           window.location.href = data.redirect_url;
@@ -425,9 +498,10 @@ export default {
       }
 
       try {
-        const url = `/api/v1/admin/products/${this.product.id}/plans/${this.versionToClone.id}/clone`;
-
-        const { data } = await axios.post(url, { name });
+        const { data } = await apiClient.post(
+          adminPlansCloneEndpoint(this.product.id, this.versionToClone.id),
+          { name },
+        );
 
         if (data.redirect_url) {
           window.location.href = data.redirect_url;
@@ -448,9 +522,9 @@ export default {
       if (!confirm('¿Eliminar esta versión de plan? Esta acción no se puede deshacer.')) return;
 
       try {
-        const url = `/api/v1/admin/products/${this.product.id}/plans/${version.id}`;
-
-        const { data } = await axios.delete(url);
+        const { data } = await apiClient.delete(
+          adminPlansDestroyEndpoint(this.product.id, version.id),
+        );
 
         this.versions = this.versions.filter(v => v.id !== version.id);
         this.notifyFromResponse(data, null, 'success');

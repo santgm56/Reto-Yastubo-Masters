@@ -107,4 +107,106 @@ describe('bootstrapContext', () => {
     expect(window.__FRONTEND_CONTEXT__.userId).toBe('1');
     expect(window.appConfig.locale).toBe('es');
   });
+
+  it('sends current frontend context headers to bootstrap API', async () => {
+    global.window = {
+      __RUNTIME_CONFIG__: {
+        apiBaseUrl: 'http://127.0.0.1:8001',
+      },
+      __FRONTEND_CONTEXT__: {
+        channel: 'admin',
+        role: 'GUEST',
+        userId: '',
+      },
+      appConfig: {},
+      localStorage: {
+        getItem() {
+          return null;
+        },
+        setItem() {},
+        removeItem() {},
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          runtimeConfig: {
+            apiBaseUrl: 'http://127.0.0.1:8001',
+            apiCutoverEnabled: true,
+            abilities: {},
+          },
+          appConfig: {},
+          frontendContext: {
+            channel: 'admin',
+            role: 'GUEST',
+            userId: '',
+          },
+        },
+      }),
+    });
+
+    const { ensureFrontendBootstrap } = await import('./bootstrapContext');
+
+    await ensureFrontendBootstrap({ forceApi: true });
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8001/api/v1/frontend/bootstrap',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'application/json',
+          'X-Frontend-Channel': 'admin',
+          'X-Frontend-Role': 'GUEST',
+        }),
+      }),
+    );
+  });
+
+  it('preserves existing apiBaseUrl when bootstrap API returns it empty', async () => {
+    global.window = {
+      __RUNTIME_CONFIG__: {
+        apiBaseUrl: 'http://127.0.0.1:8001',
+        apiCutoverEnabled: true,
+      },
+      __FRONTEND_CONTEXT__: {
+        channel: 'admin',
+        role: 'GUEST',
+        userId: '',
+      },
+      appConfig: {},
+      localStorage: {
+        getItem() {
+          return null;
+        },
+        setItem() {},
+        removeItem() {},
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          runtimeConfig: {
+            apiBaseUrl: '',
+            apiCutoverEnabled: true,
+            abilities: {},
+          },
+          appConfig: {},
+          frontendContext: {
+            channel: 'admin',
+            role: 'GUEST',
+            userId: '',
+          },
+        },
+      }),
+    });
+
+    const { ensureFrontendBootstrap } = await import('./bootstrapContext');
+
+    await ensureFrontendBootstrap({ forceApi: true });
+
+    expect(window.__RUNTIME_CONFIG__.apiBaseUrl).toBe('http://127.0.0.1:8001');
+  });
 });

@@ -64,7 +64,8 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import templatesApi from './api';
 
 export default {
 	name: 'AdminTemplatesVersionUpsertModal',
@@ -84,6 +85,7 @@ export default {
 			isSaving: false,
 			error: null,
 			timer: null,
+			autosaveDelayMs: 900,
 
 			// modal autónomo: decide si puede PDF consultando al servidor
 			templateMeta: null, // { id, type, ... }
@@ -112,7 +114,7 @@ export default {
 		async ensureTemplateMeta(force = false) {
 			if (!force && this.templateMeta) return this.templateMeta;
 
-			const { data } = await axios.get(this.route('admin.templates.show', { template: this.templateId }));
+			const { data } = await apiClient.get(templatesApi.show(this.templateId));
 			this.templateMeta = data?.data?.template || null;
 			return this.templateMeta;
 		},
@@ -131,9 +133,7 @@ export default {
 			try {
 				await this.ensureTemplateMeta();
 
-				const { data } = await axios.get(
-					this.route('admin.templates.versions.show', { template: this.templateId, templateVersion: versionId }),
-				);
+				const { data } = await apiClient.get(templatesApi.versionsShow(this.templateId, versionId));
 				const v = data?.data?.version;
 				if (v) {
 					this.form.name = v.name || '';
@@ -174,10 +174,7 @@ export default {
 
 		openPdf() {
 			if (!this.editId) return;
-			window.open(
-				this.route('admin.templates.versions.preview.pdf', { template: this.templateId, templateVersion: this.editId }),
-				'_blank',
-			);
+			window.open(templatesApi.versionsPreviewPdf(this.templateId, this.editId), '_blank');
 		},
 
 		async saveNow() {
@@ -188,10 +185,7 @@ export default {
 
 			try {
 				const payload = { name: this.form.name, content: this.form.content };
-				const { data } = await axios.patch(
-					this.route('admin.templates.versions.basic.update', { template: this.templateId, templateVersion: this.editId }),
-					payload,
-				);
+				const { data } = await apiClient.patch(templatesApi.versionsUpdateBasic(this.templateId, this.editId), payload);
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
 					window.flash(data.toast.message, data.toast.type || 'success');
@@ -201,9 +195,10 @@ export default {
 				// Backend ya no devuelve modelo.
 				this.$emit('updated', { id: this.editId });
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_UPDATE_ERROR');
 				this.error =
-					e?.response?.data?.message ||
 					e?.response?.data?.toast?.message ||
+					apiError.message ||
 					'No se pudo guardar la versión.';
 
 				// Regla: NO pisar lo que el usuario tiene con valores del backend.

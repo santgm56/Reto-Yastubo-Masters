@@ -1,5 +1,22 @@
 @php
 $branding = \App\Services\Config\Config::getBrandingWeb();
+$frontendChannel = request()->routeIs('seller.*')
+	? 'seller'
+	: (request()->routeIs('customer.*') ? 'customer' : 'admin');
+$runtimeConfig = [
+	'autosaveDelayMs' => config('gfa.autosave_delay_ms', 800),
+	'perPageShort' => config('per_page.short', 5),
+	'perPageMedium' => config('per_page.medium', 10),
+	'perPageLarge' => config('per_page.large', 15),
+	'apiBaseUrl' => config('services.fastapi.base_url', ''),
+	'apiCutoverEnabled' => (bool) config('services.fastapi.cutover_enabled', false),
+	'abilities' => [],
+];
+$frontendContext = [
+	'channel' => $frontendChannel,
+	'role' => 'GUEST',
+	'userId' => '',
+];
 //dd($branding);
 @endphp
 <!DOCTYPE html>
@@ -37,6 +54,34 @@ $branding = \App\Services\Config\Config::getBrandingWeb();
 		<!--begin::Theme mode setup on page load-->
 		<script>var defaultThemeMode = "light"; var themeMode; if ( document.documentElement ) { if ( document.documentElement.hasAttribute("data-bs-theme-mode")) { themeMode = document.documentElement.getAttribute("data-bs-theme-mode"); } else { if ( localStorage.getItem("data-bs-theme") !== null ) { themeMode = localStorage.getItem("data-bs-theme"); } else { themeMode = defaultThemeMode; } } if (themeMode === "system") { themeMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; } document.documentElement.setAttribute("data-bs-theme", themeMode); }</script>
 		<!--end::Theme mode setup on page load-->
+		<script id="public-runtime-config" type="application/json">@json($runtimeConfig)</script>
+		<script id="public-frontend-context" type="application/json">@json($frontendContext)</script>
+		<script>
+			const readJsonScript = function(scriptId) {
+				const node = document.getElementById(scriptId);
+				if (!node || !node.textContent) {
+					return {};
+				}
+
+				try {
+					return JSON.parse(node.textContent);
+				} catch (error) {
+					return {};
+				}
+			};
+
+			window.__RUNTIME_CONFIG__ = Object.assign(
+				{},
+				window.__RUNTIME_CONFIG__ || {},
+				readJsonScript('public-runtime-config')
+			);
+
+			window.__FRONTEND_CONTEXT__ = Object.assign(
+				{},
+				window.__FRONTEND_CONTEXT__ || {},
+				readJsonScript('public-frontend-context')
+			);
+		</script>
 		<!--begin::Main-->
 		<div class="d-flex flex-column flex-root">
 			<!--begin::Authentication - Sign-in -->

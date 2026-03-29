@@ -7,8 +7,8 @@ import { initializeAppTelemetry } from './core/telemetry/appTelemetry';
 import { ensureFrontendBootstrap } from './core/runtime/bootstrapContext';
 
 async function bootstrapFrontendApp() {
-  await ensureFrontendBootstrap({ forceApi: true });
   initializeFastApiLoginBridge();
+  await ensureFrontendBootstrap({ forceApi: true });
 
   const app = createApp({});
   initializeAppTelemetry();

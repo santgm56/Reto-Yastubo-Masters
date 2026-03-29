@@ -38,6 +38,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: {
 		unitId: { type: [String, Number], required: true },
@@ -76,7 +79,7 @@ export default {
 
 			this.saving = true;
 			try {
-				const res = await axios.post(route('admin.business-units.api.units.members.link', { unit: this.unitId }), {
+				const res = await apiClient.post(buApi.unitMembers(this.unitId), {
 					mode: 'email',
 					role_id,
 					email,
@@ -85,7 +88,8 @@ export default {
 				this.hide();
 				this.$emit('linked');
 			} catch (e) {
-				window.flash(e?.response?.data?.message || 'Error', 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_LINK_MEMBER_EMAIL_ERROR')
+				window.flash(apiError.message || 'Error', 'danger');
 			} finally {
 				this.saving = false;
 			}

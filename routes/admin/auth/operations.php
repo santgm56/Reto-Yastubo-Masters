@@ -1,13 +1,12 @@
 <?php
 
-use App\Http\Controllers\Admin\OperationsController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/issuance/new', [OperationsController::class, 'issuance'])
+Route::view('/issuance/new', 'admin.operations.issuance')
     ->name('issuance.new');
 
-Route::get('/payments', [OperationsController::class, 'payments'])
+Route::view('/payments', 'admin.operations.payments')
     ->name('payments.index');
 
-Route::get('/cancellations', [OperationsController::class, 'cancellations'])
+Route::view('/cancellations', 'admin.operations.cancellations')
     ->name('cancellations.index');

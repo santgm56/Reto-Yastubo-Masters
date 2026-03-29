@@ -4,9 +4,5 @@
 @section('title', 'Productos')
 
 @section('content')
-	<admin-products-index
-		:initial-products='@json($products)'
-		:initial-product-types='@json($productTypes)'
-		:edit-route-map='@json($editRouteMap)'
-	></admin-products-index>
+	<admin-products-index></admin-products-index>
 @endsection

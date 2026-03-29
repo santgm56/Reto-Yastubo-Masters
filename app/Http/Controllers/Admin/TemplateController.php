@@ -13,25 +13,10 @@ class TemplateController extends Controller
 {
 	public function index(Request $request)
 	{
-		$templates = Template::query()
-			->with([
-				// Relación esperada en el modelo Template: activeVersion
-				// Se limita a campos necesarios para el listado (evita cargar content/test_data_json)
-				'activeVersion:id,template_id,name',
-			])
-			->orderBy('id', 'desc')
-			->get();
-
-		if ($request->expectsJson() || $request->ajax()) {
-			return response()->json(['data' => $templates]);
-		}
-
 		// Breadcrumbs
 		Breadcrumbs::add('Plantillas', route('admin.templates.index'));
 
-		return view('admin.templates.index', [
-			'templates' => $templates,
-		]);
+		return view('admin.templates.index');
 	}
 
 	public function edit(Template $template)

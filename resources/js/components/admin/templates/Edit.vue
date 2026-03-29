@@ -168,7 +168,8 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import templatesApi from './api'
 
 export default {
 	name: 'AdminTemplatesEdit',
@@ -204,6 +205,12 @@ export default {
 	},
 
 	methods: {
+		flash(message, type = 'success') {
+			if (typeof window !== 'undefined' && typeof window.flash === 'function' && message) {
+				window.flash(message, type)
+			}
+		},
+
 		isActiveVersion(v) {
 			return !!v?.id && String(v.id) === String(this.activeVersionId)
 		},
@@ -215,14 +222,13 @@ export default {
 		async refresh() {
 			this.isLoading = true
 			try {
-				const { data } = await axios.get(this.route('admin.templates.show', { template: this.templateId }))
+				const { data } = await apiClient.get(templatesApi.show(this.templateId))
 				this.template = data?.data?.template || this.template
 				this.versions = Array.isArray(data?.data?.versions) ? data.data.versions : this.versions
 				this.sortVersionsAsc()
 			} catch (e) {
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash('No se pudo cargar la plantilla.', 'danger')
-				}
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_SHOW_ERROR')
+				this.flash(apiError.message || 'No se pudo cargar la plantilla.', 'danger')
 			} finally {
 				this.isLoading = false
 			}
@@ -241,16 +247,14 @@ export default {
 
 			this.isCreatingVersion = true
 			try {
-				const { data } = await axios.post(this.route('admin.templates.versions.store', { template: this.templateId }), {})
-
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.post(templatesApi.versionsStore(this.templateId), {})
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo crear la versión.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_CREATE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo crear la versión.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isCreatingVersion = false
 			}
@@ -304,7 +308,7 @@ export default {
 		// PDF activo sigue en nueva pestaña
 		openActivePdf() {
 			if (!this.activeVersionId) return
-			window.open(this.route('admin.templates.active.preview.pdf', { template: this.templateId }), '_blank')
+			window.open(templatesApi.activePreviewPdf(this.templateId), '_blank')
 		},
 
 		// Preview por versión: abre modal
@@ -318,26 +322,20 @@ export default {
 
 		openVersionPdf(v) {
 			if (!v?.id) return
-			window.open(
-				this.route('admin.templates.versions.preview.pdf', { template: this.templateId, templateVersion: v.id }),
-				'_blank'
-			)
+			window.open(templatesApi.versionsPreviewPdf(this.templateId, v.id), '_blank')
 		},
 
 		async cloneVersion(v) {
 			if (!v?.id) return
 			this.isBusyVersionId = v.id
 			try {
-				const { data } = await axios.post(
-					this.route('admin.templates.versions.clone', { template: this.templateId, templateVersion: v.id })
-				)
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.post(templatesApi.versionsClone(this.templateId, v.id))
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo clonar la versión.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_CLONE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo clonar la versión.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isBusyVersionId = null
 			}
@@ -347,16 +345,13 @@ export default {
 			if (!v?.id) return
 			this.isBusyVersionId = v.id
 			try {
-				const { data } = await axios.post(
-					this.route('admin.templates.versions.activate', { template: this.templateId, templateVersion: v.id })
-				)
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.post(templatesApi.versionsActivate(this.templateId, v.id))
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo activar la versión.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_ACTIVATE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo activar la versión.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isBusyVersionId = null
 			}
@@ -366,16 +361,13 @@ export default {
 			if (!v?.id) return
 			this.isBusyVersionId = v.id
 			try {
-				const { data } = await axios.post(
-					this.route('admin.templates.versions.deactivate', { template: this.templateId, templateVersion: v.id })
-				)
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.post(templatesApi.versionsDeactivate(this.templateId, v.id))
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo desactivar la versión.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_DEACTIVATE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo desactivar la versión.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isBusyVersionId = null
 			}
@@ -388,16 +380,13 @@ export default {
 
 			this.isBusyVersionId = v.id
 			try {
-				const { data } = await axios.delete(
-					this.route('admin.templates.versions.destroy', { template: this.templateId, templateVersion: v.id })
-				)
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.delete(templatesApi.versionsDestroy(this.templateId, v.id))
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo eliminar la versión.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_DELETE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo eliminar la versión.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isBusyVersionId = null
 			}

@@ -54,6 +54,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: {
 		unitId: { type: [String, Number], required: true },
@@ -161,8 +164,9 @@ export default {
 					this.loadRoles(),
 				]);
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CHANGE_ROLE_BOOTSTRAP_ERROR')
 				window.flash(
-					e?.response?.data?.message || 'Error cargando datos para el cambio de rol.',
+					apiError.message || 'Error cargando datos para el cambio de rol.',
 					'danger'
 				);
 				return;
@@ -178,15 +182,15 @@ export default {
 			this.modal.show();
 		},
 		async loadUnit() {
-			const res = await axios.get(
-				route('admin.business-units.api.units.show', { unit: this.unitId })
+			const res = await apiClient.get(
+				buApi.unit(this.unitId)
 			);
 			this.unit = res.data?.data || null;
 		},
 		async loadMyMembership() {
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.units.members.list', { unit: this.unitId })
+				const res = await apiClient.get(
+					buApi.unitMembers(this.unitId)
 				);
 				const meta = res.data?.meta || {};
 				this.myMembership = meta.current_membership || null;
@@ -196,8 +200,8 @@ export default {
 			}
 		},
 		async loadRoles() {
-			const res = await axios.get(
-				route('admin.business-units.api.roles.unit'),
+			const res = await apiClient.get(
+				buApi.rolesUnit(),
 				{
 					params: {
 						unit_id: this.unitId,
@@ -241,11 +245,8 @@ export default {
 			this.saving = true;
 
 			try {
-				const res = await axios.patch(
-					route('admin.business-units.api.units.members.update_role', {
-						unit: this.unitId,
-						membership: this.membership.id,
-					}),
+				const res = await apiClient.patch(
+					buApi.unitMember(this.unitId, this.membership.id),
 					{
 						role_id: this.role_id,
 					}
@@ -255,8 +256,9 @@ export default {
 				this.hide();
 				this.$emit('saved');
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CHANGE_ROLE_ERROR')
 				window.flash(
-					e?.response?.data?.message || 'Error al actualizar el rol.',
+					apiError.message || 'Error al actualizar el rol.',
 					'danger'
 				);
 			} finally {

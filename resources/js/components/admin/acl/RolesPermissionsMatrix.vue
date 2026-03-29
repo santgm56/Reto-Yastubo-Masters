@@ -295,6 +295,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import { aclApi } from './api';
+
 export default {
   name: 'AdminAclRolesPermissionsMatrix',
 
@@ -422,11 +425,9 @@ export default {
     loadMatrix() {
       this.loading = true;
 
-      const url = this.route('admin.acl.roles-permissions.matrix', {
-        guard: this.guard,
-      });
+      const url = aclApi.matrix(this.guard);
 
-      window.axios
+      apiClient
         .get(url)
         .then(({ data }) => {
           this.roles = data.roles || [];
@@ -452,8 +453,8 @@ export default {
           this.cellSaving = newCellSaving;
         })
         .catch((error) => {
-          console.error(error);
-          this.showToast('Error cargando los datos de roles y permisos.', 'danger');
+          const apiError = extractApiErrorContract(error, 'API_ACL_MATRIX_ERROR');
+          this.showToast(apiError.message || 'Error cargando los datos de roles y permisos.', 'danger');
         })
         .finally(() => {
           this.loading = false;
@@ -481,9 +482,7 @@ export default {
       }
       this.cellSaving[roleId][permissionId] = true;
 
-      const url = this.route('admin.acl.roles-permissions.toggle', {
-        guard: this.guard,
-      });
+      const url = aclApi.toggle(this.guard);
 
       const payload = {
         role_id: roleId,
@@ -491,19 +490,19 @@ export default {
         value: !!checked,
       };
 
-      window.axios
+      apiClient
         .post(url, payload)
         .then(({ data }) => {
           this.showToast(data.message || 'Permiso actualizado correctamente.');
         })
         .catch((error) => {
-          console.error(error);
+          const apiError = extractApiErrorContract(error, 'API_ACL_TOGGLE_ERROR');
           if (!this.matrix[roleId]) {
             this.matrix[roleId] = {};
           }
           this.matrix[roleId][permissionId] = previous;
 
-          this.showToast('Error actualizando el permiso del rol.', 'danger');
+          this.showToast(apiError.message || 'Error actualizando el permiso del rol.', 'danger');
         })
         .finally(() => {
           if (!this.cellSaving[roleId]) {
@@ -579,16 +578,11 @@ export default {
 
       let request;
       if (this.roleForm.id) {
-        const url = this.route('admin.acl.roles-permissions.roles.update', {
-          guard: this.guard,
-          role: this.roleForm.id,
-        });
-        request = window.axios.put(url, payload);
+        const url = aclApi.role(this.guard, this.roleForm.id);
+        request = apiClient.put(url, payload);
       } else {
-        const url = this.route('admin.acl.roles-permissions.roles.store', {
-          guard: this.guard,
-        });
-        request = window.axios.post(url, payload);
+        const url = aclApi.roles(this.guard);
+        request = apiClient.post(url, payload);
       }
 
       request
@@ -598,8 +592,8 @@ export default {
           this.loadMatrix();
         })
         .catch((error) => {
-          console.error(error);
-          this.showToast('Error guardando el rol.', 'danger');
+          const apiError = extractApiErrorContract(error, 'API_ACL_ROLE_SAVE_ERROR');
+          this.showToast(apiError.message || 'Error guardando el rol.', 'danger');
         })
         .finally(() => {
           this.savingRole = false;
@@ -647,16 +641,11 @@ export default {
 
       let request;
       if (this.permissionForm.id) {
-        const url = this.route('admin.acl.roles-permissions.permissions.update', {
-          guard: this.guard,
-          permission: this.permissionForm.id,
-        });
-        request = window.axios.put(url, payload);
+        const url = aclApi.permission(this.guard, this.permissionForm.id);
+        request = apiClient.put(url, payload);
       } else {
-        const url = this.route('admin.acl.roles-permissions.permissions.store', {
-          guard: this.guard,
-        });
-        request = window.axios.post(url, payload);
+        const url = aclApi.permissions(this.guard);
+        request = apiClient.post(url, payload);
       }
 
       request
@@ -666,8 +655,8 @@ export default {
           this.loadMatrix();
         })
         .catch((error) => {
-          console.error(error);
-          this.showToast('Error guardando el permiso.', 'danger');
+          const apiError = extractApiErrorContract(error, 'API_ACL_PERMISSION_SAVE_ERROR');
+          this.showToast(apiError.message || 'Error guardando el permiso.', 'danger');
         })
         .finally(() => {
           this.savingPermission = false;

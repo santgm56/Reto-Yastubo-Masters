@@ -160,6 +160,11 @@
 
 <script>
 import AdminCountriesEditModal from './EditModal.vue';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminCountriesIndexEndpoint,
+  adminCountriesToggleActiveEndpoint,
+} from './api';
 
 export default {
   name: 'AdminCountriesIndex',
@@ -171,7 +176,7 @@ export default {
   props: {
     initialContinents: {
       type: Object,
-      required: true,
+      default: () => ({}),
     },
   },
 
@@ -203,8 +208,7 @@ export default {
       };
 
       try {
-        const url = this.route('admin.countries.index');
-        const { data } = await axios.get(url, { params });
+        const { data } = await apiClient.get(adminCountriesIndexEndpoint(), { params });
 
         this.countries = data.countries || [];
         if (data.filters) {
@@ -217,9 +221,8 @@ export default {
           this.continents = data.continents;
         }
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo cargar la lista de países.';
+        const apiError = extractApiErrorContract(e, 'API_COUNTRIES_INDEX_ERROR');
+        const msg = apiError.message || 'No se pudo cargar la lista de países.';
         this.flash(msg, 'danger');
       } finally {
         this.isLoading = false;
@@ -269,10 +272,7 @@ export default {
       }
 
       try {
-        const url = this.route('admin.countries.toggle-active', {
-          country: country.id,
-        });
-        const { data } = await axios.put(url);
+        const { data } = await apiClient.put(adminCountriesToggleActiveEndpoint(country.id));
 
         const updated = data.data || data;
         this.countries = this.countries.map((c) =>
@@ -286,9 +286,8 @@ export default {
           } correctamente.`;
         this.flash(msg, 'success');
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo cambiar el estado del país.';
+        const apiError = extractApiErrorContract(e, 'API_COUNTRIES_TOGGLE_ERROR');
+        const msg = apiError.message || 'No se pudo cambiar el estado del país.';
         this.flash(msg, 'danger');
       }
     },

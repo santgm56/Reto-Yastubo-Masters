@@ -58,7 +58,8 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
 
 export default {
 	props: {
@@ -154,8 +155,8 @@ export default {
 			this.roles = []
 
 			try {
-				const res = await axios.get(
-					this.route('admin.business-units.api.roles.unit'),
+				const res = await apiClient.get(
+					buApi.rolesUnit(),
 					{
 						params: {
 							unit_id: this.unitId,
@@ -164,13 +165,14 @@ export default {
 				)
 				this.roles = res.data?.data || []
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CREATE_USER_ROLES_ERROR')
 				this.roles = []
 				if (
 					typeof window !== 'undefined' &&
 					typeof window.flash === 'function'
 				) {
 					window.flash(
-						this.humanError(e) || 'Error cargando roles.',
+						apiError.message || this.humanError(e) || 'Error cargando roles.',
 						'danger'
 					)
 				}
@@ -211,8 +213,8 @@ export default {
 			try {
 				if (this.isFreelanceRoot) {
 					// Caso: creación de unidad freelance + usuario propietario
-					const res = await axios.post(
-						this.route('admin.business-units.api.units.store'),
+					const res = await apiClient.post(
+						buApi.units(),
 						{
 							type: 'freelance',
 							mode: 'new_user',
@@ -248,13 +250,8 @@ export default {
 						role_id: Number(this.form.role_id),
 					}
 
-					const res = await axios.post(
-						this.route(
-							'admin.business-units.api.units.members.create_user',
-							{
-								unit: this.unitId,
-							}
-						),
+					const res = await apiClient.post(
+						buApi.unitMembersCreateUser(this.unitId),
 						payload
 					)
 
@@ -286,12 +283,13 @@ export default {
 					}
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CREATE_USER_ERROR')
 				if (
 					typeof window !== 'undefined' &&
 					typeof window.flash === 'function'
 				) {
 					window.flash(
-						this.humanError(e) || 'Error al guardar.',
+						apiError.message || this.humanError(e) || 'Error al guardar.',
 						'danger'
 					)
 				}

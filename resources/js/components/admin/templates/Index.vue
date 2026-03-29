@@ -141,18 +141,15 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import templatesApi from './api'
 
 export default {
 	name: 'AdminTemplatesIndex',
 
-	props: {
-		initialTemplates: { type: Array, default: () => [] },
-	},
-
 	data() {
 		return {
-			templates: Array.isArray(this.initialTemplates) ? [...this.initialTemplates] : [],
+			templates: [],
 			isLoading: false,
 			isBusyId: null,
 
@@ -166,15 +163,20 @@ export default {
 	},
 
 	methods: {
+		flash(message, type = 'success') {
+			if (typeof window !== 'undefined' && typeof window.flash === 'function' && message) {
+				window.flash(message, type)
+			}
+		},
+
 		async refresh() {
 			this.isLoading = true
 			try {
-				const { data } = await axios.get(this.route('admin.templates.index'))
-				this.templates = Array.isArray(data?.data) ? data.data : this.templates
+				const { data } = await apiClient.get(templatesApi.index())
+				this.templates = Array.isArray(data?.data) ? data.data : []
 			} catch (e) {
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash('No se pudo cargar la lista de plantillas.', 'danger')
-				}
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_INDEX_ERROR')
+				this.flash(apiError.message || 'No se pudo cargar la lista de plantillas.', 'danger')
 			} finally {
 				this.isLoading = false
 			}
@@ -214,28 +216,20 @@ export default {
 			if (!this.isPdfType(t)) return
 			if (!t?.active_template_version_id) return
 
-			// PDF por versión
-			window.open(
-				this.route('admin.templates.versions.preview.pdf', {
-					template: t.id,
-					templateVersion: t.active_template_version_id,
-				}),
-				'_blank'
-			)
+			window.open(templatesApi.versionsPreviewPdf(t.id, t.active_template_version_id), '_blank')
 		},
 
 		async cloneTemplate(t) {
 			if (!t?.id) return
 			this.isBusyId = t.id
 			try {
-				const { data } = await axios.post(this.route('admin.templates.clone', { template: t.id }))
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.post(templatesApi.clone(t.id))
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo clonar la plantilla.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_CLONE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo clonar la plantilla.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isBusyId = null
 			}
@@ -247,14 +241,13 @@ export default {
 
 			this.isBusyId = t.id
 			try {
-				const { data } = await axios.delete(this.route('admin.templates.destroy', { template: t.id }))
-				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
-					window.flash(data.toast.message, data.toast.type || 'success')
-				}
+				const { data } = await apiClient.delete(templatesApi.destroy(t.id))
+				this.flash(data?.toast?.message, data?.toast?.type || 'success')
 				await this.refresh()
 			} catch (e) {
-				const msg = e?.response?.data?.message || e?.response?.data?.toast?.message || 'No se pudo eliminar la plantilla.'
-				if (typeof window !== 'undefined' && typeof window.flash === 'function') window.flash(msg, 'danger')
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_DELETE_ERROR')
+				const msg = e?.response?.data?.toast?.message || apiError.message || 'No se pudo eliminar la plantilla.'
+				this.flash(msg, 'danger')
 			} finally {
 				this.isBusyId = null
 			}

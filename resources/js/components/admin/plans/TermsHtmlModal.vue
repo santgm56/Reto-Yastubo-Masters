@@ -50,8 +50,9 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient } from '../../../core/http/apiClient'
 import InputHtml from '@/components/ui/InputHtml.vue'
+import { adminPlanTermsHtmlEndpoint } from './api'
 
 export default {
 	name: 'AdminPlansTermsHtmlModal',
@@ -121,9 +122,9 @@ export default {
 		async load() {
 			this.isLoading = true
 			try {
-				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/terms-html`
-
-				const { data } = await axios.get(url)
+				const { data } = await apiClient.get(
+					adminPlanTermsHtmlEndpoint(this.productId, this.planVersionId),
+				)
 				const terms = (data && data.data && data.data.terms_html) ? data.data.terms_html : {}
 
 				const value = terms && typeof terms === 'object'
@@ -156,14 +157,15 @@ export default {
 			this.htmlValue = newHtml || ''
 
 			try {
-				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/terms-html`
-
 				const payload = {
 					locale: this.currentLocale,
 					html: this.htmlValue,
 				}
 
-				const { data } = await axios.patch(url, payload)
+				const { data } = await apiClient.patch(
+					adminPlanTermsHtmlEndpoint(this.productId, this.planVersionId),
+					payload,
+				)
 				const toast = data?.toast
 
 				if (toast?.message && typeof flash === 'function') {

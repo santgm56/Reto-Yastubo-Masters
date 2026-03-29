@@ -6,7 +6,7 @@ use App\Http\Controllers\Dev\CodeEditorPlaygroundController;
 Route::middleware('can:debug.unit.permission')
 ->group(function () {
 // Página que carga el .vue
-Route::get('debug/user-units', [UserUnitsDebugController::class, 'page'])
+Route::view('debug/user-units', 'admin.debug.user-units')
 		->name('debug.user-units');
 
 // API lista de usuarios/unidades (JSON) – OJO: distinta URL

@@ -24,7 +24,7 @@ describe('routeGuards', () => {
     const result = evaluateFrontendRouteAccess({
       pathname: '/admin/payments',
       isAuthenticated: true,
-      authz: buildAuthz({ role: 'SELLER', permissions: ['payments.read.all'] }),
+      authz: buildAuthz({ role: 'SELLER', permissions: ['payments.view'] }),
     });
 
     expect(result.allowed).toBe(false);
@@ -77,7 +77,7 @@ describe('routeGuards', () => {
     const allowed = evaluateFrontendRouteAccess({
       pathname: '/admin/cancellations',
       isAuthenticated: true,
-      authz: buildAuthz({ role: 'ADMIN', permissions: ['cancellations.execute'] }),
+      authz: buildAuthz({ role: 'ADMIN', permissions: ['sales.cancel'] }),
     });
 
     expect(denied.allowed).toBe(false);
@@ -95,17 +95,17 @@ describe('routeGuards', () => {
     expect(result.statusCode).toBe(200);
   });
 
-  it('requires all permissions when route declares multiple required permissions', () => {
+  it('requires matching permissions on guarded seller path', () => {
     const denied = evaluateFrontendRouteAccess({
       pathname: '/seller/payments',
       isAuthenticated: true,
-      authz: buildAuthz({ role: 'SELLER', permissions: ['payments.read.all'] }),
+      authz: buildAuthz({ role: 'SELLER', permissions: [] }),
     });
 
     const allowed = evaluateFrontendRouteAccess({
       pathname: '/seller/payments',
       isAuthenticated: true,
-      authz: buildAuthz({ role: 'SELLER', permissions: ['payments.read.all', 'payments.collect'] }),
+      authz: buildAuthz({ role: 'SELLER', permissions: ['payments.view'] }),
     });
 
     expect(denied.allowed).toBe(false);

@@ -18,6 +18,8 @@ async function assertProtectedNavigationAfterLogin(page, options) {
   await page.click('button[type="submit"]');
 
   await expect(page).toHaveURL(new RegExp(options.expectedLandingRegex, 'i'));
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
 
   await page.goto(options.protectedPath);
   await expect(page).toHaveURL(new RegExp(options.protectedPathRegex, 'i'));

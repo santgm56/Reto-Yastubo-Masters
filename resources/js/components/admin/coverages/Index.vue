@@ -491,7 +491,22 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminCoveragesArchivedCategoriesEndpoint,
+  adminCoveragesBootstrapEndpoint,
+  adminCoveragesCategoryArchiveEndpoint,
+  adminCoveragesCategoryReorderEndpoint,
+  adminCoveragesCategoryRestoreEndpoint,
+  adminCoveragesCategoryStoreEndpoint,
+  adminCoveragesCategoryUpdateEndpoint,
+  adminCoveragesItemArchiveEndpoint,
+  adminCoveragesItemDestroyEndpoint,
+  adminCoveragesItemRestoreEndpoint,
+  adminCoveragesItemStoreEndpoint,
+  adminCoveragesItemUpdateEndpoint,
+  adminCoveragesItemUsagesEndpoint,
+} from './api';
 
 export default {
   name: 'AdminCoveragesIndex',
@@ -585,8 +600,22 @@ export default {
         });
       }
     }
+
+    this.loadBootstrapData();
   },
   methods: {
+    async loadBootstrapData() {
+      try {
+        const { data } = await apiClient.get(adminCoveragesBootstrapEndpoint());
+        const payload = data && data.data ? data.data : {};
+        this.categories = Array.isArray(payload.categories) ? payload.categories : [];
+        this.units = Array.isArray(payload.units) ? payload.units : [];
+      } catch (e) {
+        const apiError = extractApiErrorContract(e, 'API_COVERAGES_BOOTSTRAP_ERROR');
+        this.flash(apiError.message || 'No se pudo cargar el catálogo de coberturas.', 'danger');
+      }
+    },
+
     // ---- Utilidades ----
     hasAnyTranslation(obj) {
       if (!obj || typeof obj !== 'object') return false;
@@ -636,10 +665,7 @@ export default {
 
       try {
         if (this.categoryForm.id) {
-          const { data } = await axios.put(
-            route('admin.coverages.categories.update', this.categoryForm.id),
-            payload,
-          );
+          const { data } = await apiClient.put(adminCoveragesCategoryUpdateEndpoint(this.categoryForm.id), payload);
           const idx = this.categories.findIndex(c => c.id === this.categoryForm.id);
           if (idx !== -1) {
             this.categories[idx] = {
@@ -649,25 +675,21 @@ export default {
           }
           this.flash('Categoría actualizada correctamente', 'success');
         } else {
-          const { data } = await axios.post(
-            route('admin.coverages.categories.store'),
-            payload,
-          );
+          const { data } = await apiClient.post(adminCoveragesCategoryStoreEndpoint(), payload);
           this.categories.push({ ...data.data, coverages: [] });
           this.flash('Categoría creada correctamente', 'success');
         }
         this.closeCategoryModal();
       } catch (e) {
-        this.categoryFormError = e.response?.data?.message || 'Error al guardar la categoría.';
+        const apiError = extractApiErrorContract(e, 'API_COVERAGES_CATEGORY_SAVE_ERROR');
+        this.categoryFormError = apiError.message || 'Error al guardar la categoría.';
         this.flash(this.categoryFormError, 'danger');
       }
     },
     async archiveCategory(category) {
       if (!confirm('¿Archivar esta categoría?')) return;
       try {
-        await axios.post(
-          route('admin.coverages.categories.archive', category.id),
-        );
+        await apiClient.post(adminCoveragesCategoryArchiveEndpoint(category.id));
         this.categories = this.categories.filter(c => c.id !== category.id);
         this.flash('Categoría archivada', 'success');
       } catch (e) {
@@ -676,9 +698,7 @@ export default {
     },
     async restoreCategory(category) {
       try {
-        const { data } = await axios.post(
-          route('admin.coverages.categories.restore', category.id),
-        );
+        const { data } = await apiClient.post(adminCoveragesCategoryRestoreEndpoint(category.id));
 
         let restored = data.data || {};
         if (!Array.isArray(restored.coverages)) {
@@ -699,9 +719,7 @@ export default {
     },
     async loadArchivedCategories() {
       try {
-        const { data } = await axios.get(
-          route('admin.coverages.categories.archived'),
-        );
+        const { data } = await apiClient.get(adminCoveragesArchivedCategoriesEndpoint());
         this.archivedCategories = data.data || [];
         return true;
       } catch (e) {
@@ -774,23 +792,18 @@ export default {
 
       try {
         if (this.coverageForm.id) {
-          const { data } = await axios.put(
-            route('admin.coverages.items.update', this.coverageForm.id),
-            payload,
-          );
+          const { data } = await apiClient.put(adminCoveragesItemUpdateEndpoint(this.coverageForm.id), payload);
           this.updateCoverageInCategories(data.data);
           this.flash('Cobertura actualizada correctamente', 'success');
         } else {
-          const { data } = await axios.post(
-            route('admin.coverages.items.store'),
-            payload,
-          );
+          const { data } = await apiClient.post(adminCoveragesItemStoreEndpoint(), payload);
           this.addCoverageToCategory(data.data);
           this.flash('Cobertura creada correctamente', 'success');
         }
         this.closeCoverageModal();
       } catch (e) {
-        this.coverageFormError = e.response?.data?.message || 'Error al guardar la cobertura.';
+        const apiError = extractApiErrorContract(e, 'API_COVERAGES_ITEM_SAVE_ERROR');
+        this.coverageFormError = apiError.message || 'Error al guardar la cobertura.';
         this.flash(this.coverageFormError, 'danger');
       }
     },
@@ -822,9 +835,7 @@ export default {
     async archiveCoverage(coverage, category) {
       if (!confirm('¿Archivar esta cobertura?')) return;
       try {
-        await axios.post(
-          route('admin.coverages.items.archive', coverage.id),
-        );
+        await apiClient.post(adminCoveragesItemArchiveEndpoint(coverage.id));
         coverage.status = 'archived';
         this.flash('Cobertura archivada', 'success');
       } catch (e) {
@@ -833,9 +844,7 @@ export default {
     },
     async restoreCoverage(coverage, category) {
       try {
-        const { data } = await axios.post(
-          route('admin.coverages.items.restore', coverage.id),
-        );
+        const { data } = await apiClient.post(adminCoveragesItemRestoreEndpoint(coverage.id));
         const idx = category.coverages.findIndex(c => c.id === coverage.id);
         if (idx !== -1) {
           category.coverages[idx] = data.data;
@@ -848,13 +857,12 @@ export default {
     async deleteCoverage(coverage, category) {
       if (!confirm('¿Eliminar la cobertura? Si está en uso, se sugerirá archivarla.')) return;
       try {
-        await axios.delete(
-          route('admin.coverages.items.destroy', coverage.id),
-        );
+        await apiClient.delete(adminCoveragesItemDestroyEndpoint(coverage.id));
         category.coverages = (category.coverages || []).filter(c => c.id !== coverage.id);
         this.flash('Cobertura eliminada', 'success');
       } catch (e) {
-        const msg = e.response?.data?.message || 'No se pudo eliminar la cobertura.';
+        const apiError = extractApiErrorContract(e, 'API_COVERAGES_ITEM_DELETE_ERROR');
+        const msg = apiError.message || 'No se pudo eliminar la cobertura.';
         this.flash(msg, 'danger');
       }
     },
@@ -871,9 +879,7 @@ export default {
       this.coverageUsagesModalInstance.show();
 
       try {
-        const { data } = await axios.get(
-          route('admin.coverages.items.usages', coverage.id),
-        );
+        const { data } = await apiClient.get(adminCoveragesItemUsagesEndpoint(coverage.id));
         this.coverageUsages = data.data || [];
       } catch (e) {
         this.coverageUsages = [];
@@ -952,10 +958,7 @@ export default {
       };
 
       try {
-        await axios.post(
-          route('admin.coverages.categories.reorder', this.dragCategoryId),
-          payload,
-        );
+        await apiClient.post(adminCoveragesCategoryReorderEndpoint(this.dragCategoryId), payload);
         this.flash('Orden actualizado', 'success');
       } catch (e) {
         this.flash('No se pudo guardar el nuevo orden.', 'danger');

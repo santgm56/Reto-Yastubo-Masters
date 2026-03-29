@@ -208,7 +208,12 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import {
+  adminConfigDefinitionUpdateEndpoint,
+  adminConfigShowEndpoint,
+  adminConfigStoreEndpoint,
+} from './api'
 
 export default {
   name: 'AdminConfigItemModal',
@@ -363,15 +368,13 @@ export default {
       }
 
       try {
-        const url = this.route('admin.config.show', { item: this.itemId })
-        const { data } = await axios.get(url)
+        const { data } = await apiClient.get(adminConfigShowEndpoint(this.itemId))
         const item = data.item || data
         this.loadFromItem(item)
         this.loaded = true
       } catch (e) {
-        this.errors.__general =
-          e.response?.data?.message ||
-          'No se pudo cargar la variable.'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_SHOW_ERROR')
+        this.errors.__general = apiError.message || 'No se pudo cargar la variable.'
         this.loaded = true
       }
     },
@@ -392,20 +395,11 @@ export default {
       }
 
       try {
-        let url
-        let method
+        const request = this.mode === 'create'
+          ? apiClient.post(adminConfigStoreEndpoint(), payload)
+          : apiClient.put(adminConfigDefinitionUpdateEndpoint(this.itemId), payload)
 
-        if (this.mode === 'create') {
-          url = this.route('admin.config.store')
-          method = axios.post
-        } else {
-          url = this.route('admin.config.update-definition', {
-            item: this.itemId,
-          })
-          method = axios.put
-        }
-
-        const { data } = await method(url, payload)
+        const { data } = await request
 
         const msg =
           data.message ||
@@ -418,8 +412,10 @@ export default {
         this.isOpen = false
         this.$emit(this.mode === 'create' ? 'created' : 'updated')
       } catch (e) {
-        if (e.response?.status === 422 && e.response?.data?.errors) {
-          const errs = e.response.data.errors
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_DEFINITION_SAVE_ERROR')
+
+        if (apiError.code === 'API_VALIDATION_ERROR' && apiError.validationErrors) {
+          const errs = apiError.validationErrors
           this.errors = {
             category: errs.category?.[0],
             name: errs.name?.[0],
@@ -428,9 +424,7 @@ export default {
             __general: errs.config?.[0],
           }
         } else {
-          this.errors.__general =
-            e.response?.data?.message ||
-            'No se pudo guardar la variable.'
+          this.errors.__general = apiError.message || 'No se pudo guardar la variable.'
         }
       } finally {
         this.isSaving = false

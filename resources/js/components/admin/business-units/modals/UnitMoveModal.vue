@@ -22,6 +22,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: { unitId: { type: [String, Number], required: true } },
 	data() {
@@ -46,12 +49,13 @@ export default {
 			this.saving = true;
 			try {
 				const parent_id = (this.form.parent_id || '').trim() === '' ? null : Number(this.form.parent_id);
-				const res = await axios.post(route('admin.business-units.api.units.move', { unit: this.unitId }), { parent_id });
+				const res = await apiClient.post(buApi.unitMove(this.unitId), { parent_id });
 				window.flash(res.data.message || 'Movida.', 'success');
 				this.hide();
 				this.$emit('saved');
 			} catch (e) {
-				window.flash(e?.response?.data?.message || 'Error', 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_MOVE_ERROR')
+				window.flash(apiError.message || 'Error', 'danger');
 			} finally {
 				this.saving = false;
 			}

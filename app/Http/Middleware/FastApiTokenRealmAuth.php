@@ -27,7 +27,7 @@ class FastApiTokenRealmAuth
 
         $authGuard = Auth::guard($guard);
 
-        $accessToken = trim((string) $request->cookie('yastubo_access_token', ''));
+        $accessToken = $this->resolveCookieValue($request, 'yastubo_access_token');
         if ($accessToken === '') {
             if ($authGuard->check()) {
                 $authGuard->logout();
@@ -58,8 +58,35 @@ class FastApiTokenRealmAuth
 
         // Auth request-scoped: no persistir sesión Laravel como fuente de verdad.
         $authGuard->setUser($user);
+        Auth::shouldUse($guard);
+        Auth::setUser($user);
+        $request->setUserResolver(static fn () => $user);
 
         return $next($request);
+    }
+
+    protected function resolveCookieValue(Request $request, string $cookieName): string
+    {
+        $fromRequest = trim((string) $request->cookie($cookieName, ''));
+        if ($fromRequest !== '') {
+            return $fromRequest;
+        }
+
+        $rawCookieHeader = trim((string) $request->headers->get('cookie', ''));
+        if ($rawCookieHeader === '') {
+            return '';
+        }
+
+        foreach (explode(';', $rawCookieHeader) as $chunk) {
+            [$name, $value] = array_pad(explode('=', $chunk, 2), 2, '');
+            if (trim($name) !== $cookieName) {
+                continue;
+            }
+
+            return trim(urldecode($value));
+        }
+
+        return '';
     }
 
     protected function fetchFastApiMe(string $accessToken): ?array

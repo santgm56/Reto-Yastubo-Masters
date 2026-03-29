@@ -4,12 +4,11 @@
 // prefijo .admin para los nombres, middleware de autenticación/realm heredado.
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\RegaliasController;
 
 // -------------------------
 // Vista principal Regalías
 // -------------------------
 
-Route::get('/regalias', [RegaliasController::class, 'index'])
+Route::view('/regalias', 'admin.regalias.index')
     ->name('regalias.index')
     ->middleware('can:regalia.users.read');

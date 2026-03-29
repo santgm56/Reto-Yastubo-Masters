@@ -26,6 +26,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: {
 		unitType: { type: String, required: true }, // consolidator|office|counter
@@ -103,7 +106,7 @@ export default {
 
 			this.saving = true;
 			try {
-				await axios.post(this.route('admin.business-units.api.units.store'), {
+				await apiClient.post(buApi.units(), {
 					type: this.unitType,
 					name,
 					parent_id,
@@ -111,7 +114,8 @@ export default {
 				this.hide();
 				this.$emit('created');
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CREATE_UNIT_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			} finally {
 				this.saving = false;
 			}

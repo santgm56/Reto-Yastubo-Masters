@@ -422,6 +422,8 @@
 
 <script>
 import * as format from '@/utils/format';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import { buApi } from './api';
 
 export default {
 	name: 'AdminBusinessUnitsShow',
@@ -507,8 +509,8 @@ export default {
 		async load() {
 			this.loading = true;
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.units.show', { unit: this.unitId })
+				const res = await apiClient.get(
+					buApi.unit(this.unitId)
 				);
 				this.unit = res.data.data;
 
@@ -519,8 +521,9 @@ export default {
 					this.loadGsaCommissions(),
 				]);
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_SHOW_ERROR');
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error al cargar', 'danger');
+					window.flash(apiError.message || 'Error al cargar', 'danger');
 				}
 			} finally {
 				this.loading = false;
@@ -534,14 +537,15 @@ export default {
 		async loadChildren() {
 			this.childrenLoading = true;
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.units.children', { unit: this.unitId }),
+				const res = await apiClient.get(
+					buApi.unitChildren(this.unitId),
 					{ params: { status: this.childrenStatus } }
 				);
 				this.children = res.data.data || [];
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CHILDREN_ERROR');
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error al cargar hijos', 'danger');
+					window.flash(apiError.message || 'Error al cargar hijos', 'danger');
 				}
 			} finally {
 				this.childrenLoading = false;
@@ -554,16 +558,17 @@ export default {
 
 			this.membersLoading = true;
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.units.members.list', { unit: this.unitId })
+				const res = await apiClient.get(
+					buApi.unitMembers(this.unitId)
 				);
 				this.members = res.data.data || [];
 
 				const meta = res.data.meta || {};
 				this.myMembership = meta.current_membership || null;
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_MEMBERS_ERROR');
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error al cargar miembros', 'danger');
+					window.flash(apiError.message || 'Error al cargar miembros', 'danger');
 				}
 			} finally {
 				this.membersLoading = false;
@@ -572,8 +577,8 @@ export default {
 
 		async loadRoles() {
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.roles.unit'),
+				const res = await apiClient.get(
+					buApi.rolesUnit(),
 					{
 						params: {
 							unit_id: this.unitId,
@@ -597,8 +602,8 @@ export default {
 			this.gsaCommissionsLoading = true;
 
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.units.gsa_commissions.index', { unit: this.unitId })
+				const res = await apiClient.get(
+					buApi.unitGsaCommissions(this.unitId)
 				);
 				const raw = Array.isArray(res.data.data) ? res.data.data : [];
 
@@ -639,10 +644,11 @@ export default {
 					};
 				});
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_GSA_LIST_ERROR');
 				this.gsaCommissions = [];
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
 					window.flash(
-						e?.response?.data?.message || 'Error al cargar regalías',
+						apiError.message || 'Error al cargar regalías',
 						'danger'
 					);
 				}
@@ -731,11 +737,8 @@ export default {
 			row._saving = true;
 
 			try {
-				await axios.patch(
-					route('admin.business-units.api.units.gsa_commissions.update', {
-						unit: this.unitId,
-						commissionUser: row.id,
-					}),
+				await apiClient.patch(
+					buApi.unitGsaCommission(this.unitId, row.id),
 					{ commission: value },
 					{
 						headers: { 'Content-Type': 'application/json' },
@@ -751,6 +754,7 @@ export default {
 					window.flash('Regalía guardada.', 'success');
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_GSA_SAVE_ERROR');
 				// Error: restaurar el valor anterior en la vista
 				row.commission_percent = prevNumeric;
 				row._commissionInput = prevInput;
@@ -758,7 +762,7 @@ export default {
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
 					window.flash(
-						e?.response?.data?.message || 'Error al guardar regalía.',
+						apiError.message || 'Error al guardar regalía.',
 						'danger'
 					);
 				}
@@ -775,11 +779,8 @@ export default {
 			}
 
 			try {
-				const res = await axios.delete(
-					route('admin.business-units.api.units.gsa_commissions.destroy', {
-						unit: this.unitId,
-						commissionUser: row.id,
-					})
+				const res = await apiClient.delete(
+					buApi.unitGsaCommission(this.unitId, row.id)
 				);
 
 				// Quitamos localmente
@@ -792,9 +793,10 @@ export default {
 					);
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_GSA_DELETE_ERROR');
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
 					window.flash(
-						e?.response?.data?.message || 'Error al remover usuario de regalías.',
+						apiError.message || 'Error al remover usuario de regalías.',
 						'danger'
 					);
 				}
@@ -901,11 +903,8 @@ export default {
 			m.status = nextStatus;
 
 			try {
-				const res = await axios.patch(
-					route('admin.business-units.api.units.members.update_status', {
-						unit: this.unitId,
-						membership: m.id,
-					}),
+				const res = await apiClient.patch(
+					buApi.unitMemberStatus(this.unitId, m.id),
 					{ status: nextStatus }
 				);
 
@@ -916,12 +915,13 @@ export default {
 					);
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_MEMBER_STATUS_ERROR');
 				// revertir cambio local si el backend falla
 				m.status = previousStatus;
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
 					window.flash(
-						e?.response?.data?.message || 'Error al actualizar estatus',
+						apiError.message || 'Error al actualizar estatus',
 						'danger'
 					);
 				}
@@ -932,19 +932,17 @@ export default {
 			if (!confirm('¿Remover membresía?')) return;
 
 			try {
-				const res = await axios.delete(
-					route('admin.business-units.api.units.members.remove', {
-						unit: this.unitId,
-						membership: m.id
-					})
+				const res = await apiClient.delete(
+					buApi.unitMember(this.unitId, m.id)
 				);
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
 					window.flash(res.data.message || 'Eliminado', 'success');
 				}
 				await this.loadMembers();
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_MEMBER_DELETE_ERROR');
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error', 'danger');
+					window.flash(apiError.message || 'Error', 'danger');
 				}
 			}
 		},
@@ -952,8 +950,8 @@ export default {
 		async quickToggleChildStatus(c) {
 			const next = c.status === 'active' ? 'inactive' : 'active';
 			try {
-				const res = await axios.patch(
-					route('admin.business-units.api.units.status.update', { unit: c.id }),
+				const res = await apiClient.patch(
+					buApi.unitStatus(c.id),
 					{ status: next }
 				);
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
@@ -961,8 +959,9 @@ export default {
 				}
 				await this.loadChildren();
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CHILD_STATUS_ERROR');
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error', 'danger');
+					window.flash(apiError.message || 'Error', 'danger');
 				}
 			}
 		},

@@ -84,6 +84,13 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+    adminCompanyCheckShortCodeEndpoint,
+    adminCompanyEndpoint,
+    adminCompaniesStoreEndpoint,
+} from './api';
+
 export default {
     name: 'AdminCompaniesEditModal',
 
@@ -160,8 +167,7 @@ export default {
             }
 
             try {
-                const url = `/api/v1/admin/companies/${companyId}`;
-                const { data } = await axios.get(url);
+                const { data } = await apiClient.get(adminCompanyEndpoint(companyId));
                 const company = data.data;
 
                 this.form = this.emptyForm();
@@ -170,9 +176,9 @@ export default {
 
                 this.shortCodeStatus = null;
                 this.shortCodeMessage = null;
-            } catch (e) {
-                console.error(e);
-                this.formError = 'No se pudieron cargar los datos de la empresa.';
+            } catch (error) {
+                const apiError = extractApiErrorContract(error, 'API_COMPANIES_SHOW_ERROR');
+                this.formError = apiError.message || 'No se pudieron cargar los datos de la empresa.';
             }
 
             this.bootstrapModal.show();
@@ -204,23 +210,18 @@ export default {
 
         async submitCreate() {
             try {
-                const url = '/api/v1/admin/companies';
-
                 const payload = {
                     name: this.form.name,
                     short_code: this.form.short_code,
                 };
 
-                const { data } = await axios.post(url, payload);
+                const { data } = await apiClient.post(adminCompaniesStoreEndpoint(), payload);
 
                 this.$emit('created', data.data);
                 this.close();
             } catch (error) {
-                if (error.response && error.response.data && error.response.data.message) {
-                    this.formError = error.response.data.message;
-                } else {
-                    this.formError = 'No se pudo crear la empresa.';
-                }
+                const apiError = extractApiErrorContract(error, 'API_COMPANIES_STORE_ERROR');
+                this.formError = apiError.message || 'No se pudo crear la empresa.';
             }
         },
 
@@ -230,23 +231,18 @@ export default {
             }
 
             try {
-                const url = `/api/v1/admin/companies/${this.companyId}`;
-
                 const payload = {
                     name: this.form.name,
                     short_code: this.form.short_code,
                 };
 
-                const { data } = await axios.put(url, payload);
+                const { data } = await apiClient.put(adminCompanyEndpoint(this.companyId), payload);
 
                 this.$emit('updated', data.data);
                 this.close();
             } catch (error) {
-                if (error.response && error.response.data && error.response.data.message) {
-                    this.formError = error.response.data.message;
-                } else {
-                    this.formError = 'No se pudo actualizar la empresa.';
-                }
+                const apiError = extractApiErrorContract(error, 'API_COMPANIES_UPDATE_ERROR');
+                this.formError = apiError.message || 'No se pudo actualizar la empresa.';
             }
         },
 
@@ -287,15 +283,9 @@ export default {
                     params.ignore_id = this.companyId;
                 }
 
-                const query = new URLSearchParams();
-                Object.entries(params).forEach(([key, rawValue]) => {
-                    if (rawValue !== undefined && rawValue !== null && `${rawValue}`.trim() !== '') {
-                        query.set(key, `${rawValue}`);
-                    }
+                const { data } = await apiClient.get(adminCompanyCheckShortCodeEndpoint(), {
+                    params,
                 });
-
-                const url = `/api/v1/admin/companies/check-short-code?${query.toString()}`;
-                const { data } = await axios.get(url);
 
                 if (data.is_available) {
                     this.shortCodeStatus = 'available';
@@ -307,10 +297,10 @@ export default {
                     this.shortCodeStatus = 'taken';
                     this.shortCodeMessage = 'El código ya está en uso.';
                 }
-            } catch (e) {
-                console.error(e);
+            } catch (error) {
+                const apiError = extractApiErrorContract(error, 'API_COMPANIES_CHECK_SHORT_CODE_ERROR');
                 this.shortCodeStatus = null;
-                this.shortCodeMessage = 'No se pudo verificar el código.';
+                this.shortCodeMessage = apiError.message || 'No se pudo verificar el código.';
             } finally {
                 this.shortCodeChecking = false;
             }

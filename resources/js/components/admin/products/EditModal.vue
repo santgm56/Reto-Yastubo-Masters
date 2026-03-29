@@ -125,7 +125,12 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import {
+  adminProductsShowEndpoint,
+  adminProductsStoreEndpoint,
+  adminProductsUpdateEndpoint,
+} from './api';
 
 export default {
   name: 'AdminProductsEditModal',
@@ -259,8 +264,7 @@ export default {
       this.isLoading = true;
 
       try {
-        const url = `/api/v1/admin/products/${productId}`;
-        const { data } = await axios.get(url);
+        const { data } = await apiClient.get(adminProductsShowEndpoint(productId));
         const product = data.data || data;
 
         this.form.name = product.name || { es: '', en: '' };
@@ -284,9 +288,8 @@ export default {
           this.modalInstance.show();
         }
       } catch (e) {
-        const msg =
-          e?.response?.data?.message ||
-          'No se pudo cargar el producto.';
+        const apiError = extractApiErrorContract(e, 'API_PRODUCTS_SHOW_ERROR');
+        const msg = apiError.message || 'No se pudo cargar el producto.';
         if (typeof window !== 'undefined' && typeof window.flash === 'function') {
           window.flash(msg, 'danger');
         } else {
@@ -349,8 +352,7 @@ export default {
             payload.company_id = this.contextCompanyId;
           }
 
-          const url = '/api/v1/admin/products';
-          response = await axios.post(url, payload);
+          response = await apiClient.post(adminProductsStoreEndpoint(), payload);
 
           const product = response.data.data || response.data;
           this.$emit('created', product);
@@ -362,8 +364,7 @@ export default {
             status: this.form.status,
           };
 
-          const url = `/api/v1/admin/products/${this.productId}`;
-          response = await axios.put(url, payload);
+          response = await apiClient.put(adminProductsUpdateEndpoint(this.productId), payload);
 
           const product = response.data.data || response.data;
           this.$emit('updated', product);
@@ -371,11 +372,10 @@ export default {
 
         this.close();
       } catch (e) {
-        let msg =
-          e?.response?.data?.message ||
-          'Error al guardar el producto.';
+        const apiError = extractApiErrorContract(e, 'API_PRODUCTS_SAVE_ERROR');
+        let msg = apiError.message || 'Error al guardar el producto.';
 
-        const errors = e?.response?.data?.errors;
+        const errors = apiError.validationErrors;
         if (errors && typeof errors === 'object') {
           const firstKey = Object.keys(errors)[0];
           const firstVal = firstKey ? errors[firstKey] : null;

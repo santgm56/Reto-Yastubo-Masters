@@ -129,6 +129,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: {
 		unitId: { type: [String, Number], required: true },
@@ -193,10 +196,8 @@ export default {
 			this.loading = true;
 
 			try {
-				const res = await axios.get(
-					route('admin.business-units.api.units.gsa_commissions.available', {
-						unit: this.unitId,
-					}),
+				const res = await apiClient.get(
+					buApi.unitGsaCommissionsAvailable(this.unitId),
 					{
 						params: {
 							page,
@@ -254,8 +255,9 @@ export default {
 					to,
 				};
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_GSA_AVAILABLE_ERROR')
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error al cargar usuarios.', 'danger');
+					window.flash(apiError.message || 'Error al cargar usuarios.', 'danger');
 				}
 			} finally {
 				this.loading = false;
@@ -277,10 +279,8 @@ export default {
 			row._loading = true;
 
 			try {
-				const res = await axios.post(
-					route('admin.business-units.api.units.gsa_commissions.store', {
-						unit: this.unitId,
-					}),
+				const res = await apiClient.post(
+					buApi.unitGsaCommissions(this.unitId),
 					{
 						user_id: row.id,
 					}
@@ -298,8 +298,9 @@ export default {
 					window.flash(res?.data?.message || 'Usuario añadido a regalías.', 'success');
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_GSA_ATTACH_ERROR')
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error al añadir usuario.', 'danger');
+					window.flash(apiError.message || 'Error al añadir usuario.', 'danger');
 				}
 			} finally {
 				row._loading = false;
@@ -315,11 +316,8 @@ export default {
 			row._loading = true;
 
 			try {
-				const res = await axios.delete(
-					route('admin.business-units.api.units.gsa_commissions.destroy', {
-						unit: this.unitId,
-						commissionUser: row.commission_user_id,
-					})
+				const res = await apiClient.delete(
+					buApi.unitGsaCommission(this.unitId, row.commission_user_id)
 				);
 
 				const payload = res?.data?.data || {
@@ -337,8 +335,9 @@ export default {
 					window.flash(res?.data?.message || 'Usuario removido de regalías.', 'success');
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_GSA_DETACH_ERROR')
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
-					window.flash(e?.response?.data?.message || 'Error al remover usuario.', 'danger');
+					window.flash(apiError.message || 'Error al remover usuario.', 'danger');
 				}
 			} finally {
 				row._loading = false;

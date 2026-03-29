@@ -9,6 +9,15 @@
       </button>
     </div>
 
+    <div v-if="isLoading" class="px-6 py-4 text-muted small d-flex align-items-center gap-2">
+      <span class="spinner-border spinner-border-sm" role="status"></span>
+      Cargando productos...
+    </div>
+
+    <div v-else-if="loadError" class="alert alert-warning mx-6 mt-4 mb-0" role="alert">
+      {{ loadError }}
+    </div>
+
     <!-- Tabla de productos -->
     <table class="table table-row-dashed table-striped table-hover table-condensed">
       <thead>
@@ -111,37 +120,55 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import { adminProductsIndexEndpoint } from './api';
+
 export default {
   name: 'AdminProductsIndex',
-
-  props: {
-    initialProducts: {
-      type: Array,
-      default: () => [],
-    },
-    initialProductTypes: {
-      type: Array,
-      default: () => [],
-    },
-    editRouteMap: {
-      type: Object,
-      default: () => ({}),
-    },
-  },
 
   data() {
     return {
       products: [],
       productTypes: [],
+      isLoading: false,
+      loadError: '',
     };
   },
 
   created() {
-    this.products = JSON.parse(JSON.stringify(this.initialProducts || []));
-    this.productTypes = JSON.parse(JSON.stringify(this.initialProductTypes || []));
+    this.loadProducts();
   },
 
   methods: {
+    async loadProducts() {
+      this.isLoading = true;
+      this.loadError = '';
+
+      try {
+        const response = await apiClient.get(adminProductsIndexEndpoint());
+        const payload = response?.data || {};
+        const products = Array.isArray(payload?.data) ? payload.data : [];
+        const productTypes = Array.isArray(payload?.meta?.product_types)
+          ? payload.meta.product_types
+          : [];
+
+        this.products = JSON.parse(JSON.stringify(products));
+
+        if (productTypes.length > 0) {
+          this.productTypes = JSON.parse(JSON.stringify(productTypes));
+        }
+      } catch (error) {
+        const apiError = extractApiErrorContract(error, 'API_PRODUCTS_INDEX_ERROR');
+        this.loadError = apiError.message || 'No se pudo cargar el listado de productos.';
+
+        if (typeof window !== 'undefined' && typeof window.flash === 'function') {
+          window.flash(this.loadError, 'danger');
+        }
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     productEditUrl(product) {
       const productId = Number(product?.id || 0);
       if (!productId) {

@@ -241,7 +241,7 @@
                   <div v-else-if="isFileTranslatedType(item)">
                     <div class="row g-2">
                       <div class="col-12">
-                        
+
                         <div class="input-group input-group-sm">
 							<span class="input-group-text" style="min-width: 70px;">Español</span>
 							<a
@@ -385,9 +385,15 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
 import * as format from '@/utils/format'
 import AdminConfigItemModal from './ItemModal.vue'
+import {
+  adminConfigDestroyEndpoint,
+  adminConfigFileUploadEndpoint,
+  adminConfigIndexEndpoint,
+  adminConfigValueUpdateEndpoint,
+} from './api'
 
 export default {
   name: 'AdminConfigIndex',
@@ -399,18 +405,25 @@ export default {
   props: {
     initialCategories: {
       type: Object,
-      required: true,
+      default: () => ({}),
     },
     initialPermissions: {
       type: Object,
-      required: true,
+      default: () => ({}),
     },
   },
 
   data() {
     return {
       categories: { ...this.initialCategories },
-      permissions: { ...this.initialPermissions },
+      permissions: {
+        create: false,
+        read: false,
+        fill: false,
+        edit: false,
+        delete: false,
+        ...this.initialPermissions,
+      },
       items: [],
       isLoading: true,
       autosaveTimers: {},
@@ -593,14 +606,14 @@ export default {
     async loadItems() {
       this.isLoading = true
       try {
-        const url = this.route('admin.config.index')
-        const { data } = await axios.get(url)
+        const { data } = await apiClient.get(adminConfigIndexEndpoint())
         const items = data.items || []
         this.categories = data.categories || this.categories
         this.permissions = data.permissions || this.permissions
         this.items = items.map((it) => this.prepareItem(it))
       } catch (e) {
-        this.notify('No se pudo cargar la configuración.', 'danger')
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_INDEX_ERROR')
+        this.notify(apiError.message || 'No se pudo cargar la configuración.', 'danger')
         this.items = []
       } finally {
         this.isLoading = false
@@ -694,13 +707,12 @@ export default {
 
     async saveValue(item, payload, key) {
       try {
-        const url = this.route('admin.config.update-value', { item: item.id })
-        const { data } = await axios.put(url, payload)
+        const { data } = await apiClient.put(adminConfigValueUpdateEndpoint(item.id), payload)
         this.replaceItemFromServer(data.item || data.data)
         this.notify('Cambios guardados.', 'success')
       } catch (e) {
-        const msg =
-          e.response?.data?.message || 'No se pudo guardar el valor.'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_VALUE_SAVE_ERROR')
+        const msg = apiError.message || 'No se pudo guardar el valor.'
         this.notify(msg, 'danger')
       } finally {
         if (this.autosaveTimers[key]) {
@@ -819,7 +831,6 @@ export default {
       }
 
       try {
-        const url = this.route('admin.config.upload-file', { item: item.id })
         const formData = new FormData()
 
         // El backend espera SIEMPRE "file" (+ opcional "locale")
@@ -828,7 +839,7 @@ export default {
           formData.append('locale', locale)
         }
 
-        const { data } = await axios.post(url, formData, {
+        const { data } = await apiClient.post(adminConfigFileUploadEndpoint(item.id), formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -870,9 +881,8 @@ export default {
         const msg = data.message || 'Archivo subido correctamente.'
         this.notify(msg, 'success')
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo subir el archivo.'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_FILE_UPLOAD_ERROR')
+        const msg = apiError.message || 'No se pudo subir el archivo.'
         this.notify(msg, 'danger')
       } finally {
         event.target.value = ''
@@ -897,8 +907,7 @@ export default {
       item._uploadingPlain = true
 
       try {
-        const url = this.route('admin.config.update-value', { item: item.id })
-        const { data } = await axios.put(url, {
+        const { data } = await apiClient.put(adminConfigValueUpdateEndpoint(item.id), {
           value_file_plain_id: null,
         })
 
@@ -914,9 +923,8 @@ export default {
         const msg = data.message || 'Archivo removido.'
         this.notify(msg, 'success')
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo remover el archivo.'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_FILE_CLEAR_PLAIN_ERROR')
+        const msg = apiError.message || 'No se pudo remover el archivo.'
         this.notify(msg, 'danger')
       } finally {
         item._uploadingPlain = false
@@ -933,8 +941,7 @@ export default {
       item._uploadingEs = true
 
       try {
-        const url = this.route('admin.config.update-value', { item: item.id })
-        const { data } = await axios.put(url, {
+        const { data } = await apiClient.put(adminConfigValueUpdateEndpoint(item.id), {
           value_file_es_id: null,
         })
 
@@ -951,9 +958,8 @@ export default {
           data.message || 'Archivo ES removido.'
         this.notify(msg, 'success')
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo remover el archivo (ES).'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_FILE_CLEAR_ES_ERROR')
+        const msg = apiError.message || 'No se pudo remover el archivo (ES).'
         this.notify(msg, 'danger')
       } finally {
         item._uploadingEs = false
@@ -970,8 +976,7 @@ export default {
       item._uploadingEn = true
 
       try {
-        const url = this.route('admin.config.update-value', { item: item.id })
-        const { data } = await axios.put(url, {
+        const { data } = await apiClient.put(adminConfigValueUpdateEndpoint(item.id), {
           value_file_en_id: null,
         })
 
@@ -988,9 +993,8 @@ export default {
           data.message || 'Archivo EN removido.'
         this.notify(msg, 'success')
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo remover el archivo (EN).'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_FILE_CLEAR_EN_ERROR')
+        const msg = apiError.message || 'No se pudo remover el archivo (EN).'
         this.notify(msg, 'danger')
       } finally {
         item._uploadingEn = false
@@ -1022,15 +1026,13 @@ export default {
       if (!confirmed) return
 
       try {
-        const url = this.route('admin.config.destroy', { item: item.id })
-        const { data } = await axios.delete(url)
+        const { data } = await apiClient.delete(adminConfigDestroyEndpoint(item.id))
         this.items = this.items.filter((i) => i.id !== item.id)
         const msg = data.message || 'Variable eliminada.'
         this.notify(msg, 'success')
       } catch (e) {
-        const msg =
-          e.response?.data?.message ||
-          'No se pudo eliminar la variable.'
+        const apiError = extractApiErrorContract(e, 'API_CONFIG_DELETE_ERROR')
+        const msg = apiError.message || 'No se pudo eliminar la variable.'
         this.notify(msg, 'danger')
       }
     },

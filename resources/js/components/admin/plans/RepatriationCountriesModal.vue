@@ -230,7 +230,13 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient } from '../../../core/http/apiClient';
+import {
+	adminPlanRepatriationCountriesAttachZoneEndpoint,
+	adminPlanRepatriationCountriesDetachZoneEndpoint,
+	adminPlanRepatriationCountriesEndpoint,
+	adminPlanRepatriationCountryEndpoint,
+} from './api';
 
 export default {
 	name: 'AdminRepatriationCountriesModal',
@@ -365,8 +371,9 @@ export default {
 			this.errorMessage = null;
 
 			try {
-				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/repatriation-countries`;
-				const { data } = await axios.get(url);
+				const { data } = await apiClient.get(
+					adminPlanRepatriationCountriesEndpoint(this.productId, this.planVersionId),
+				);
 
 				// backend: { data: { plan_countries, countries, zones, continents } }
 				const payload = data && data.data ? data.data : {};
@@ -431,11 +438,12 @@ export default {
 			this.errorMessage = null;
 
 			try {
-				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/repatriation-countries/attach-zone`;
-
-				const { data } = await axios.post(url, {
+				const { data } = await apiClient.post(
+					adminPlanRepatriationCountriesAttachZoneEndpoint(this.productId, this.planVersionId),
+					{
 					zone_id: zone.id,
-				});
+					},
+				);
 
 				const added = this.parseCountriesFromResponse(data);
 
@@ -483,11 +491,12 @@ export default {
 			this.errorMessage = null;
 
 			try {
-				const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/repatriation-countries/detach-by-zone`;
-
-				const { data } = await axios.post(url, {
+				const { data } = await apiClient.post(
+					adminPlanRepatriationCountriesDetachZoneEndpoint(this.productId, this.planVersionId),
+					{
 					zone_id: zone.id,
-				});
+					},
+				);
 
 				const removed = this.parseCountriesFromResponse(data);
 
@@ -543,8 +552,9 @@ export default {
 			try {
 				if (previousAttached) {
 					// antes estaba asociado => ahora lo quitamos
-					const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/repatriation-countries/${country.id}`;
-					const { data } = await axios.delete(url);
+					const { data } = await apiClient.delete(
+						adminPlanRepatriationCountryEndpoint(this.productId, this.planVersionId, country.id),
+					);
 
 					const removed = this.parseCountriesFromResponse(data);
 					if (Array.isArray(removed) && removed.length) {
@@ -562,11 +572,13 @@ export default {
 					}
 				} else {
 					// antes NO estaba asociado => ahora lo añadimos
-					const url = `/api/v1/admin/products/${this.productId}/plans/${this.planVersionId}/repatriation-countries`;
 					const payload = {
 						country_ids: [country.id],
 					};
-					const { data } = await axios.post(url, payload);
+					const { data } = await apiClient.post(
+						adminPlanRepatriationCountriesEndpoint(this.productId, this.planVersionId),
+						payload,
+					);
 
 					const added = this.parseCountriesFromResponse(data);
 					if (Array.isArray(added) && added.length) {

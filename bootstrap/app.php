@@ -35,6 +35,9 @@ $builder = Application::configure(basePath: dirname(__DIR__))
 			// (conserva los que ya tengas priorizados; aquí solo muestro los relevantes)
 			\Illuminate\Session\Middleware\StartSession::class,
 			\Illuminate\View\Middleware\ShareErrorsFromSession::class,
+			FastApiTokenRealmAuth::class,
+			\Illuminate\Auth\Middleware\Authenticate::class,
+			\Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
 		]);
 
 		// Grupos reutilizables por canal.

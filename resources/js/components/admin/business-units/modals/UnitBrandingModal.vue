@@ -50,6 +50,9 @@
 </template>
 
 <script>
+import { apiClient, extractApiErrorContract } from '../../../../core/http/apiClient'
+import { buApi } from '../api'
+
 export default {
 	props: { unitId: { type: [String, Number], required: true } },
 	data() {
@@ -97,14 +100,15 @@ export default {
 				const file = this.$refs.logoInputEl?.files?.[0] || null;
 				if (file) form.append('logo', file);
 
-				const res = await axios.post(route('admin.business-units.api.units.branding.update', { unit: this.unitId }), form, {
+				const res = await apiClient.post(buApi.unitBranding(this.unitId), form, {
 					headers: { 'Content-Type': 'multipart/form-data' }
 				});
 				window.flash(res.data.message || 'Guardado.', 'success');
 				this.hide();
 				this.$emit('saved');
 			} catch (e) {
-				window.flash(e?.response?.data?.message || 'Error', 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_BRANDING_ERROR')
+				window.flash(apiError.message || 'Error', 'danger');
 			} finally {
 				this.saving = false;
 			}

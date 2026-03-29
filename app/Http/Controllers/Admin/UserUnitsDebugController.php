@@ -19,15 +19,6 @@ class UserUnitsDebugController extends Controller
 	}
 
 	/**
-	 * Página HTML que carga el componente Vue.
-	 */
-	public function page(Request $request)
-	{
-		// Pantalla de debug: sin validación de permisos del actor.
-		return view('admin.debug.user-units');
-	}
-
-	/**
 	 * API: Lista paginada de usuarios con sus membresías/unidades.
 	 *
 	 * GET admin.debug.user-units.index

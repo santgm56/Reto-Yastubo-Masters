@@ -172,7 +172,8 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
+import { buApi } from './api'
 
 export default {
 	props: {
@@ -256,11 +257,7 @@ export default {
 		},
 
 		baseUnitsApiUrl() {
-			try {
-				return route('admin.business-units.api.units')
-			} catch (e) {
-				return '/admin/business-units/api/units'
-			}
+			return buApi.units()
 		},
 
 		toggleStatusUrl(u) {
@@ -294,7 +291,7 @@ export default {
 				const url = this.toggleStatusUrl(u)
 
 				// Enviamos el estado destino al endpoint RESTful de status
-				await axios.patch(url, { status: nextStatus })
+				await apiClient.patch(url, { status: nextStatus })
 
 				// UI optimista
 				u.status = nextStatus
@@ -306,8 +303,9 @@ export default {
 					)
 				}
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_STATUS_ERROR')
 				if (typeof window.flash === 'function') {
-					window.flash(this.humanError(e) || 'No se pudo actualizar el estado.', 'danger')
+					window.flash(apiError.message || this.humanError(e) || 'No se pudo actualizar el estado.', 'danger')
 				}
 			} finally {
 				this.$set?.(this.busyByUnitId, id, false) || (this.busyByUnitId[id] = false)
@@ -326,7 +324,7 @@ export default {
 					per_page: this.filters.per_page,
 				};
 
-				const res = await axios.get(this.route('admin.business-units.api.units'), { params });
+				const res = await apiClient.get(buApi.units(), { params });
 
 				this.units = res.data.data || [];
 				const meta = res.data.meta || {};
@@ -334,7 +332,8 @@ export default {
 				this.permissions = meta.permissions || this.permissions;
 
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_INDEX_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			} finally {
 				this.loading = false;
 			}
@@ -358,7 +357,7 @@ export default {
 
 		async onConfirmCreateUser(payload) {
 			try {
-				await axios.post(this.route('admin.business-units.api.units.store'), {
+				await apiClient.post(buApi.units(), {
 					type: 'freelance',
 					mode: 'new_user',
 					user: payload,
@@ -367,13 +366,14 @@ export default {
 				this.filters.page = 1;
 				await this.fetchUnits();
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_CREATE_FREELANCE_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			}
 		},
 
 		async onConfirmPickUser(payload) {
 			try {
-				await axios.post(this.route('admin.business-units.api.units.store'), {
+				await apiClient.post(buApi.units(), {
 					type: 'freelance',
 					mode: 'existing_user',
 					existing_user_id: payload.user_id,
@@ -382,13 +382,14 @@ export default {
 				this.filters.page = 1;
 				await this.fetchUnits();
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_LINK_EXISTING_USER_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			}
 		},
 
 		async onConfirmEmailExact(payload) {
 			try {
-				await axios.post(this.route('admin.business-units.api.units.store'), {
+				await apiClient.post(buApi.units(), {
 					type: 'freelance',
 					mode: 'email_exact',
 					email: payload.email,
@@ -397,7 +398,8 @@ export default {
 				this.filters.page = 1;
 				await this.fetchUnits();
 			} catch (e) {
-				window.flash(this.humanError(e), 'danger');
+				const apiError = extractApiErrorContract(e, 'API_BUSINESS_UNITS_LINK_EMAIL_ERROR')
+				window.flash(apiError.message || this.humanError(e), 'danger');
 			}
 		},
 

@@ -5,7 +5,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">Editar JSON de datos de prueba (Versión)</h5>
-					<button type="button" class="btn-close"></button>
+					<button type="button" class="btn-close" @click="close" :disabled="isSaving || isLoading"></button>
 				</div>
 
 				<div class="modal-body">
@@ -32,7 +32,8 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient';
+import templatesApi from './api';
 
 export default {
 	name: 'AdminTemplatesVersionTestDataModal',
@@ -51,6 +52,7 @@ export default {
 			isLoading: false,
 			isSaving: false,
 			error: null,
+			autosaveDelayMs: 900,
 
 			rawJson: '',
 
@@ -77,9 +79,7 @@ export default {
 			if (this.modalInstance) this.modalInstance.show();
 
 			try {
-				const { data } = await axios.get(
-					this.route('admin.templates.versions.show', { template: this.templateId, templateVersion: versionId }),
-				);
+				const { data } = await apiClient.get(templatesApi.versionsShow(this.templateId, versionId));
 				const v = data?.data?.version;
 				this.rawJson = v?.test_data_json || '';
 				this.lastSavedValue = this.rawJson;
@@ -111,10 +111,7 @@ export default {
 
 			try {
 				const payload = { test_data_json: this.rawJson };
-				const { data } = await axios.patch(
-					this.route('admin.templates.versions.test-data.update', { template: this.templateId, templateVersion: this.versionId }),
-					payload,
-				);
+				const { data } = await apiClient.patch(templatesApi.versionsUpdateTestData(this.templateId, this.versionId), payload);
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function' && data?.toast?.message) {
 					window.flash(data.toast.message, data.toast.type || 'success');
@@ -125,9 +122,10 @@ export default {
 				this.lastSavedValue = this.rawJson;
 				this.$emit('updated', { id: this.versionId });
 			} catch (e) {
+				const apiError = extractApiErrorContract(e, 'API_TEMPLATES_VERSION_TEST_DATA_UPDATE_ERROR');
 				this.error =
-					e?.response?.data?.message ||
 					e?.response?.data?.toast?.message ||
+					apiError.message ||
 					'No se pudo guardar el JSON.';
 
 				if (typeof window !== 'undefined' && typeof window.flash === 'function') {
