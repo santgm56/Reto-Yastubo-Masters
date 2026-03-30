@@ -18,13 +18,13 @@ Route::get('/home', fn() => redirect()->route('customer.dashboard'))->name('home
 
 Route::get('/dashboard', fn() => view('customer.home', ['section' => 'dashboard']))->name('dashboard');
 Route::get('/productos', fn() => view('customer.home', ['section' => 'productos']))->name('products');
+Route::get('/beneficiarios', fn() => view('customer.home', ['section' => 'beneficiarios']))->name('beneficiaries');
 Route::get('/transacciones', fn() => view('customer.home', ['section' => 'transacciones']))->name('transactions');
 Route::get('/pagos-pendientes', fn() => view('customer.home', ['section' => 'pagos-pendientes']))->name('payments.pending');
 Route::get('/metodo-pago', fn() => view('customer.home', ['section' => 'metodo-pago']))->name('payment-method');
 
 // Compatibilidad temporal con FE-001 (placeholders antiguos).
 Route::get('/resumen', fn() => redirect()->route('customer.dashboard'));
-Route::get('/beneficiarios', fn() => redirect()->route('customer.products'));
 Route::get('/suscripciones', fn() => redirect()->route('customer.payments.pending'));
 Route::get('/referidos', fn() => redirect()->route('customer.transactions'));
 

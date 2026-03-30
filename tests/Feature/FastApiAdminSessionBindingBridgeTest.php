@@ -11,6 +11,7 @@ use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
@@ -40,14 +41,9 @@ class FastApiAdminSessionBindingBridgeTest extends TestCase
 			'timezone' => 'America/Santiago',
 		]);
 
-		DB::table('sessions')->insert([
-			'id' => 'admin-session-id',
-			'user_id' => null,
-			'ip_address' => null,
-			'user_agent' => null,
-			'payload' => 'test-payload',
-			'last_activity' => 0,
-		]);
+		$user->forceFill([
+			'force_password_change' => false,
+		])->saveQuietly();
 
 		Http::fake([
 			'http://127.0.0.1:8001/api/v1/auth/me' => Http::response([
@@ -72,6 +68,17 @@ class FastApiAdminSessionBindingBridgeTest extends TestCase
 		$session = new Store('test', new ArraySessionHandler(120));
 		$session->setId('admin-session-id');
 		$session->start();
+		$sessionId = $session->getId();
+
+		DB::table('sessions')->insert([
+			'id' => $sessionId,
+			'user_id' => null,
+			'ip_address' => null,
+			'user_agent' => null,
+			'payload' => 'test-payload',
+			'last_activity' => 0,
+		]);
+
 		$request->setLaravelSession($session);
 
 		$response = app(FastApiTokenRealmAuth::class)->handle(
@@ -80,8 +87,8 @@ class FastApiAdminSessionBindingBridgeTest extends TestCase
 		);
 
 		$this->assertSame('admin-protected-ok', $response->getContent());
-		$this->assertSame($user->id, DB::table('sessions')->where('id', 'admin-session-id')->value('user_id'));
-		$this->assertSame(str_repeat('A', 255), DB::table('sessions')->where('id', 'admin-session-id')->value('user_agent'));
+		$this->assertSame($user->id, DB::table('sessions')->where('id', $sessionId)->value('user_id'));
+		$this->assertSame(Str::limit(str_repeat('A', 300), 255), DB::table('sessions')->where('id', $sessionId)->value('user_agent'));
 	}
 
 	protected function ensureBridgeTables(): void

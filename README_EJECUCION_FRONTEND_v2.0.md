@@ -73,8 +73,15 @@ Fuente obligatoria: README.md (raiz), FRONTEND_ARCHITECTURE.md, AGENTS/READMEvie
 - DONE: Limpieza de tokens frontend en eventos de logout (`/admin/logout`, `/customer/logout`) para evitar sesion local residual fuera de Laravel.
 - DONE: Suite unitaria para `fastapiLoginBridge` validando secuencia login FastAPI -> session bridge Laravel -> redirect seguro.
 - DONE: Evidencia E2E funcional del auth bridge (`tests/e2e/functional-auth-bridge.spec.js`) para validar login por FastAPI + sesion protegida en rutas admin/customer.
+- DONE: Helper reusable `scripts/run-phpunit-with-sqlite.ps1` + `npm run test:bridge:sqlite` para correr la suite focalizada del bridge con `sqlite3` y `pdo_sqlite` habilitados desde el PHP actual, aun cuando no vengan activos en `php.ini`.
 - DONE: Inicializacion frontend ajustada a API-first (`ensureFrontendBootstrap({ forceApi: true })`) para priorizar runtime/contexto desde FastAPI y dejar Blade como fallback de compatibilidad.
 - DONE: Suite unitaria para `bootstrapContext` validando prioridad de bootstrap API y fallback seguro ante fallo de endpoint.
+
+## Comando reusable bridge sqlite
+
+- Default: `npm run test:bridge:sqlite`
+- Custom: `powershell -ExecutionPolicy Bypass -File .\scripts\run-phpunit-with-sqlite.ps1 tests/Feature/FastApiAdminSessionBindingBridgeTest.php`
+- El helper ejecuta `vendor/phpunit/phpunit/phpunit` directo para que `sqlite3` y `pdo_sqlite` queden habilitados en el mismo proceso que corre PHPUnit.
 
 ## Deuda integrada (explicita)
 

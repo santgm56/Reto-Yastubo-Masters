@@ -8,6 +8,7 @@
         "localhost": "concurrently -k -n LARAVEL,VITE -c green,blue \"php artisan serve --host=127.0.0.1 --port=8000\" \"vite --host 127.0.0.1 --port 5173\"",
         "test:unit": "vitest run",
         "test:integration": "vitest run resources/js/core/auth/routeGuards.test.js resources/js/core/http/apiClient.cutover.test.js",
+        "test:bridge:sqlite": "powershell -ExecutionPolicy Bypass -File .\\scripts\\run-phpunit-with-sqlite.ps1",
         "test:e2e:smoke": "playwright test --config=playwright.config.js --grep @smoke",
         "test:e2e:functional": "playwright test --config=playwright.config.js --grep @functional",
         "test:e2e:functional:companies-edit": "playwright test --config=playwright.config.js tests/e2e/functional-companies-edit.spec.js",

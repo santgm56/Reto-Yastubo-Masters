@@ -1,10 +1,10 @@
 import './bootstrap';
 import { createApp } from 'vue';
-import { createAuthorizationContext } from './core/auth/authorization';
-import { evaluateFrontendRouteAccess } from './core/auth/routeGuards';
-import { initializeFastApiLoginBridge } from './core/auth/fastapiLoginBridge';
-import { initializeAppTelemetry } from './core/telemetry/appTelemetry';
-import { ensureFrontendBootstrap } from './core/runtime/bootstrapContext';
+import { createAuthorizationContext } from '@frontend/core/auth/authorization';
+import { evaluateFrontendRouteAccess } from '@frontend/core/auth/routeGuards';
+import { initializeFastApiLoginBridge } from '@frontend/core/auth/fastapiLoginBridge';
+import { initializeAppTelemetry } from '@frontend/core/telemetry/appTelemetry';
+import { ensureFrontendBootstrap } from '@frontend/core/runtime/bootstrapContext';
 
 async function bootstrapFrontendApp() {
   initializeFastApiLoginBridge();
@@ -122,16 +122,29 @@ const toPascal = (s) =>
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join('')
 
-  const modules = import.meta.glob('./components/**/*.vue', { eager: true });
+  const legacyModules = import.meta.glob('./components/**/*.vue', { eager: true });
+  const sharedModules = import.meta.glob('../frontend/src/shared/ui/**/*.vue', { eager: true });
+  const modules = {
+    ...legacyModules,
+    ...sharedModules,
+  };
 
   console.log(modules);
 
   Object.entries(modules).forEach(([path, mod]) => {
-  // path p.ej.: "./components/ui/Toast.vue"  ó "./components/admin/users/Index.vue"
-  const rel = path.replace('./components/', '');
+  // path p.ej.: "./components/ui/Toast.vue", "./components/admin/users/Index.vue"
+  // o "../frontend/src/shared/ui/Toast.vue"
+  const legacyRel = path.startsWith('./components/')
+    ? path.replace('./components/', '')
+    : null
+  const sharedRel = path.startsWith('../frontend/src/shared/ui/')
+    ? path.replace('../frontend/src/shared/ui/', '')
+    : null
+  const rel = legacyRel || sharedRel || path
+  const isSharedUi = rel.startsWith('ui/') || sharedRel !== null
 
   let name
-  if (rel.startsWith('ui/')) {
+  if (isSharedUi) {
     // UI: nombre corto por archivo (Toast.vue -> <Toast>, Modal.vue -> <Modal>)
     const file = rel.split('/').pop() // "Toast.vue"
     name = toPascal(file)             // "Toast"

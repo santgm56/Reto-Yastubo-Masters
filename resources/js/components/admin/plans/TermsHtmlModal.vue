@@ -51,7 +51,7 @@
 
 <script>
 import { apiClient, extractApiErrorContract } from '../../../core/http/apiClient'
-import InputHtml from '@/components/ui/InputHtml.vue'
+import InputHtml from '@frontend/shared/ui/InputHtml.vue'
 import { adminPlanTermsHtmlEndpoint } from './api'
 
 export default {
