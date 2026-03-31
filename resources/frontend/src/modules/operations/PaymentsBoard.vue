@@ -1,13 +1,13 @@
 <template>
-  <div class="seller-payments-page">
-    <div class="seller-payments seller-payments-theme">
-      <section class="seller-payments-hero">
+  <div class="seller-payments-page" :class="{ 'seller-payments-page--embedded': embedded }">
+    <div class="seller-payments seller-payments-theme" :class="{ 'seller-payments--embedded': embedded }">
+      <section v-if="!embedded" class="seller-payments-hero">
       <div class="seller-payments-hero-grid">
         <div>
-          <div class="seller-payments-kicker">Pagos operativos</div>
-          <h1 class="seller-payments-title">Gestiona cobros, suscripciones y reintentos del canal seller</h1>
+          <div class="seller-payments-kicker">{{ heroEyebrow }}</div>
+          <h1 class="seller-payments-title">{{ heroTitle }}</h1>
           <p class="seller-payments-copy mb-0">
-            Visualiza el estado de cada mensualidad y ejecuta las acciones operativas disponibles desde un mismo tablero.
+            {{ heroDescription }}
           </p>
 
           <div class="seller-payments-chip-row">
@@ -23,8 +23,7 @@
           <div class="seller-payments-hero-hint">{{ heroStatusMessage }}</div>
 
           <div class="seller-payments-link-row">
-            <a class="seller-payments-link" href="/seller/dashboard">Dashboard</a>
-            <a class="seller-payments-link" href="/seller/issuance/new">Nueva emision</a>
+            <a v-for="link in heroLinks" :key="link.path" class="seller-payments-link" :href="link.path">{{ link.label }}</a>
           </div>
         </div>
       </div>
@@ -135,6 +134,8 @@ export default {
     checkoutEndpoint: { type: String, required: true },
     subscribeEndpoint: { type: String, required: true },
     retryRouteTemplate: { type: String, required: true },
+    portalVariant: { type: String, default: 'seller' },
+    embedded: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -151,6 +152,35 @@ export default {
     this.loadRows();
   },
   computed: {
+    isAdminVariant() {
+      return `${this.portalVariant || ''}`.trim().toLowerCase() === 'admin';
+    },
+    heroEyebrow() {
+      return this.isAdminVariant ? 'Pagos admin' : 'Pagos operativos';
+    },
+    heroTitle() {
+      return this.isAdminVariant
+        ? 'Gestiona cobros, suscripciones y reintentos del backoffice'
+        : 'Gestiona cobros, suscripciones y reintentos del canal seller';
+    },
+    heroDescription() {
+      return this.isAdminVariant
+        ? 'Visualiza el estado de cada mensualidad y ejecuta acciones operativas desde el workspace admin.'
+        : 'Visualiza el estado de cada mensualidad y ejecuta las acciones operativas disponibles desde un mismo tablero.';
+    },
+    heroLinks() {
+      if (this.isAdminVariant) {
+        return [
+          { label: 'Dashboard', path: '/admin' },
+          { label: 'Nueva emision', path: '/admin/issuance/new' },
+        ];
+      }
+
+      return [
+        { label: 'Dashboard', path: '/seller/dashboard' },
+        { label: 'Nueva emision', path: '/seller/issuance/new' },
+      ];
+    },
     heroStatusMessage() {
       if (this.loading) {
         return 'Se esta consultando el estado mas reciente de pagos y mensualidades.';
@@ -388,6 +418,12 @@ export default {
     linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
 }
 
+.seller-payments-page--embedded {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
 .seller-payments {
   --seller-border: #e5e8f1;
   --seller-dark: #2f3651;
@@ -402,6 +438,10 @@ export default {
   width: 100%;
   max-width: 1360px;
   margin: 0 auto;
+}
+
+.seller-payments--embedded {
+  max-width: none;
 }
 
 .seller-payments-theme {
@@ -533,6 +573,10 @@ export default {
 
 .seller-payments-card {
   margin-bottom: 1.1rem;
+}
+
+.seller-payments--embedded .seller-payments-card:last-child {
+  margin-bottom: 0;
 }
 
 .seller-payments-metric-top,

@@ -1,5 +1,6 @@
 @extends('layouts.craft')
 
+@section('shell_mode', 'standalone')
 @section('title', 'Pagos')
 
 @section('content')

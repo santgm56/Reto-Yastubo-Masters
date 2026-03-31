@@ -1,5 +1,5 @@
 <script>
-import AdminOperationsIssuanceWizard from '@frontend/modules/operations/IssuanceWizard.vue';
+import AdminPortalIssuancePage from '@frontend/modules/admin-portal/IssuancePage.vue';
 
-export default AdminOperationsIssuanceWizard;
+export default AdminPortalIssuancePage;
 </script>

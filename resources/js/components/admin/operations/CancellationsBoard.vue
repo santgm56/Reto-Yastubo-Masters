@@ -1,5 +1,5 @@
 <script>
-import AdminOperationsCancellationsBoard from '@frontend/modules/operations/CancellationsBoard.vue';
+import AdminPortalCancellationsPage from '@frontend/modules/admin-portal/CancellationsPage.vue';
 
-export default AdminOperationsCancellationsBoard;
+export default AdminPortalCancellationsPage;
 </script>

@@ -1,5 +1,5 @@
 <script>
-import AdminOperationsPaymentsBoard from '@frontend/modules/operations/PaymentsBoard.vue';
+import AdminPortalPaymentsPage from '@frontend/modules/admin-portal/PaymentsPage.vue';
 
-export default AdminOperationsPaymentsBoard;
+export default AdminPortalPaymentsPage;
 </script>

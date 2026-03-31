@@ -1,13 +1,13 @@
 <template>
-  <div class="seller-ops-page">
-    <div class="seller-ops seller-ops-theme">
-      <section class="seller-ops-hero">
+  <div class="seller-ops-page" :class="{ 'seller-ops-page--embedded': embedded }">
+    <div class="seller-ops seller-ops-theme" :class="{ 'seller-ops--embedded': embedded }">
+      <section v-if="!embedded" class="seller-ops-hero">
       <div class="seller-ops-hero-grid">
         <div>
-          <div class="seller-ops-kicker">Emision asistida</div>
-          <h1 class="seller-ops-title">Genera cotizacion, valida elegibilidad y confirma la emision</h1>
+          <div class="seller-ops-kicker">{{ heroEyebrow }}</div>
+          <h1 class="seller-ops-title">{{ heroTitle }}</h1>
           <p class="seller-ops-copy mb-0">
-            Este flujo concentra los datos minimos del titular, la cotizacion comercial y las evidencias operativas posteriores.
+            {{ heroDescription }}
           </p>
 
           <div class="seller-ops-chip-row">
@@ -23,8 +23,7 @@
           <div class="seller-ops-hero-hint">{{ heroStatusMessage }}</div>
 
           <div class="seller-ops-link-row">
-            <a class="seller-ops-link" href="/seller/dashboard">Dashboard</a>
-            <a class="seller-ops-link" href="/seller/payments">Pagos</a>
+            <a v-for="link in heroLinks" :key="link.path" class="seller-ops-link" :href="link.path">{{ link.label }}</a>
           </div>
         </div>
       </div>
@@ -221,6 +220,8 @@ export default {
     issuanceEndpoint: { type: String, required: true },
     issuancePdfEndpointTemplate: { type: String, default: '' },
     issuanceSendEmailEndpointTemplate: { type: String, default: '' },
+    portalVariant: { type: String, default: 'seller' },
+    embedded: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -263,6 +264,35 @@ export default {
     },
   },
   computed: {
+    isAdminVariant() {
+      return `${this.portalVariant || ''}`.trim().toLowerCase() === 'admin';
+    },
+    heroEyebrow() {
+      return this.isAdminVariant ? 'Emision admin' : 'Emision asistida';
+    },
+    heroTitle() {
+      return this.isAdminVariant
+        ? 'Genera cotizacion, valida elegibilidad y confirma la emision del backoffice'
+        : 'Genera cotizacion, valida elegibilidad y confirma la emision';
+    },
+    heroDescription() {
+      return this.isAdminVariant
+        ? 'Este flujo concentra datos del titular, cotizacion comercial y evidencias posteriores dentro del workspace admin.'
+        : 'Este flujo concentra los datos minimos del titular, la cotizacion comercial y las evidencias operativas posteriores.';
+    },
+    heroLinks() {
+      if (this.isAdminVariant) {
+        return [
+          { label: 'Dashboard', path: '/admin' },
+          { label: 'Pagos', path: '/admin/payments' },
+        ];
+      }
+
+      return [
+        { label: 'Dashboard', path: '/seller/dashboard' },
+        { label: 'Pagos', path: '/seller/payments' },
+      ];
+    },
     quoteEligibilityLabel() {
       if (!this.quoteData) {
         return 'Pendiente';
@@ -475,6 +505,12 @@ export default {
     linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
 }
 
+.seller-ops-page--embedded {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
 .seller-ops {
   --seller-bg: #eef3f8;
   --seller-surface: #ffffff;
@@ -491,6 +527,10 @@ export default {
   width: 100%;
   max-width: 1360px;
   margin: 0 auto;
+}
+
+.seller-ops--embedded {
+  max-width: none;
 }
 
 .seller-ops-theme {
@@ -714,6 +754,11 @@ export default {
 
 .seller-ops-form-card {
   margin-bottom: 1.25rem;
+}
+
+.seller-ops--embedded .seller-ops-form-card,
+.seller-ops--embedded .seller-ops-results-grid {
+  margin-bottom: 0;
 }
 
 .seller-ops-label {
