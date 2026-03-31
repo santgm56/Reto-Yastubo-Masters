@@ -6,7 +6,7 @@
         <div class="d-flex flex-column gap-2">
           <div class="d-flex flex-column flex-xl-row align-items-xl-start justify-content-between gap-2">
             <div>
-              <div class="status-kicker">Resumen actual</div>
+              <div class="portal-kicker status-kicker">Resumen actual</div>
               <div class="status-hero-title">{{ heroTitle }}</div>
               <div class="status-hero-subtitle">{{ heroSubtitle }}</div>
               <p class="status-hero-copy mb-0">{{ heroDescription || activeTitle }}</p>
@@ -160,7 +160,7 @@ export default {
   overflow: hidden;
   background:
     radial-gradient(280px 180px at 88% 18%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 100%),
-    linear-gradient(135deg, #7447f7 0%, #6c46f4 32%, #8554ff 100%);
+    linear-gradient(135deg, #7447f7 0%, var(--portal-violet, #6c46f4) 32%, #8554ff 100%);
   color: #ffffff;
 }
 
@@ -172,9 +172,10 @@ export default {
 .status-hero-notch {
   position: absolute;
   top: -20px;
-  left: 44%;
-  width: 74px;
-  height: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 48px;
   border-radius: 999px;
   background: #ffffff;
   opacity: 0.96;
@@ -182,11 +183,7 @@ export default {
 
 .status-kicker {
   color: rgba(255, 255, 255, 0.76);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 0.22rem;
+  margin-bottom: 0.25rem;
 }
 
 .status-hero-title {
@@ -213,12 +210,12 @@ export default {
 }
 
 .status-current {
-  border-radius: 20px;
+  border-radius: var(--portal-radius-element, 16px);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 0.68rem 0.8rem;
+  padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.12);
   min-width: 168px;
-  box-shadow: 0 18px 34px rgba(41, 18, 111, 0.22);
+  box-shadow: 0 12px 24px rgba(41, 18, 111, 0.15);
   backdrop-filter: blur(10px);
   max-width: 238px;
 }
@@ -240,7 +237,7 @@ export default {
 .status-chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.34rem;
+  gap: 0.5rem;
 }
 
 .status-soft-chip {
@@ -256,8 +253,8 @@ export default {
 }
 
 .status-beneficiary-panel {
-  border-radius: 22px;
-  padding: 0.62rem;
+  border-radius: var(--portal-radius-card, 24px);
+  padding: 0.75rem;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(8px);
@@ -279,7 +276,7 @@ export default {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: #ffffff;
-  color: #5f46d5;
+  color: var(--portal-violet-hover, #5f46d5);
   font-weight: 700;
   padding-inline: 0.85rem;
 }
@@ -287,27 +284,27 @@ export default {
 .status-beneficiary-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.48rem;
+  gap: 0.5rem;
 }
 
 .status-beneficiary-card {
-  min-width: 96px;
-  border-radius: 16px;
-  padding: 0.56rem;
+  min-width: 104px;
+  border-radius: var(--portal-radius-element, 16px);
+  padding: 0.75rem;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .status-beneficiary-avatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.9);
-  color: #6547e6;
-  font-weight: 800;
+  color: var(--portal-violet, #6c46f4);
+  font-weight: 700;
   font-size: 0.78rem;
 }
 
@@ -328,22 +325,15 @@ export default {
 }
 
 .status-beneficiary-more {
-  min-width: 64px;
-  min-height: 64px;
+  min-width: 72px;
+  min-height: 72px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 20px;
+  border-radius: var(--portal-radius-element, 16px);
   background: rgba(255, 255, 255, 0.1);
   border: 1px dashed rgba(255, 255, 255, 0.18);
   color: #ffffff;
   font-weight: 700;
-}
-
-@media (max-width: 991.98px) {
-  .status-hero-notch {
-    left: 50%;
-    transform: translateX(-50%);
-  }
 }
 </style>

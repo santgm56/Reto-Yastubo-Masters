@@ -1,5 +1,5 @@
 <template>
-  <div class="card shadow-sm border-0" v-if="canAccess">
+  <div class="card shadow-sm border-0 death-report-card" v-if="canAccess">
     <div class="card-body p-4 p-lg-5">
       <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
         <div>
@@ -12,7 +12,7 @@
       </div>
 
       <div
-        class="alert py-2 px-3 mb-3"
+        class="portal-alert mb-3"
         :class="widgetState === 'error'
           ? 'alert-light-danger'
           : widgetState === 'loading'
@@ -29,30 +29,30 @@
         {{ widgetMessage }}
       </div>
 
-      <div v-if="widgetNotice" class="alert py-2 px-3 mb-3" :class="widgetNoticeClass" role="alert">
+      <div v-if="widgetNotice" class="portal-alert mb-3" :class="widgetNoticeClass" role="alert">
         {{ widgetNotice }}
       </div>
 
       <div v-if="dataSources.length" class="death-report-sources mb-3">
-        <div class="death-report-sources-label">Estado del servicio</div>
+        <div class="portal-source-heading">Estado del servicio</div>
 
-        <div class="death-report-source-list mt-2">
+        <div class="portal-source-list death-report-source-list mt-2">
           <article
             v-for="source in dataSources"
             :key="source.title"
-            class="death-report-source"
+            class="portal-source-card death-report-source"
             :class="`is-${source.tone || 'neutral'}`"
           >
-            <div class="death-report-source-title">{{ source.title }}</div>
-            <div class="death-report-source-value">{{ source.value }}</div>
-            <div class="death-report-source-hint">{{ source.hint }}</div>
+            <div class="portal-source-heading">{{ source.title }}</div>
+            <div class="portal-source-value">{{ source.value }}</div>
+            <div class="portal-source-hint">{{ source.hint }}</div>
           </article>
         </div>
       </div>
 
       <div v-if="widgetState === 'loading'" class="row g-3">
         <div class="col-12 col-lg-6" v-for="index in 2" :key="`death-report-loading-${index}`">
-          <div class="border rounded p-3 placeholder-glow">
+          <div class="portal-loading-card placeholder-glow">
             <div class="placeholder col-7 mb-2" style="height: 12px;"></div>
             <div class="placeholder col-9 mb-2" style="height: 10px;"></div>
             <div class="placeholder col-6" style="height: 10px;"></div>
@@ -60,7 +60,7 @@
         </div>
       </div>
 
-      <div v-else-if="widgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
+      <div v-else-if="widgetState === 'error'" class="portal-state-box is-danger">
         <div class="fw-semibold mb-1">No pudimos cargar esta seccion.</div>
         <div class="fs-8 mb-2">
           {{ canRetry
@@ -72,15 +72,15 @@
         </button>
       </div>
 
-      <div v-else-if="widgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
+      <div v-else-if="widgetState === 'empty'" class="portal-state-box is-warning">
         <div class="fw-semibold mb-1">Aun no puedes iniciar un reporte.</div>
         <div class="fs-8">Completa tu informacion de perfil para poder enviar un reporte de fallecimiento.</div>
       </div>
 
       <div v-else class="row g-3">
         <div class="col-12 col-xl-6">
-          <div class="card border h-100">
-            <div class="card-header bg-light fw-semibold py-2">Estado de tu solicitud</div>
+          <div class="card border h-100 death-report-panel-card">
+            <div class="card-header bg-light fw-semibold py-2 death-report-panel-header">Estado de tu solicitud</div>
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                 <span class="text-muted fs-8">Estado actual</span>
@@ -96,12 +96,12 @@
         </div>
 
         <div class="col-12 col-xl-6">
-          <div class="card border h-100">
-            <div class="card-header bg-light fw-semibold py-2">Datos del reporte</div>
+          <div class="card border h-100 death-report-panel-card">
+            <div class="card-header bg-light fw-semibold py-2 death-report-panel-header">Datos del reporte</div>
             <div class="card-body">
               <form @submit.prevent="$emit('submit')" novalidate>
                 <fieldset :disabled="isSubmitting || hasSubmitted">
-                  <div class="alert alert-light-primary py-2 px-3 fs-8 mb-3" role="note">
+                  <div class="portal-alert alert-light-primary fs-8 mb-3" role="note">
                     Asocia este reporte al titular o beneficiario afectado para relacionarlo correctamente con tu plan.
                   </div>
 
@@ -202,8 +202,8 @@
         </div>
 
         <div class="col-12">
-          <div class="card border h-100">
-            <div class="card-header bg-light fw-semibold py-2">Confirmacion</div>
+          <div class="card border h-100 death-report-panel-card">
+            <div class="card-header bg-light fw-semibold py-2 death-report-panel-header">Confirmacion</div>
             <div class="card-body">
               <div v-if="!hasSubmitted" class="text-muted fs-8">
                 Cuando envies tu reporte, aqui veras la confirmacion y los siguientes pasos.
@@ -218,7 +218,7 @@
                 <div class="fs-8 mb-2">{{ confirmation.siguientePaso }}</div>
                 <div class="text-muted fs-9">Fecha de reporte: {{ lastSubmissionAt }}</div>
               </div>
-              <div v-if="submitNotice" class="alert alert-light-success py-2 px-3 fs-8 mt-3 mb-0">
+              <div v-if="submitNotice" class="portal-alert alert-light-success fs-8 mt-3 mb-0">
                 {{ submitNotice }}
               </div>
             </div>
@@ -228,10 +228,10 @@
     </div>
   </div>
 
-  <div class="card shadow-sm border-0" v-else>
+  <div class="card shadow-sm border-0 death-report-card" v-else>
     <div class="card-body p-4 p-lg-5">
       <h2 class="fs-4 fw-bold text-gray-900 mb-2">Reporte de fallecimiento</h2>
-      <div class="alert alert-light-warning mb-0" role="alert">
+      <div class="portal-alert alert-light-warning mb-0" role="alert">
         {{ accessDeniedReason || 'Esta funcion no esta disponible en este momento.' }}
       </div>
     </div>
@@ -365,58 +365,27 @@ export default {
 </script>
 
 <style scoped>
-.death-report-sources-label,
-.death-report-source-title {
-  font-size: 0.72rem;
-  color: #7a8698;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 700;
+.death-report-card {
+  border-radius: var(--portal-radius-card, 24px);
+  border: 1px solid var(--shell-border, #e5e8f1);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
 }
 
-.death-report-source-list {
-  display: grid;
-  gap: 0.75rem;
+.death-report-panel-card {
+  border-radius: var(--portal-radius-card, 24px);
+  border: 1px solid var(--shell-border, #e5e8f1) !important;
+  background: rgba(255, 255, 255, 0.94);
+  overflow: hidden;
 }
 
-.death-report-source {
-  border-radius: 16px;
-  border: 1px solid #e5e8f1;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0.85rem 0.95rem;
+.death-report-panel-header {
+  border-bottom: 1px solid var(--shell-border, #e5e8f1);
+  background: #f8fafc !important;
 }
 
-.death-report-source.is-success {
-  border-color: #d4efdf;
-  background: #f5fcf7;
-}
-
-.death-report-source.is-warning {
-  border-color: #f7e1b5;
-  background: #fffaf0;
-}
-
-.death-report-source.is-danger {
-  border-color: #f2cdcd;
-  background: #fff7f7;
-}
-
-.death-report-source-title {
-  font-size: 0.72rem;
-}
-
-.death-report-source-value {
-  margin-top: 0.45rem;
-  font-size: 1rem;
-  line-height: 1.15;
-  font-weight: 800;
-  color: #1f2b3d;
-}
-
-.death-report-source-hint {
-  margin-top: 0.32rem;
-  font-size: 0.74rem;
-  line-height: 1.4;
-  color: #6f7b90;
+@media (min-width: 768px) {
+  .death-report-source-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

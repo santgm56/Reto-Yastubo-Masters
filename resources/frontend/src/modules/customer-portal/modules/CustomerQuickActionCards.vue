@@ -8,7 +8,7 @@
     >
       <div class="quick-action-top">
         <div>
-          <div class="quick-action-eyebrow">{{ card.eyebrow }}</div>
+          <div class="portal-kicker quick-action-eyebrow">{{ card.eyebrow }}</div>
           <div class="quick-action-title">{{ card.title }}</div>
         </div>
         <div class="quick-action-icon" :class="card.iconTone || 'is-neutral'">{{ card.icon }}</div>
@@ -49,21 +49,21 @@ export default {
 <style scoped>
 .quick-action-grid {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .quick-action-card {
   min-width: 0;
-  min-height: 124px;
-  border-radius: 24px;
-  border: 1px solid #e5e8f1;
+  min-height: 128px;
+  border-radius: var(--portal-radius-card, 24px);
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   box-shadow: 0 18px 34px rgba(26, 31, 49, 0.06);
-  padding: 0.9rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.75rem;
 }
 
 .quick-action-top {
@@ -73,26 +73,18 @@ export default {
   gap: 0.75rem;
 }
 
-.quick-action-eyebrow {
-  font-size: 0.72rem;
-  color: #727d91;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
 .quick-action-title {
   margin-top: 0.2rem;
   font-size: 0.94rem;
   line-height: 1.15;
   font-weight: 700;
-  color: #1f2b3d;
+  color: var(--portal-dark, #2f3651);
 }
 
 .quick-action-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--portal-radius-icon, 12px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -102,8 +94,8 @@ export default {
 }
 
 .quick-action-icon.is-violet {
-  background: #f2ebff;
-  color: #7b49f4;
+  background: var(--portal-violet-soft, #efeaff);
+  color: var(--portal-violet, #6c46f4);
   border: 1px solid #d8cbff;
 }
 
@@ -123,7 +115,7 @@ export default {
   font-size: 1.05rem;
   line-height: 1.1;
   font-weight: 800;
-  color: #1d2533;
+  color: var(--portal-dark, #2f3651);
 }
 
 .quick-action-copy {
@@ -145,6 +137,12 @@ export default {
 }
 
 @media (max-width: 1199.98px) {
+  .quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
   .quick-action-grid {
     grid-template-columns: 1fr;
   }

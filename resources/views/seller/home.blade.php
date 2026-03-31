@@ -1,6 +1,7 @@
 @extends('layouts.craft')
 
 @section('title', $title ?? 'Seller')
+@section('shell_mode', 'standalone')
 
 @section('content')
     <seller-dashboard-index

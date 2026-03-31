@@ -1,6 +1,7 @@
 @extends('layouts.craft')
 
 @section('title', 'Seller Emision')
+@section('shell_mode', 'standalone')
 
 @section('content')
     <admin-operations-issuance-wizard

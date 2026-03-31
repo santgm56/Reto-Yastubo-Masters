@@ -191,10 +191,10 @@ export default {
   z-index: 1040;
   background:
     radial-gradient(circle at 14% 84%, rgba(104, 229, 233, 0.28) 0%, rgba(104, 229, 233, 0) 28%),
-    linear-gradient(180deg, #ffffff 0%, #ffffff 68%, #f6fbff 82%, #ece8ff 92%, #7564ff 100%);
-  border-right: 1px solid #edf1f6;
-  border-radius: 30px 0 0 30px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+    linear-gradient(180deg, #ffffff 0%, #ffffff 72%, #f6fbff 84%, #ece8ff 94%, #c4bdff 100%);
+  border-right: 1px solid var(--portal-border-soft, #eef1f6);
+  border-radius: var(--portal-radius-shell, 24px) 0 0 var(--portal-radius-shell, 24px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
 }
 
 .shell-sidebar > * {
@@ -207,11 +207,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 20px 20px;
+  padding: 20px;
 }
 
 .sidebar-logo-img {
-  height: 31px;
+  height: 32px;
   width: auto;
 }
 
@@ -236,8 +236,8 @@ export default {
 
 .profile-avatar-image,
 .profile-avatar-fallback {
-  width: 68px;
-  height: 68px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
 }
 
@@ -262,7 +262,7 @@ export default {
   font-weight: 600;
   font-size: 16px;
   line-height: 1.25;
-  color: #2a3142;
+  color: var(--portal-dark, #2f3651);
 }
 
 .profile-link-btn {
@@ -281,7 +281,7 @@ export default {
 }
 
 .profile-link-btn:hover {
-  color: #4f46e5;
+  color: var(--portal-dark, #2f3651);
   text-decoration-color: currentColor;
 }
 
@@ -296,10 +296,10 @@ export default {
 .nav-item {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 48px;
   gap: 10px;
   padding: 0 14px;
-  border-radius: 22px;
+  border-radius: var(--portal-radius-element, 16px);
   border: 1px solid transparent;
   background: transparent;
   color: #7b8497;
@@ -312,15 +312,15 @@ export default {
 }
 
 .nav-item:hover {
-  background: #f7f8fc;
-  color: #2f3651;
+  background: #f4f6fa;
+  color: var(--portal-dark, #2f3651);
 }
 
 .nav-item.is-active {
   background: #ffffff;
-  border-color: #e8ecf4;
+  border-color: var(--shell-border, #e5e8f1);
   box-shadow: 0 4px 14px rgba(17, 24, 39, 0.05);
-  color: #2f3651;
+  color: var(--portal-dark, #2f3651);
   font-weight: 600;
 }
 
@@ -343,7 +343,7 @@ export default {
 }
 
 .nav-item.is-active .nav-icon {
-  color: #6d5ef6;
+  color: var(--portal-violet, #6c46f4);
 }
 
 .nav-label {
@@ -361,10 +361,10 @@ export default {
 }
 
 .logout-item {
-  min-height: 40px;
+  min-height: 48px;
   padding: 0 12px;
-  border-radius: 16px;
-  color: rgba(255, 255, 255, 0.78);
+  border-radius: var(--portal-radius-element, 16px);
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .logout-item:hover {
@@ -379,7 +379,7 @@ export default {
     top: 0;
     left: 0;
     height: 100vh;
-    border-radius: 0 28px 28px 0;
+    border-radius: 0 var(--portal-radius-shell, 24px) var(--portal-radius-shell, 24px) 0;
     transform: translateX(-100%);
     transition: transform 0.2s ease;
     box-shadow: 12px 0 30px rgba(14, 36, 72, 0.2);

@@ -3,7 +3,7 @@
     <div class="card-body p-4 p-lg-5">
       <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-3">
         <div>
-          <div class="product-overview-eyebrow">Tus productos</div>
+          <div class="portal-kicker">Tus productos</div>
           <h2 class="fs-4 fw-bold text-gray-900 mb-1">Resumen de cobertura</h2>
           <div class="text-muted fs-8">{{ description }}</div>
         </div>
@@ -13,7 +13,7 @@
         </span>
       </div>
 
-      <div class="product-overview-alert" :class="blockedReason ? 'is-alert' : 'is-normal'" role="status">
+      <div class="portal-notice product-overview-alert" :class="blockedReason ? 'is-alert' : 'is-neutral'" role="status">
         {{ blockedReason || 'Aqui puedes consultar el estado actual de tus productos y decidir tu siguiente paso.' }}
       </div>
 
@@ -88,28 +88,6 @@ export default {
     linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
 }
 
-.product-overview-eyebrow {
-  font-size: 0.72rem;
-  color: #727d91;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.3rem;
-}
-
-.product-overview-alert {
-  border-radius: 18px;
-  padding: 0.8rem 0.95rem;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  font-weight: 600;
-}
-
-.product-overview-alert.is-normal {
-  background: #eef7ff;
-  color: #245f92;
-}
-
 .product-overview-alert.is-alert {
   background: #fff7e8;
   color: #9b6510;
@@ -117,15 +95,15 @@ export default {
 
 .product-overview-grid {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .product-overview-item {
-  border-radius: 18px;
-  border: 1px solid #e5e8f1;
+  border-radius: var(--portal-radius-element, 16px);
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: rgba(255, 255, 255, 0.92);
-  padding: 0.95rem;
+  padding: 1rem;
 }
 
 .product-overview-item-label {
@@ -141,7 +119,7 @@ export default {
   font-size: 1rem;
   line-height: 1.15;
   font-weight: 800;
-  color: #1f2b3d;
+  color: var(--portal-dark, #2f3651);
 }
 
 .product-overview-item-hint {
@@ -154,7 +132,7 @@ export default {
 .product-overview-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.75rem;
 }
 
 @media (max-width: 767.98px) {

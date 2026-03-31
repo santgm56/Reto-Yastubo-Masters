@@ -18,7 +18,7 @@
       </div>
 
       <div
-        class="alert py-2 px-3 mb-3"
+        class="portal-alert mb-3"
         :class="widgetState === 'error'
           ? 'alert-light-danger'
           : widgetState === 'loading'
@@ -33,7 +33,7 @@
         {{ widgetMessage }}
       </div>
 
-      <div v-if="widgetNotice" class="alert py-2 px-3 mb-3" :class="widgetNoticeClass" role="alert">
+      <div v-if="widgetNotice" class="portal-alert mb-3" :class="widgetNoticeClass" role="alert">
         {{ widgetNotice }}
       </div>
 
@@ -118,7 +118,7 @@
 
       <div v-if="widgetState === 'loading'" class="row g-3">
         <div class="col-12" v-for="index in 3" :key="`benef-loading-${index}`">
-          <div class="border rounded p-3 placeholder-glow">
+          <div class="portal-loading-card placeholder-glow">
             <div class="placeholder col-5 mb-2" style="height: 12px;"></div>
             <div class="placeholder col-3 mb-2" style="height: 12px;"></div>
             <div class="placeholder col-6" style="height: 10px;"></div>
@@ -126,11 +126,11 @@
         </div>
       </div>
 
-      <div v-else-if="widgetState === 'error'" class="border rounded p-3 bg-light-danger text-danger">
+      <div v-else-if="widgetState === 'error'" class="portal-state-box is-danger">
         No pudimos cargar tus beneficiarios. Intenta de nuevo.
       </div>
 
-      <div v-else-if="widgetState === 'empty'" class="border rounded p-3 bg-light-warning text-warning">
+      <div v-else-if="widgetState === 'empty'" class="portal-state-box is-warning">
         No hay beneficiarios registrados. Puedes agregar uno nuevo desde este modulo.
       </div>
 
@@ -188,7 +188,7 @@
   <div class="card shadow-sm border-0 beneficiaries-card" v-else>
     <div class="card-body p-4 p-lg-5">
       <h2 class="fs-4 fw-bold text-gray-900 mb-2">Beneficiarios</h2>
-      <div class="alert alert-light-warning mb-0" role="alert">
+      <div class="portal-alert alert-light-warning mb-0" role="alert">
         {{ accessDeniedReason || 'No tienes permisos para visualizar este widget.' }}
       </div>
     </div>
@@ -339,8 +339,8 @@ export default {
 .beneficiaries-card :deep(.btn-light-primary) {
   border-radius: 999px;
   border-color: #d4cbff;
-  background: #efeaff;
-  color: #5c3ccf;
+  background: var(--portal-violet-soft, #efeaff);
+  color: var(--portal-violet-hover, #5f46d5);
 }
 
 .beneficiaries-card :deep(.btn-light-primary:hover) {
@@ -351,13 +351,13 @@ export default {
 .benef-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.7rem;
+  gap: 0.75rem;
 }
 
 .benef-summary-pill {
-  border-radius: 16px;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid #e7eaf2;
+  border-radius: var(--portal-radius-element, 16px);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -392,26 +392,26 @@ export default {
   flex: 1 1 auto;
   align-content: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
+  gap: 0.75rem;
 }
 
 .beneficiary-mini-card {
-  border: 1px solid #e7eaf2;
-  border-radius: 18px;
-  padding: 0.95rem;
+  border: 1px solid var(--shell-border, #e5e8f1);
+  border-radius: var(--portal-radius-element, 16px);
+  padding: 1rem;
   background: rgba(255, 255, 255, 0.9);
 }
 
 .beneficiary-mini-avatar {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #6c46f4 0%, #18b57d 100%);
   color: #ffffff;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 0.8rem;
   flex-shrink: 0;
 }
@@ -427,7 +427,14 @@ export default {
   font-weight: 600;
 }
 
-@media (max-width: 991.98px) {
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .benef-summary-grid,
+  .beneficiaries-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
   .benef-summary-grid,
   .beneficiaries-grid {
     grid-template-columns: 1fr;

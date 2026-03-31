@@ -3,6 +3,8 @@
 @php
     $branding = \App\Services\Config\Config::getBrandingWeb();
     $currentRealm = \App\Support\Realm::current(request());
+    $shellMode = trim($__env->yieldContent('shell_mode'));
+    $useStandaloneShell = $shellMode === 'standalone';
     $sellerShellContext = $currentRealm === \App\Support\Realm::SELLER
         ? request()->attributes->get('seller_shell_context', [])
         : [];
@@ -178,7 +180,7 @@
 <!--begin::Body-->
 
 <body id="kt_body"
-    class="header-fixed header-tablet-and-mobile-fixed toolbar-enabled aside-fixed aside-default-enabled">
+    class="{{ $useStandaloneShell ? 'app-blank' : 'header-fixed header-tablet-and-mobile-fixed toolbar-enabled aside-fixed aside-default-enabled' }}">
     <!--begin::Theme mode setup on page load-->
     <script>
         var defaultThemeMode = "light";
@@ -204,112 +206,120 @@
     <!--begin::Main-->
     <!--begin::Root-->
     <div class="d-flex flex-column flex-root">
-        <!--begin::Page-->
-        <div class="page d-flex flex-row flex-column-fluid">
-            @include('partials.sidebar')
+        @if ($useStandaloneShell)
+            <div id="app">
+                @yield('content')
+            </div>
+        @else
+            <!--begin::Page-->
+            <div class="page d-flex flex-row flex-column-fluid">
+                @include('partials.sidebar')
 
-            <!--begin::Wrapper-->
-            <div class="wrapper d-flex flex-column flex-row-fluid" id="kt_wrapper">
-                @include('partials.header')
-                @php
-                    $items = \App\Support\Breadcrumbs::getAll();
-                    $back = $items[count($items) - 2]['url'] ?? null;
-                @endphp
+                <!--begin::Wrapper-->
+                <div class="wrapper d-flex flex-column flex-row-fluid" id="kt_wrapper">
+                    @include('partials.header')
+                    @php
+                        $items = \App\Support\Breadcrumbs::getAll();
+                        $back = $items[count($items) - 2]['url'] ?? null;
+                    @endphp
 
-                <!--begin::Content-->
-                <div class="content fs-6 d-flex flex-column flex-column-fluid" id="app">
-                    <!--begin::Toolbar-->
-                    <div class="toolbar" id="kt_toolbar">
-                        <div class="container-fluid d-flex flex-wrap flex-sm-nowrap justify-content-between">
-                            <!--begin::Info-->
-                            <div class="d-flex align-items-center gap-4">
-                                @if (!empty($back))
+                    <!--begin::Content-->
+                    <div class="content fs-6 d-flex flex-column flex-column-fluid" id="app">
+                        <!--begin::Toolbar-->
+                        <div class="toolbar" id="kt_toolbar">
+                            <div class="container-fluid d-flex flex-wrap flex-sm-nowrap justify-content-between">
+                                <!--begin::Info-->
+                                <div class="d-flex align-items-center gap-4">
+                                    @if (!empty($back))
+                                        <div>
+                                            <a href="{{ $back }}" title="Volver">
+                                                <i class="bi bi-arrow-left-circle" style="font-size: 2rem;"></i>
+                                            </a>
+                                        </div>
+                                    @endif
+
                                     <div>
-                                        <a href="{{ $back }}" title="Volver">
-                                            <i class="bi bi-arrow-left-circle" style="font-size: 2rem;"></i>
-                                        </a>
+                                        <!--begin::Title-->
+                                        <h1 class="text-gray-900 fw-bold my-1 fs-2">
+                                            @yield('title')
+                                        </h1>
+                                        <!--end::Title-->
+
+                                        <!--begin::Breadcrumb-->
+                                        <x-breadcrumbs />
+                                        <!--end::Breadcrumb-->
                                     </div>
-                                @endif
-
-                                <div>
-                                    <!--begin::Title-->
-                                    <h1 class="text-gray-900 fw-bold my-1 fs-2">
-                                        @yield('title')
-                                    </h1>
-                                    <!--end::Title-->
-
-                                    <!--begin::Breadcrumb-->
-                                    <x-breadcrumbs />
-                                    <!--end::Breadcrumb-->
                                 </div>
-                            </div>
-                            <!--end::Info-->
+                                <!--end::Info-->
 
-                            <!--begin::Actions-->
-                            <div>
-                                @yield('actions')
+                                <!--begin::Actions-->
+                                <div>
+                                    @yield('actions')
+                                </div>
+                                <!--end::Actions-->
                             </div>
-                            <!--end::Actions-->
                         </div>
-                    </div>
-                    <!--end::Toolbar-->
+                        <!--end::Toolbar-->
 
-                    <!--begin::Post-->
-                    <div class="post fs-6 d-flex flex-column-fluid" id="kt_post">
+                        <!--begin::Post-->
+                        <div class="post fs-6 d-flex flex-column-fluid" id="kt_post">
+                            <!--begin::Container-->
+                            <div class="container-xxl">
+                                @yield('content')
+                            </div>
+                            <!--end::Container-->
+                        </div>
+                        <!--end::Post-->
+                    </div>
+                    <!--end::Content-->
+
+                    <!--begin::Footer-->
+                    <div class="footer py-4 d-flex flex-lg-column" id="kt_footer">
                         <!--begin::Container-->
-                        <div class="container-xxl">
-                            @yield('content')
+                        <div class="container-fluid d-flex flex-column flex-md-row flex-stack">
+                            <!--begin::Copyright-->
+                            <div class="text-gray-900 order-2 order-md-1">
+                                <span class="text-muted fw-semibold me-2">2025&copy;</span>
+                                {{ config('app.name') }}
+                            </div>
+                            <!--end::Copyright-->
+
+                            <!--begin::Menu-->
+                            <ul class="menu menu-gray-600 menu-hover-primary fw-semibold order-1">
+                                <li class="menu-item">
+                                    <a href="" class="menu-link px-2">Acerca de</a>
+                                </li>
+                                <li class="menu-item">
+                                    <a href="" class="menu-link px-2">Soporte</a>
+                                </li>
+                                <li class="menu-item">
+                                    <a href="" class="menu-link px-2">Condiciones de uso</a>
+                                </li>
+                            </ul>
+                            <!--end::Menu-->
                         </div>
                         <!--end::Container-->
                     </div>
-                    <!--end::Post-->
+                    <!--end::Footer-->
                 </div>
-                <!--end::Content-->
-
-                <!--begin::Footer-->
-                <div class="footer py-4 d-flex flex-lg-column" id="kt_footer">
-                    <!--begin::Container-->
-                    <div class="container-fluid d-flex flex-column flex-md-row flex-stack">
-                        <!--begin::Copyright-->
-                        <div class="text-gray-900 order-2 order-md-1">
-                            <span class="text-muted fw-semibold me-2">2025&copy;</span>
-                            {{ config('app.name') }}
-                        </div>
-                        <!--end::Copyright-->
-
-                        <!--begin::Menu-->
-                        <ul class="menu menu-gray-600 menu-hover-primary fw-semibold order-1">
-                            <li class="menu-item">
-                                <a href="" class="menu-link px-2">Acerca de</a>
-                            </li>
-                            <li class="menu-item">
-                                <a href="" class="menu-link px-2">Soporte</a>
-                            </li>
-                            <li class="menu-item">
-                                <a href="" class="menu-link px-2">Condiciones de uso</a>
-                            </li>
-                        </ul>
-                        <!--end::Menu-->
-                    </div>
-                    <!--end::Container-->
-                </div>
-                <!--end::Footer-->
+                <!--end::Wrapper-->
             </div>
-            <!--end::Wrapper-->
-        </div>
-        <!--end::Page-->
+            <!--end::Page-->
+        @endif
     </div>
     <!--end::Root-->
     <!--end::Main-->
 
-    <!--begin::Scrolltop (fuera de Vue, no hace falta que sea reactivo)-->
-    <div id="kt_scrolltop" class="scrolltop" data-kt-scrolltop="true">
-        <i class="ki-duotone ki-arrow-up">
-            <span class="path1"></span>
-            <span class="path2"></span>
-        </i>
-    </div>
-    <!--end::Scrolltop-->
+    @unless ($useStandaloneShell)
+        <!--begin::Scrolltop (fuera de Vue, no hace falta que sea reactivo)-->
+        <div id="kt_scrolltop" class="scrolltop" data-kt-scrolltop="true">
+            <i class="ki-duotone ki-arrow-up">
+                <span class="path1"></span>
+                <span class="path2"></span>
+            </i>
+        </div>
+        <!--end::Scrolltop-->
+    @endunless
 
     <!--begin::Javascript-->
     <!--begin::Global Javascript Bundle(mandatory for all pages)-->

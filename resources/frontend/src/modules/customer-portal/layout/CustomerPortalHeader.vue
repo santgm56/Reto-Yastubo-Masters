@@ -33,7 +33,14 @@
         :title="supportUrl ? null : 'Canal de soporte en configuracion'"
         @click="$emit('open-support')"
       >
-        <span class="support-btn-icon" aria-hidden="true">?</span>
+        <span class="support-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" class="support-btn-icon-svg">
+            <path d="M4.75 12a7.25 7.25 0 0114.5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M5.25 12.25h1.5a1.5 1.5 0 011.5 1.5v2a1.5 1.5 0 01-1.5 1.5h-.5a2 2 0 01-2-2v-1a2 2 0 011-1.75Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M18.75 12.25h-1.5a1.5 1.5 0 00-1.5 1.5v2a1.5 1.5 0 001.5 1.5h.5a2 2 0 002-2v-1a2 2 0 00-1-1.75Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M12 18.5v.25a1.5 1.5 0 01-1.5 1.5h-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </span>
         {{ supportLabel }}
       </button>
     </div>
@@ -63,14 +70,14 @@ export default {
 
 <style scoped>
 .shell-header {
-  min-height: 64px;
+  height: 64px;
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid #eef1f6;
+  border-bottom: 1px solid var(--portal-border-soft, #eef1f6);
   backdrop-filter: blur(14px);
 }
 
@@ -92,7 +99,7 @@ export default {
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 1px solid #d9e1ec;
+  border: 1px solid #dbe3ee;
   border-radius: 50%;
   background: #ffffff;
   color: #44506a;
@@ -113,7 +120,7 @@ export default {
   font-size: 16px;
   line-height: 1;
   font-weight: 600;
-  color: #2f3651;
+  color: var(--portal-dark, #2f3651);
   white-space: nowrap;
 }
 
@@ -127,7 +134,7 @@ export default {
   border: 0;
   background: #e9f9f0;
   color: #1f9d55;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   box-shadow: 0 2px 6px rgba(31, 157, 85, 0.15);
 }
@@ -176,8 +183,8 @@ export default {
 .support-btn {
   height: 36px;
   border-radius: 999px;
-  border: 1px solid #29324a;
-  background: #29324a;
+  border: 1px solid var(--portal-dark, #2f3651);
+  background: var(--portal-dark, #2f3651);
   color: #ffffff;
   padding: 0 14px;
   box-shadow: none;
@@ -199,8 +206,12 @@ export default {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.16);
-  font-size: 10px;
   line-height: 1;
+}
+
+.support-btn-icon-svg {
+  width: 12px;
+  height: 12px;
 }
 
 .support-btn:hover,
@@ -224,6 +235,7 @@ export default {
 
 @media (max-width: 767.98px) {
   .shell-header {
+    height: auto;
     min-height: 64px;
     padding: 12px 16px;
     flex-wrap: wrap;
@@ -240,6 +252,7 @@ export default {
   .header-actions-row {
     width: 100%;
     justify-content: flex-start;
+    gap: 8px;
   }
 }
 </style>

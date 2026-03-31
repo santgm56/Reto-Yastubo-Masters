@@ -22,7 +22,7 @@
         </div>
       </div>
 
-      <div v-if="notice" class="alert mb-4" :class="noticeClass" role="alert">
+      <div v-if="notice" class="portal-alert mb-4" :class="noticeClass" role="alert">
         {{ notice }}
       </div>
 
@@ -193,15 +193,15 @@ export default {
 
 <style scoped>
 .payment-method-card {
-  border-radius: 24px;
-  border: 1px solid #e5e8f1;
+  border-radius: var(--portal-radius-card, 24px);
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
 }
 
 .payment-method-visual-card {
   min-width: min(100%, 320px);
-  border-radius: 24px;
-  padding: 1.15rem;
+  border-radius: var(--portal-radius-card, 24px);
+  padding: 1.25rem;
   color: #ffffff;
   background:
     radial-gradient(160px 90px at 100% 0%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 100%),
@@ -225,7 +225,7 @@ export default {
 
 .payment-card-status {
   border-radius: 999px;
-  padding: 0.3rem 0.62rem;
+  padding: 0.25rem 0.5rem;
   font-size: 0.7rem;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.14);
@@ -252,28 +252,42 @@ export default {
 
 .payment-card-number {
   margin: 1.1rem 0 1.6rem;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
 
 .payment-method-mini-card {
   height: 100%;
-  border-radius: 18px;
-  border: 1px solid #e6ebf2;
+  border-radius: var(--portal-radius-element, 16px);
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: #f9fbfd;
-  padding: 0.95rem;
+  padding: 1rem;
 }
 
 .payment-method-mini-label {
   font-size: 0.72rem;
   color: #7f8a9d;
   margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 .payment-method-mini-value {
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: #223042;
+  color: var(--portal-dark, #2f3651);
+}
+
+@media (max-width: 767.98px) {
+  .payment-method-visual-card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .payment-card-number {
+    font-size: 1.28rem;
+  }
 }
 </style>

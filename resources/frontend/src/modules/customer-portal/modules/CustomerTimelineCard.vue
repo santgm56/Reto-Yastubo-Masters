@@ -51,6 +51,8 @@ export default {
 
 <style scoped>
 .timeline-shell-card {
+  border-radius: var(--portal-radius-card, 24px);
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: linear-gradient(180deg, #ffffff 0%, #f7fafd 100%);
 }
 
@@ -68,10 +70,10 @@ export default {
 }
 
 .timeline-entry-card {
-  border: 1px solid #e3ebf3;
-  border-radius: 20px;
+  border: 1px solid var(--shell-border, #e5e8f1);
+  border-radius: var(--portal-radius-element, 16px);
   background: rgba(255, 255, 255, 0.96);
-  padding: 1rem 1.1rem;
+  padding: 1rem;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
 }
 </style>

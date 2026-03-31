@@ -319,6 +319,7 @@
             :widget-notice="paymentHistoryWidgetNotice"
             :widget-notice-class="paymentHistoryWidgetNoticeClass"
             :sort-direction="paymentHistorySortDirection"
+            :page-size="8"
             :rows="paymentHistoryViewRows"
             @set-sort="setPaymentHistorySortDirection"
             @retry="retryPaymentHistoryWidget"
@@ -4698,7 +4699,16 @@ export default {
 .customer-shell-theme {
   --shell-bg: #eef3f8;
   --shell-surface: #ffffff;
-  --shell-border: #dde4ee;
+  --shell-border: #e5e8f1;
+  --portal-border-soft: #eef1f6;
+  --portal-dark: #2f3651;
+  --portal-violet: #6c46f4;
+  --portal-violet-soft: #efeaff;
+  --portal-violet-hover: #5f46d5;
+  --portal-radius-shell: 24px;
+  --portal-radius-card: 24px;
+  --portal-radius-element: 16px;
+  --portal-radius-icon: 12px;
   --shell-text: #1d2a3b;
   --shell-muted: #6f7a8f;
   --shell-primary: #174b7a;
@@ -4750,9 +4760,9 @@ export default {
 .shell-content {
   min-width: 0;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 250, 253, 0.98) 100%);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--shell-border);
   border-left: 0;
-  border-radius: 0 30px 30px 0;
+  border-radius: 0 var(--portal-radius-shell) var(--portal-radius-shell) 0;
   margin: 0.25rem 0.25rem 0.25rem 0;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
@@ -4870,8 +4880,181 @@ export default {
 }
 
 .module-metrics-grid .module-metric-card {
-  border-radius: 22px;
+  border-radius: var(--portal-radius-card);
   background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+}
+
+:deep(.portal-kicker) {
+  font-size: 0.72rem;
+  color: #727d91;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+}
+
+:deep(.portal-notice) {
+  border-radius: var(--portal-radius-element);
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+:deep(.portal-notice.is-neutral) {
+  background: #eef5ff;
+  color: #245f92;
+}
+
+:deep(.portal-notice.is-success) {
+  background: #eef8f1;
+  color: #1f7a4c;
+}
+
+:deep(.portal-notice.is-warning) {
+  background: #fff7e8;
+  color: #9b6510;
+}
+
+:deep(.portal-notice.is-danger),
+:deep(.portal-notice.is-alert) {
+  background: #fff1f1;
+  color: #b53333;
+}
+
+:deep(.portal-alert) {
+  border-radius: var(--portal-radius-element);
+  border: 1px solid transparent !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  font-weight: 600;
+  background: #f8fafc !important;
+  color: var(--portal-dark) !important;
+  box-shadow: none !important;
+}
+
+:deep(.portal-alert.alert-light-primary) {
+  background: #eef5ff !important;
+  border-color: #d9eafc !important;
+  color: #245f92 !important;
+}
+
+:deep(.portal-alert.alert-light-success) {
+  background: #eef8f1 !important;
+  border-color: #d4efdf !important;
+  color: #1f7a4c !important;
+}
+
+:deep(.portal-alert.alert-light-warning) {
+  background: #fff7e8 !important;
+  border-color: #f7e1b5 !important;
+  color: #9b6510 !important;
+}
+
+:deep(.portal-alert.alert-light-danger) {
+  background: #fff1f1 !important;
+  border-color: #f2cdcd !important;
+  color: #b53333 !important;
+}
+
+:deep(.portal-alert.alert-light-info) {
+  background: #eef5ff !important;
+  border-color: #d9eafc !important;
+  color: #245f92 !important;
+}
+
+:deep(.portal-state-box) {
+  border-radius: var(--portal-radius-element);
+  border: 1px solid var(--shell-border);
+  padding: 1rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+:deep(.portal-state-box.is-warning) {
+  background: #fff7e8;
+  border-color: #f7e1b5;
+  color: #9b6510;
+}
+
+:deep(.portal-state-box.is-danger) {
+  background: #fff1f1;
+  border-color: #f2cdcd;
+  color: #b53333;
+}
+
+:deep(.portal-state-box.is-info) {
+  background: #eef5ff;
+  border-color: #d9eafc;
+  color: #245f92;
+}
+
+:deep(.portal-loading-card) {
+  border-radius: var(--portal-radius-element);
+  border: 1px solid var(--shell-border) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafd 100%) !important;
+  padding: 1rem !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+:deep(.portal-loading-card.portal-loading-card--card) {
+  border-radius: var(--portal-radius-card);
+}
+
+:deep(.portal-loading-card .placeholder) {
+  border-radius: 999px;
+}
+
+:deep(.portal-source-heading) {
+  font-size: 0.72rem;
+  color: #7a8698;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+:deep(.portal-source-list) {
+  display: grid;
+  gap: 0.75rem;
+}
+
+:deep(.portal-source-card) {
+  border-radius: var(--portal-radius-element);
+  border: 1px solid var(--shell-border);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.75rem 1rem;
+}
+
+:deep(.portal-source-card.is-success) {
+  border-color: #d4efdf;
+  background: #f5fcf7;
+}
+
+:deep(.portal-source-card.is-warning) {
+  border-color: #f7e1b5;
+  background: #fffaf0;
+}
+
+:deep(.portal-source-card.is-danger) {
+  border-color: #f2cdcd;
+  background: #fff7f7;
+}
+
+:deep(.portal-source-value) {
+  margin-top: 0.45rem;
+  font-size: 1rem;
+  line-height: 1.15;
+  font-weight: 800;
+  color: var(--portal-dark);
+}
+
+:deep(.portal-source-hint) {
+  margin-top: 0.32rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: #6f7b90;
 }
 
 :deep(.btn) {

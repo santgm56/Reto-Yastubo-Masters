@@ -3,7 +3,7 @@
     <div class="card-body p-4 p-lg-5">
       <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-3">
         <div>
-          <div class="transactions-overview-eyebrow">Tus transacciones</div>
+          <div class="portal-kicker">Tus transacciones</div>
           <h2 class="fs-4 fw-bold text-gray-900 mb-1">Movimiento financiero</h2>
           <div class="text-muted fs-8">{{ description }}</div>
         </div>
@@ -13,7 +13,7 @@
         </span>
       </div>
 
-      <div class="transactions-overview-notice" :class="noticeToneClass">
+      <div class="portal-notice transactions-overview-notice" :class="noticeToneClass">
         {{ notice }}
       </div>
 
@@ -26,18 +26,18 @@
       </div>
 
       <div v-if="sources.length" class="transactions-overview-sources mt-4">
-        <div class="transactions-overview-sources-label">Fuente de informacion</div>
+        <div class="portal-source-heading">Fuente de informacion</div>
 
-        <div class="transactions-overview-source-list mt-2">
+        <div class="portal-source-list transactions-overview-source-list mt-2">
           <article
             v-for="source in sources"
             :key="source.title"
-            class="transactions-overview-source"
+            class="portal-source-card transactions-overview-source"
             :class="`is-${source.tone || 'neutral'}`"
           >
-            <div class="transactions-overview-source-title">{{ source.title }}</div>
-            <div class="transactions-overview-source-value">{{ source.value }}</div>
-            <div class="transactions-overview-source-hint">{{ source.hint }}</div>
+            <div class="portal-source-heading">{{ source.title }}</div>
+            <div class="portal-source-value">{{ source.value }}</div>
+            <div class="portal-source-hint">{{ source.hint }}</div>
           </article>
         </div>
       </div>
@@ -125,59 +125,20 @@ export default {
     linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
 }
 
-.transactions-overview-eyebrow {
-  font-size: 0.72rem;
-  color: #727d91;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.3rem;
-}
-
-.transactions-overview-notice {
-  border-radius: 18px;
-  padding: 0.85rem 0.95rem;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  font-weight: 600;
-}
-
-.transactions-overview-notice.is-success {
-  background: #eef8f1;
-  color: #1f7a4c;
-}
-
-.transactions-overview-notice.is-warning {
-  background: #fff7e8;
-  color: #9b6510;
-}
-
-.transactions-overview-notice.is-danger {
-  background: #fff1f1;
-  color: #b53333;
-}
-
-.transactions-overview-notice.is-neutral {
-  background: #eef5ff;
-  color: #245f92;
-}
-
 .transactions-overview-grid {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .transactions-overview-item {
-  border-radius: 18px;
-  border: 1px solid #e5e8f1;
+  border-radius: var(--portal-radius-element, 16px);
+  border: 1px solid var(--shell-border, #e5e8f1);
   background: rgba(255, 255, 255, 0.92);
-  padding: 0.95rem;
+  padding: 1rem;
 }
 
-.transactions-overview-item-label,
-.transactions-overview-sources-label,
-.transactions-overview-source-title {
+.transactions-overview-item-label {
   font-size: 0.72rem;
   color: #7a8698;
   text-transform: uppercase;
@@ -185,54 +146,25 @@ export default {
   font-weight: 700;
 }
 
-.transactions-overview-item-value,
-.transactions-overview-source-value {
+.transactions-overview-item-value {
   margin-top: 0.45rem;
   font-size: 1rem;
   line-height: 1.15;
   font-weight: 800;
-  color: #1f2b3d;
+  color: var(--portal-dark, #2f3651);
 }
 
-.transactions-overview-item-hint,
-.transactions-overview-source-hint {
+.transactions-overview-item-hint {
   margin-top: 0.32rem;
   font-size: 0.74rem;
   line-height: 1.4;
   color: #6f7b90;
 }
 
-.transactions-overview-source-list {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.transactions-overview-source {
-  border-radius: 16px;
-  border: 1px solid #e5e8f1;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0.85rem 0.95rem;
-}
-
-.transactions-overview-source.is-success {
-  border-color: #d4efdf;
-  background: #f5fcf7;
-}
-
-.transactions-overview-source.is-warning {
-  border-color: #f7e1b5;
-  background: #fffaf0;
-}
-
-.transactions-overview-source.is-danger {
-  border-color: #f2cdcd;
-  background: #fff7f7;
-}
-
 .transactions-overview-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.75rem;
 }
 
 @media (max-width: 767.98px) {
